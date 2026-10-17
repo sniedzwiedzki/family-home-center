@@ -1,8 +1,11 @@
-import { ColumnHeaders } from './calendar/ColumnHeaders'
+import { CalendarView } from './calendar/CalendarView'
+import { createMockCalendar } from './calendar/mockCalendar'
 import { useSettings } from './settings/useSettings'
 import { BottomBar } from './shell/BottomBar'
 import { TopBar } from './shell/TopBar'
 import './App.css'
+
+const calendarPort = createMockCalendar()
 
 function App() {
   const { settings } = useSettings()
@@ -10,9 +13,7 @@ function App() {
   return (
     <div className="kiosk">
       <TopBar />
-      <main className="calendar">
-        <ColumnHeaders members={settings.familyMembers} />
-      </main>
+      <CalendarView port={calendarPort} members={settings.familyMembers} />
       <BottomBar />
     </div>
   )

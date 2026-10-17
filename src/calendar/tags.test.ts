@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { EVENT_TAGS_PROPERTY, extractTags } from './tags'
+import { EVENT_TAGS_PROPERTY, extractTags, stripTitleTags } from './tags'
 
 const withProperty = (value: string) => ({ title: 'Obiad', extendedProperties: { private: { [EVENT_TAGS_PROPERTY]: value } } })
 
@@ -27,5 +27,16 @@ describe('extractTags', () => {
 
   it('ignores empty entries', () => {
     expect(extractTags(withProperty(',, anna ,'))).toEqual(['anna'])
+  })
+})
+
+describe('stripTitleTags', () => {
+  it('removes #tags and tidies spaces', () => {
+    expect(stripTitleTags('Dentysta #anna  #żaneta')).toBe('Dentysta')
+    expect(stripTitleTags('Kino #jan z dziećmi')).toBe('Kino z dziećmi')
+  })
+
+  it('leaves untagged titles alone', () => {
+    expect(stripTitleTags('Obiad')).toBe('Obiad')
   })
 })
