@@ -22,7 +22,7 @@ export default defineConfig({
           include: ['tests/integration/**/*.int.test.ts'],
           globalSetup: ['tests/integration/global-setup.ts'],
           testTimeout: 60_000,
-          hookTimeout: 180_000,
+          hookTimeout: 120_000,
         },
       },
     ],

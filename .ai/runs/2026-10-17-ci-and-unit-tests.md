@@ -22,3 +22,7 @@ Spec: `.ai/specs/implemented/2026-10-17-ci-and-testing.md`
 ## Open issues
 
 - None.
+
+## Follow-up
+
+PostgreSQL and testcontainers were later removed: the project has no database. Integration tests now only build, serve and browse the app.

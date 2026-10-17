@@ -56,7 +56,7 @@ The full standards (structure and naming, architecture, security, code quality, 
 ## Testing and CI
 
 - **100% unit test coverage for every new feature.** Every new or changed line, branch and function must be covered by unit tests (Vitest, `*.test.ts(x)` next to the code). `npm test` enforces 100% statements, branches, functions and lines and fails below it. Do not add coverage excludes or `v8 ignore` comments to get there; if a branch is unreachable, remove it.
-- **Integration tests** live in `tests/integration/*.int.test.ts`. They start a temporary PostgreSQL instance with testcontainers, build and serve a temporary instance of the app, and drive it through `agent-browser` (see `npx agent-browser skills get core`).
+- **Integration tests** live in `tests/integration/*.int.test.ts`. They build and serve a temporary instance of the app and drive it through `agent-browser` (see `npx agent-browser skills get core`).
 - **CI** (`.github/workflows/ci.yml`) runs on every pull request and on pushes to `main`: build, lint, unit tests with coverage, and integration tests. A pull request must be green before merging.
 
 ## Project commands
@@ -67,7 +67,7 @@ npm run dev
 npm run build
 npm run lint
 npm test                     # unit tests with coverage (100% thresholds)
-npm run test:integration     # needs Docker; PostgreSQL via testcontainers + agent-browser
+npm run test:integration     # temporary app instance driven by agent-browser
 ```
 
 Run `npm run lint`, `npm test` and `npm run build` before reporting work as done. Run `npm run test:integration` when the change affects how the running app behaves.
