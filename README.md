@@ -19,7 +19,13 @@ A big calendar with events, actions, tasks and more.
 ### Top bar
 
 - Sticky at the top of the view.
-- Current time on the left, settings button on the right.
+- Current time on the left, AI assistant button in the center, settings button on the right.
+
+### AI voice assistant
+
+- A button in the center of the top bar; the user clicks it and talks to it.
+- Speech is transcribed and sent to a ChatGPT model, using the family's private ChatGPT subscription.
+- The user gives instructions in natural language, e.g. "Add an event on date X for user Y"; the assistant creates or changes calendar events accordingly.
 
 ### Bottom bar
 
