@@ -188,7 +188,6 @@ export default function Backdrop() {
       const rows = Math.ceil(h / SPACING_Y) + OVERSCAN * 2
       let prev = new Float32Array(cols)
       let curr = new Float32Array(cols)
-      let hasPrev = false
 
       for (let row = 0; row < rows; row++) {
         const y0 = (row - OVERSCAN) * SPACING_Y
@@ -198,9 +197,10 @@ export default function Backdrop() {
           const u = (x / Math.max(1, w)) * 2 - 1
           const y = y0 - sampleField(u, v) * LIFT
           curr[col] = y
+          // The first row lies in the overscan and is always off screen, so prev[col] is set before it is read.
           if (x < 0 || x >= w || y < 0 || y >= h) continue
 
-          const gap = hasPrev ? Math.abs(y - prev[col]) : SPACING_Y
+          const gap = Math.abs(y - prev[col])
           const crowd = clamp(SPACING_Y / Math.max(gap, 0.6), 0.25, 4)
           const shape =
             crowd <= CROWD_PEAK ? crowd / CROWD_PEAK : Math.max(0.4, 1 - (crowd - CROWD_PEAK) * 0.42)
@@ -218,7 +218,6 @@ export default function Backdrop() {
         const swap = prev
         prev = curr
         curr = swap
-        hasPrev = true
       }
       ctx.globalAlpha = 1
       markCtx.globalAlpha = 1
