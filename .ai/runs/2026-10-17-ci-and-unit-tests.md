@@ -17,8 +17,8 @@ Spec: `.ai/specs/implemented/2026-10-17-ci-and-testing.md`
 - `npm run lint`: clean.
 - `npm run build`: passes.
 - `npm test`: 15 tests pass, 100% statements/branches/functions/lines.
-- `npm run test:integration`: not runnable in this sandbox (no Docker; Chrome also lacks system libraries). Verified by CI only.
+- `npm run test:integration`: not runnable in this sandbox (no Docker, Chrome lacks system libraries); passed in CI on GitHub Actions (run 39064469754: build, lint, unit-tests, integration-tests all green).
 
 ## Open issues
 
-- Integration job is unverified until the first CI run.
+- None.
