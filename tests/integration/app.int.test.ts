@@ -17,6 +17,27 @@ async function evaluate<T>(expression: string): Promise<T> {
   return JSON.parse((await agentBrowser('eval', expression)).trim()) as T
 }
 
+const clickButton = (text: string) =>
+  agentBrowser(
+    'eval',
+    `[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === ${JSON.stringify(text)} || b.getAttribute('aria-label') === ${JSON.stringify(text)}).click()`,
+  )
+
+const fillField = (label: string, value: string) =>
+  agentBrowser(
+    'eval',
+    `(() => {
+      const input = [...document.querySelectorAll('label')].find((l) => l.textContent.trim().startsWith(${JSON.stringify(label)})).querySelector('input')
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, ${JSON.stringify(value)})
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    })()`,
+  )
+
+async function enterPin(pin: string) {
+  for (const digit of pin) await clickButton(digit)
+  await clickButton('OK')
+}
+
 describe('app on the kiosk display', () => {
   beforeEach(async () => {
     await agentBrowser('set', 'viewport', KIOSK_WIDTH, KIOSK_HEIGHT)
@@ -66,6 +87,38 @@ describe('app on the kiosk display', () => {
       expect(await evaluate<number>("document.querySelectorAll('.day-weather').length")).toBeGreaterThan(0)
       expect(await agentBrowser('get', 'text', '.is-today .day-weather')).toContain('20° / 10°')
       expect(await agentBrowser('get', 'text', '.forecast-slot .slot-temp')).toContain('15°')
+    } finally {
+      await agentBrowser('eval', 'localStorage.clear()')
+    }
+  })
+
+  it('sets up family members, location and PIN through the settings and locks them again', async () => {
+    await agentBrowser('eval', 'localStorage.clear()')
+    await agentBrowser('open', inject('appUrl'))
+    await agentBrowser('wait', SETTLE_MS)
+    try {
+      await clickButton('Ustawienia')
+      await enterPin('1234')
+      await enterPin('1234')
+      await clickButton('Dodaj osobę')
+      await fillField('Imię', 'Anna')
+      await fillField('Tag', 'anna')
+      await fillField('Szukaj miejscowości', 'Gdańsk')
+      await clickButton('Szukaj')
+      await agentBrowser('wait', SETTLE_MS)
+      await clickButton('Gdańsk, Pomorskie, Polska')
+      await clickButton('Zapisz')
+      await agentBrowser('wait', SETTLE_MS)
+
+      expect(await evaluate<string[]>("[...document.querySelectorAll('.column-header')].map((h) => h.textContent)")).toEqual(['Anna', 'Inne'])
+      expect(await evaluate<number>("document.querySelectorAll('.day-cell:not([data-column=\"other\"]) .event').length")).toBeGreaterThan(0)
+      expect(await evaluate<number>("document.querySelectorAll('.forecast-slot').length")).toBe(12)
+
+      await clickButton('Ustawienia')
+      await enterPin('0000')
+      expect(await agentBrowser('get', 'text', '[role="alert"]')).toContain('Nieprawidłowy PIN')
+      await enterPin('1234')
+      expect(await evaluate<boolean>("[...document.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Zapisz')")).toBe(true)
     } finally {
       await agentBrowser('eval', 'localStorage.clear()')
     }

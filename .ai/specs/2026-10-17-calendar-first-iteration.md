@@ -1,7 +1,7 @@
 # Calendar first iteration
 
 Date: 2026-10-17
-Status: draft (awaiting user confirmation before implementation)
+Status: in progress (phases 1-3 and 6 done; 4-5 pending)
 
 ## Goal
 
@@ -54,7 +54,7 @@ Concept folders (created when first used): `src/calendar`, `src/family`, `src/we
 3. **Weather**: Open-Meteo client, day-row forecasts, bottom-bar 24h strip with hourly shift.
 4. **Google**: auth client (sign-in screen, silent renewal), calendar list, events read for the visible range.
 5. **Editing**: event dialog (edit/delete, recurring scope choice), tag read/write.
-6. **Settings UI**: PIN lock, Google login/logout, calendars (read + default write), family members (name, tag, colour), weather location.
+6. **Settings UI**: PIN lock, family members (name, tag, colour), weather location (city search or coordinates). Done. Google login/logout and calendar selection (read + default write) move to phase 4, where the Google client exists.
 
 Each phase ships as its own PR with unit tests at 100% and an integration test (agent-browser) for the visible behaviour.
 

@@ -28,3 +28,7 @@ export interface Forecast {
 export interface WeatherPort {
   getForecast(location: GeoLocation): Promise<Forecast>
 }
+
+export interface GeocodingPort {
+  search(query: string): Promise<GeoLocation[]>
+}

@@ -41,10 +41,6 @@
   border: 0;
 }
 
-.settings-button:disabled {
-  opacity: 0.4;
-}
-
 .forecast-empty {
   margin: 0;
   font-size: 1.25rem;

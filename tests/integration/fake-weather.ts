@@ -26,11 +26,16 @@ function buildForecast(today: Date) {
   }
 }
 
-/** A stand-in for Open-Meteo that always answers with a clear-sky 16-day forecast starting today. */
+const GEOCODING = {
+  results: [{ name: 'Gdańsk', latitude: 54.35, longitude: 18.65, admin1: 'Pomorskie', country: 'Polska' }],
+}
+
+/** A stand-in for Open-Meteo: a clear-sky 16-day forecast starting today, and a geocoding search that finds Gdańsk. */
 export function startFakeWeatherServer(port: number): Promise<Server> {
-  const server = createServer((_request, response) => {
+  const server = createServer((request, response) => {
     response.writeHead(200, { 'content-type': 'application/json', 'access-control-allow-origin': '*' })
-    response.end(JSON.stringify(buildForecast(new Date())))
+    const isGeocoding = request.url?.startsWith('/v1/search') ?? false
+    response.end(JSON.stringify(isGeocoding ? GEOCODING : buildForecast(new Date())))
   })
   return new Promise((resolve) => server.listen(port, '127.0.0.1', () => resolve(server)))
 }

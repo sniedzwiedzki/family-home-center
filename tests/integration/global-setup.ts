@@ -27,6 +27,7 @@ export default async function setup(project: TestProject) {
   const weatherPort = await getFreePort()
   const weatherServer = await startFakeWeatherServer(weatherPort)
   process.env.WEATHER_BASE_URL = `http://127.0.0.1:${weatherPort}/v1/forecast`
+  process.env.GEOCODING_BASE_URL = `http://127.0.0.1:${weatherPort}/v1/search`
   await build({ logLevel: 'warn', build: { outDir: 'dist-integration' } })
   const port = await getFreePort()
   const server = await preview({
