@@ -30,6 +30,7 @@ Naming: `YYYY-MM-DD` is the creation date, `slug` is lowercase kebab-case (e.g. 
 5. **Record lessons.** After fixing a bug, hitting a surprising problem, or discovering a useful convention or improvement, write a lesson in `.ai/lessons/YYYY-MM-DD-slug.md` and add a one-line entry (newest first) to `.ai/lessons.md`. Record what is not obvious from the code.
 6. **Keep README current.** `README.md` describes the product; update it when product requirements change.
 7. **Follow naming.** Files in `specs/`, `runs/` and `lessons/` must use the `YYYY-MM-DD-slug.md` format. Files named `README.md` and `.gitkeep` are the only exceptions.
+8. **English only in the repo.** The user may write prompts in Polish, but everything in the repository (code, comments, commit messages, docs, specs, run logs, lessons) must be written in English. The only exception is the Polish UI text of the calendar app itself.
 
 ## Project commands
 
