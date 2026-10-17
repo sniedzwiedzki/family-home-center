@@ -10,7 +10,7 @@ A big calendar with events, actions, tasks and more.
 
 - Content is fetched from Google Calendar.
 - Never-ending scroll page; each date is a single row.
-- Language: Polish.
+- Application language: Polish (all UI text, dates and weather labels). The repository itself (code, docs, specs) stays in English.
 - Clicking an event lets the user edit its date, time and content, or remove it.
 - The settings button (in the top bar) opens the settings.
 
