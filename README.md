@@ -12,7 +12,20 @@ A big calendar with events, actions, tasks and more.
 - Never-ending scroll page; each date is a single row.
 - Language: Polish.
 - Clicking an event lets the user edit its date, time and content, or remove it.
-- A settings button opens the settings.
+- The settings button (in the top bar) opens the settings.
+
+- Each date row shows the weather forecast for that day (only for days where a forecast is available).
+
+### Top bar
+
+- Sticky at the top of the view.
+- Current time on the left, settings button on the right.
+
+### Bottom bar
+
+- Sticky at the bottom of the view.
+- Weather forecast for the next 24h in 2h steps.
+- The current time is always at the left; the bar automatically scrolls from right to left every 1h.
 
 ### Columns and family members
 
@@ -23,6 +36,7 @@ A big calendar with events, actions, tasks and more.
 
 ### Settings
 
+- Authorize with Google to grant access to the calendar.
 - Define family members (name, unique tag, color).
 
 ## Target display
