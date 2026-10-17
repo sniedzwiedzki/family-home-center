@@ -1,12 +1,14 @@
 import { useCallback, useMemo, useState } from 'react'
 import { addDays, daysInRange } from './days'
 
-const INITIAL_DAYS_EACH_SIDE = 30
+const INITIAL_DAYS_BEFORE = 30
+// Enough days below today to fill a tall screen of compact rows plus the prefetch margin, so today can start at the top edge.
+const INITIAL_DAYS_AFTER = 90
 const EXTEND_BY_DAYS = 30
 
 export function useDayWindow(anchor: Date) {
-  const [before, setBefore] = useState(INITIAL_DAYS_EACH_SIDE)
-  const [after, setAfter] = useState(INITIAL_DAYS_EACH_SIDE)
+  const [before, setBefore] = useState(INITIAL_DAYS_BEFORE)
+  const [after, setAfter] = useState(INITIAL_DAYS_AFTER)
 
   const range = useMemo(
     () => ({ from: addDays(anchor, -before), to: addDays(anchor, after + 1) }),

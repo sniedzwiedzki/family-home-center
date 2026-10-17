@@ -39,7 +39,7 @@ export function CalendarView({ port, members, forecasts }: CalendarViewProps) {
   const containerRef = useRef<HTMLElement>(null)
   const topSentinel = useRef<HTMLDivElement>(null)
   const bottomSentinel = useRef<HTMLDivElement>(null)
-  const heightBeforePrepend = useRef<number | null>(null)
+  const topAnchor = useRef<{ element: Element; top: number } | null>(null)
   const [todayPosition, setTodayPosition] = useState<TodayPosition>('visible')
   const todayKey = dayKey(today)
 
@@ -48,10 +48,11 @@ export function CalendarView({ port, members, forecasts }: CalendarViewProps) {
   }, [anchor])
 
   useLayoutEffect(() => {
-    if (heightBeforePrepend.current === null) return
-    const container = containerRef.current!
-    container.scrollTop += container.scrollHeight - heightBeforePrepend.current
-    heightBeforePrepend.current = null
+    if (topAnchor.current === null) return
+    // Keep the row that was at the top where it was: robust even when days were also added at the bottom in the same render.
+    const { element, top } = topAnchor.current
+    containerRef.current!.scrollTop += element.getBoundingClientRect().top - top
+    topAnchor.current = null
   }, [before])
 
   useEffect(() => {
@@ -61,7 +62,10 @@ export function CalendarView({ port, members, forecasts }: CalendarViewProps) {
         for (const entry of entries) {
           if (!entry.isIntersecting) continue
           if (entry.target === topSentinel.current) {
-            heightBeforePrepend.current = container.scrollHeight
+            const dayRows = [...container.querySelectorAll('.day-row:not(.is-pinned)')]
+            const headerBottom = container.querySelector('.column-headers')!.getBoundingClientRect().bottom
+            const element = dayRows.find((row) => row.getBoundingClientRect().bottom > headerBottom) ?? dayRows[0]
+            topAnchor.current = { element, top: element.getBoundingClientRect().top }
             extendBefore()
           } else {
             extendAfter()

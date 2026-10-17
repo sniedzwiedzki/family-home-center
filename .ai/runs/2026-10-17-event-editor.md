@@ -21,10 +21,18 @@ Branch: `event-editor` (stacked on `ui-day-rows`, PR #5)
 
 ## Verification
 
-- `npm run lint`, `npm run build`: pass. `npm test`: 265 tests, 100% coverage.
+- `npm run lint`, `npm run build`: pass. `npm test`: 267 tests, 100% coverage.
 - `npm run test:integration`: 7 tests pass locally at 1600 x 2400.
 
 ## Open issues
 
 - Recurring events and Google sync wait for the Google client (phase 4).
 - Clicking cells is mouse/touch only; there is no keyboard path to add an event yet.
+
+## Layout follow-ups in the same branch
+
+- Day rows are lower (`min-height: 3.5rem`, tighter label and weather line); event chips are centred vertically in their cell so the margin above and below is equal.
+- The clock moved to the middle of the top bar (bold, 1.75rem); the settings button stays right and the left is free for the planned AI button (README updated).
+- Bug found by the lower rows: the initial window held too few rows below today for a tall screen, so the browser clamped the scroll and today did not start at the top; also, when both sentinels fired in one render, the prepend correction (scrollHeight difference) overshot. Fixes: the window starts 30 days before and 90 after today, and the prepend correction now keeps a real row (the first one below the headers) where it was.
+- The pinned-today integration scenario loads a few batches of past days before expecting the bottom pin, since one batch now fits on screen.
+

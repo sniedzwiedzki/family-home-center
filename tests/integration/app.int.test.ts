@@ -99,8 +99,11 @@ describe('app on the kiosk display', () => {
     await screenshot('today-pinned-top')
     expect(await isPinned('top')).toBe(true)
 
-    await agentBrowser('eval', "document.querySelector('main').scrollTop -= 8000")
-    await agentBrowser('wait', SETTLE_MS)
+    // The compact rows mean one batch of past days fits on screen, so load a few batches before today is below the view.
+    for (let batch = 0; batch < 3; batch++) {
+      await agentBrowser('eval', "document.querySelector('main').scrollTop = 0")
+      await agentBrowser('wait', SETTLE_MS)
+    }
     await screenshot('today-pinned-bottom')
     expect(await evaluate<object>("({ scrollTop: document.querySelector('main').scrollTop, todayTop: document.querySelector('.day-row.is-today:not(.is-pinned)').getBoundingClientRect().top, pins: document.querySelectorAll('.pin').length })")).toMatchObject({})
     expect(await isPinned('bottom')).toBe(true)

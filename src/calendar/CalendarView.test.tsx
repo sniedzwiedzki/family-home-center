@@ -16,7 +16,7 @@ interface FakeObserver {
 }
 let observers: FakeObserver[]
 let scrollIntoView: ReturnType<typeof vi.fn>
-let scrollHeights: number[]
+let rowTops: number[]
 let todayRect: DOMRect
 
 const today = new Date()
@@ -48,7 +48,7 @@ function intersect(target: Element | undefined, isIntersecting = true) {
 
 beforeEach(() => {
   observers = []
-  scrollHeights = []
+  rowTops = []
   scrollIntoView = vi.fn()
   Element.prototype.scrollIntoView = scrollIntoView as unknown as typeof Element.prototype.scrollIntoView
   vi.stubGlobal(
@@ -71,9 +71,12 @@ beforeEach(() => {
     if (this.matches('main')) return rect(0, 1000)
     if (this.matches('.column-headers')) return rect(0, 50)
     if (this.matches('.day-row.is-today:not(.is-pinned)')) return todayRect
+    if (this.matches('.day-row:not(.is-pinned)')) {
+      const top = rowTops.shift() ?? 0
+      return rect(top, top === 0 ? 0 : top + 50)
+    }
     return rect(0, 0)
   })
-  Object.defineProperty(HTMLElement.prototype, 'scrollHeight', { configurable: true, get: () => scrollHeights.shift() ?? 0 })
 })
 
 afterEach(() => {
@@ -82,10 +85,10 @@ afterEach(() => {
 })
 
 describe('CalendarView', () => {
-  it('renders sticky column headers and 61 day rows around today', async () => {
+  it('renders sticky column headers and 121 day rows (30 before today, 90 after)', async () => {
     const { container } = render(<CalendarView port={port()} members={members} forecasts={noForecasts} />)
     expect([...container.querySelectorAll('.column-name')].map((h) => h.textContent)).toEqual(['Anna', 'Inne'])
-    expect(rows(container)).toHaveLength(61)
+    expect(rows(container)).toHaveLength(121)
     expect(await screen.findByText('Dzisiejsze')).toBeTruthy()
   })
 
@@ -116,25 +119,56 @@ describe('CalendarView', () => {
     const { container } = render(<CalendarView port={port()} members={members} forecasts={noForecasts} />)
     await screen.findByText('Dzisiejsze')
     intersect(observers[0].targets[1])
-    expect(rows(container)).toHaveLength(91)
+    expect(rows(container)).toHaveLength(151)
   })
 
-  it('extends into the past and keeps the scroll position when the top sentinel becomes visible', async () => {
+  it('extends into the past and keeps the same row where it was when the top sentinel becomes visible', async () => {
     const { container } = render(<CalendarView port={port()} members={members} forecasts={noForecasts} />)
     await screen.findByText('Dzisiejsze')
     const main = container.querySelector('main')!
     main.scrollTop = 500
-    scrollHeights = [1000, 2600]
+    rowTops = [100, 100, 1800] // seen while looking for the anchor, when remembering it, and after the new days were added
     intersect(observers[0].targets[0])
-    expect(rows(container)).toHaveLength(91)
-    expect(main.scrollTop).toBe(500 + 1600)
+    expect(rows(container)).toHaveLength(151)
+    expect(main.scrollTop).toBe(500 + 1700)
+  })
+
+  it('anchors on the first row when none is visible below the headers', async () => {
+    const { container } = render(<CalendarView port={port()} members={members} forecasts={noForecasts} />)
+    await screen.findByText('Dzisiejsze')
+    const main = container.querySelector('main')!
+    main.scrollTop = 500
+    todayRect = rect(-500, -400) // today is off screen too, so no row is below the headers
+    intersect(observers[0].targets[0])
+    expect(rows(container)).toHaveLength(151)
+    expect(main.scrollTop).toBe(500)
+  })
+
+  it('keeps the place when both ends are extended in the same update', async () => {
+    const { container } = render(<CalendarView port={port()} members={members} forecasts={noForecasts} />)
+    await screen.findByText('Dzisiejsze')
+    const main = container.querySelector('main')!
+    main.scrollTop = 500
+    rowTops = [100, 100, 1800]
+    const observer = observers[0]
+    act(() =>
+      observer.callback(
+        [
+          { target: observer.targets[0], isIntersecting: true } as IntersectionObserverEntry,
+          { target: observer.targets[1], isIntersecting: true } as IntersectionObserverEntry,
+        ],
+        observer as unknown as IntersectionObserver,
+      ),
+    )
+    expect(rows(container)).toHaveLength(181)
+    expect(main.scrollTop).toBe(500 + 1700)
   })
 
   it('ignores sentinels that are not intersecting', async () => {
     const { container } = render(<CalendarView port={port()} members={members} forecasts={noForecasts} />)
     await screen.findByText('Dzisiejsze')
     intersect(observers[0].targets[1], false)
-    expect(rows(container)).toHaveLength(61)
+    expect(rows(container)).toHaveLength(121)
   })
 
   it('observes both sentinels inside the calendar and disconnects on unmount', async () => {
@@ -160,7 +194,7 @@ describe('CalendarView', () => {
     await screen.findByText('Dzisiejsze')
     const blocks = [...container.querySelectorAll('.month-block')]
     expect(blocks.length).toBeGreaterThanOrEqual(2)
-    expect(blocks.reduce((sum, block) => sum + block.querySelectorAll('.day-row').length, 0)).toBe(61)
+    expect(blocks.reduce((sum, block) => sum + block.querySelectorAll('.day-row').length, 0)).toBe(121)
     for (const block of blocks) {
       const first = new Date(`${block.getAttribute('data-month')}-01T12:00:00`)
       expect(block.querySelector('.month-label')?.textContent).toBe(formatMonthLabel(first))

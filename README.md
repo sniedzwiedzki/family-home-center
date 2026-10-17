@@ -21,7 +21,7 @@ A big calendar with events, actions, tasks and more. The first iteration covers 
 ### Top bar
 
 - Sticky at the top of the view.
-- Current time on the left, AI assistant button in the center, settings button on the right.
+- Current time in the center (bold), settings button on the right; the AI assistant button (planned) goes on the left.
 
 ### AI voice assistant (planned, after the first iteration)
 
