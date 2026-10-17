@@ -8,7 +8,7 @@ The authoring sandbox cannot run Chrome (missing system libraries) and has no Do
 
 ## Lessons
 
-- The integration tests save 2400 x 1600 screenshots to `tests/integration/screenshots/`, and CI uploads them as the `integration-screenshots` artifact (also when tests fail). To review the UI: `gh run download <run-id> -n integration-screenshots -D /tmp/shots`, then read the PNGs. Do this for every visual change before reporting it done.
+- The integration tests save 1600 x 2400 screenshots to `tests/integration/screenshots/`, and CI uploads them as the `integration-screenshots` artifact (also when tests fail). To review the UI: `gh run download <run-id> -n integration-screenshots -D /tmp/shots`, then read the PNGs. Do this for every visual change before reporting it done.
 - `agent-browser get text <selector>` returns the text with a trailing newline; `trim()` it before matching with an anchored regex.
 - `agent-browser` sets the viewport with `set viewport <w> <h>` (there is no top-level `viewport` command).
 - `agent-browser eval` results are JSON on stdout; `JSON.parse(stdout.trim())` works for numbers, booleans and arrays.

@@ -1,7 +1,7 @@
 .calendar {
-  --day-label-width: 12rem;
-  --month-width: 2.75rem;
-  --header-height: 4rem;
+  --day-label-width: 9.5rem;
+  --month-width: 2.25rem;
+  --header-height: 3.25rem;
   overflow-y: auto;
   /* The view keeps its place itself when days are prepended; the browser's own anchoring would double the correction. */
   overflow-anchor: none;
@@ -22,15 +22,15 @@
 }
 
 .column-header {
-  padding: 0.75rem 1rem;
-  font-size: 1.5rem;
-  border-bottom: 0.25rem solid var(--border);
+  padding: 0.5rem 0.75rem;
+  font-size: 1.25rem;
+  border-bottom: 0.1875rem solid var(--border);
 }
 
 .month-block {
   display: grid;
   grid-template-columns: var(--month-width) minmax(0, 1fr);
-  min-height: 10rem;
+  min-height: 8rem;
   border-top: 0.125rem solid var(--border);
 }
 
@@ -39,11 +39,11 @@
   top: var(--header-height);
   align-self: start;
   margin: 0;
-  padding: 1rem 0;
-  font-size: 1.5rem;
+  padding: 0.75rem 0;
+  font-size: 1.25rem;
   font-weight: 600;
   line-height: 1.1;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   text-align: center;
   text-transform: uppercase;
   color: var(--soft);
@@ -52,7 +52,7 @@
 }
 
 .day-row {
-  min-height: 6rem;
+  min-height: 5rem;
   scroll-margin-top: var(--header-height);
   border-bottom: 1px solid var(--border);
   /* Weekday look; Saturday and Sunday override these variables. */
@@ -77,13 +77,13 @@
 .day-row.is-today {
   background-color: color-mix(in srgb, var(--primary) 12%, transparent);
   background-image: linear-gradient(var(--day-tint), var(--day-tint));
-  box-shadow: inset 0 0 0 0.25rem var(--primary);
+  box-shadow: inset 0 0 0 0.1875rem var(--primary);
 }
 
 .day-row.is-pinned {
   background-color: var(--background);
   background-image: linear-gradient(color-mix(in srgb, var(--primary) 12%, transparent), color-mix(in srgb, var(--primary) 12%, transparent)), linear-gradient(var(--day-tint), var(--day-tint));
-  box-shadow: inset 0 0 0 0.25rem var(--primary), 0 0 2rem rgba(0, 0, 0, 0.8);
+  box-shadow: inset 0 0 0 0.1875rem var(--primary), 0 0 1.5rem rgba(0, 0, 0, 0.8);
 }
 
 /* A zero-height sticky wrapper keeps today's row at the top or bottom edge of the scroll area without taking space. */
@@ -117,24 +117,24 @@
 }
 
 .day-label {
-  padding: 0.5rem 1rem;
+  padding: 0.375rem 0.75rem;
 }
 
 .day-date {
   display: flex;
   align-items: baseline;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
 .day-number {
-  font-size: 3.25rem;
+  font-size: 2.5rem;
   font-weight: 700;
   line-height: 1;
   color: var(--day-accent);
 }
 
 .day-weekday {
-  font-size: 1.5rem;
+  font-size: 1.125rem;
   text-transform: lowercase;
   color: var(--day-accent);
   opacity: 0.8;
@@ -149,8 +149,8 @@
   flex-flow: row wrap;
   align-content: flex-start;
   align-items: flex-start;
-  gap: 0.5rem;
-  padding: 0.75rem 0.5rem;
+  gap: 0.375rem;
+  padding: 0.5rem 0.375rem;
 }
 
 /* A chip as wide as its text; chips sit side by side and wrap onto the next line only when the column is full. */
@@ -158,22 +158,22 @@
   --event-color: var(--soft);
   display: inline-flex;
   align-items: baseline;
-  gap: 0.625rem;
+  gap: 0.5rem;
   max-width: 100%;
-  padding: 0.375rem 1rem;
+  padding: 0.25rem 0.625rem;
   background: color-mix(in srgb, var(--event-color) 22%, #1a1919);
   border: 0.0625rem solid color-mix(in srgb, var(--event-color) 60%, transparent);
-  border-radius: 0.875rem;
+  border-radius: 0.625rem;
 }
 
 .event-time {
   flex: none;
-  font-size: 1rem;
+  font-size: 0.8125rem;
   color: color-mix(in srgb, var(--event-color) 55%, var(--headline));
 }
 
 .event-title {
-  font-size: 1.375rem;
+  font-size: 1.0625rem;
 }
 
 .calendar-error {
@@ -187,7 +187,7 @@
   display: flex;
   gap: 0.5rem;
   align-items: center;
-  margin-top: 0.25rem;
-  font-size: 1.125rem;
+  margin-top: 0.125rem;
+  font-size: 0.9375rem;
   color: var(--headline);
 }

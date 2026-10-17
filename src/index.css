@@ -15,7 +15,7 @@
 }
 
 html {
-  /* 1rem = 24px on the 2400 px wide kiosk display, scales down for dev previews. */
+  /* 1rem = 16px on the 1600 px wide kiosk display, scales down for dev previews. */
   font-size: 1vw;
 }
 

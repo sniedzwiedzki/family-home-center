@@ -6,8 +6,8 @@ import { afterAll, beforeEach, describe, expect, inject, it } from 'vitest'
 
 const run = promisify(execFile)
 const SESSION = `fhc-integration-${process.pid}`
-const KIOSK_WIDTH = '2400'
-const KIOSK_HEIGHT = '1600'
+const KIOSK_WIDTH = '1600'
+const KIOSK_HEIGHT = '2400'
 const SETTLE_MS = '1000'
 
 async function agentBrowser(...args: string[]): Promise<string> {
@@ -105,7 +105,13 @@ describe('app on the kiosk display', () => {
 
   it('shows the forecast in the day rows and in the 24h bottom bar once a location is set', async () => {
     const settings = {
-      familyMembers: [],
+      familyMembers: [
+        { id: 'm1', name: 'Anna', tag: 'anna', color: '#e5484d' },
+        { id: 'm2', name: 'Jan', tag: 'jan', color: '#3e63dd' },
+        { id: 'm3', name: 'Ola', tag: 'ola', color: '#30a46c' },
+        { id: 'm4', name: 'Tomek', tag: 'tomek', color: '#f5a524' },
+        { id: 'm5', name: 'Zosia', tag: 'zosia', color: '#8e4ec6' },
+      ],
       calendars: { readIds: [], writeId: null },
       weather: { location: { name: 'Warszawa', latitude: 52.23, longitude: 21.01 } },
       pin: null,
@@ -118,6 +124,7 @@ describe('app on the kiosk display', () => {
       expect(await evaluate<number>("document.querySelectorAll('.day-weather').length")).toBeGreaterThan(0)
       expect(await agentBrowser('get', 'text', '.is-today .day-weather')).toContain('20° / 10°')
       expect(await agentBrowser('get', 'text', '.forecast-slot .slot-temp')).toContain('15°')
+      await screenshot('five-people-portrait')
     } finally {
       await agentBrowser('eval', 'localStorage.clear()')
     }
