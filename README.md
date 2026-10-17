@@ -24,8 +24,8 @@ A big calendar with events, actions, tasks and more.
 ### AI voice assistant
 
 - A button in the center of the top bar; the user clicks it and talks to it.
-- Speech is transcribed and sent to an OpenAI ChatGPT model through the OpenAI API, using an API key configured in settings.
-- The user gives instructions in natural language, e.g. "Add an event on date X for user Y"; the assistant creates or changes calendar events accordingly.
+- Speech is transcribed and sent to a Google Gemini model through the Gemini API, using an API key configured in settings.
+- The user gives instructions in natural language, e.g. "Add an event on date X for user Y". The model returns structured tool calls (create, update, delete event, with the family member tag) which the app executes against Google Calendar.
 
 ### Bottom bar
 
