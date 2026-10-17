@@ -1,6 +1,7 @@
 .calendar {
   --day-label-width: 5.25rem;
   --month-width: 2.125rem;
+  --month-strip: #dde5ed;
   --header-height: 3.25rem;
   overflow-y: auto;
   /* The view keeps its place itself when days are prepended; the browser's own anchoring would double the correction. */
@@ -27,13 +28,13 @@
   margin: 0.375rem 0.1875rem;
   padding: 0.375rem 0.5rem;
   font-size: 1.25rem;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.3;
   text-align: center;
-  color: #1f2f46;
-  background: color-mix(in srgb, var(--person-color) 78%, white);
-  border-radius: 0.875rem;
-  box-shadow: 0 0.125rem 0.375rem rgba(38, 54, 70, 0.18);
+  color: #33465c;
+  background: color-mix(in srgb, var(--person-color) 34%, white);
+  border: 0.0625rem solid color-mix(in srgb, var(--person-color) 55%, white);
+  border-radius: 0.75rem;
 }
 
 .month-block {
@@ -42,7 +43,7 @@
   min-height: 8rem;
   border-top: 0.125rem solid var(--border);
   /* The month strip is a solid colour, not the photo, so the name stays readable. */
-  background: linear-gradient(to right, var(--month-strip, #d4e3f3) var(--month-width), transparent var(--month-width));
+  background: linear-gradient(to right, var(--month-strip) var(--month-width), transparent var(--month-width));
 }
 
 .month-label {
@@ -52,12 +53,12 @@
   margin: 0;
   padding: 0.625rem 0;
   font-size: 1.5rem;
-  font-weight: 800;
+  font-weight: 600;
   line-height: 1.1;
   letter-spacing: 0.1em;
   text-align: center;
   text-transform: uppercase;
-  color: #1f2f46;
+  color: #3b4d63;
   writing-mode: vertical-rl;
   transform: rotate(180deg);
 }
@@ -72,13 +73,13 @@
 }
 
 .day-row.is-saturday {
-  --day-tint: rgba(196, 219, 247, 0.74);
-  --day-accent: #3f74b8;
+  --day-tint: rgba(226, 235, 245, 0.66);
+  --day-accent: #6a88ad;
 }
 
 .day-row.is-sunday {
-  --day-tint: rgba(250, 206, 214, 0.74);
-  --day-accent: #c0475e;
+  --day-tint: rgba(244, 230, 233, 0.66);
+  --day-accent: #ae7681;
 }
 
 .day-row {
@@ -86,12 +87,12 @@
 }
 
 .day-row.is-today {
-  background: color-mix(in srgb, var(--primary) 16%, white);
-  box-shadow: inset 0 0 0 0.1875rem var(--primary);
+  background: color-mix(in srgb, var(--primary) 9%, white);
+  box-shadow: inset 0 0 0 0.125rem var(--primary);
 }
 
 .day-row.is-pinned {
-  box-shadow: inset 0 0 0 0.1875rem var(--primary), 0 0.5rem 1.5rem rgba(38, 54, 70, 0.3);
+  box-shadow: inset 0 0 0 0.125rem var(--primary), 0 0.5rem 1.5rem rgba(38, 54, 70, 0.22);
 }
 
 /* A zero-height sticky wrapper keeps today's row at the top or bottom edge of the scroll area without taking space. */
@@ -169,15 +170,15 @@
   align-items: flex-start;
   max-width: 100%;
   padding: 0.25rem 0.625rem;
-  background: color-mix(in srgb, var(--event-color) 42%, white);
-  border: 0.0625rem solid color-mix(in srgb, var(--event-color) 85%, white);
+  background: color-mix(in srgb, var(--event-color) 28%, white);
+  border: 0.0625rem solid color-mix(in srgb, var(--event-color) 50%, white);
   border-radius: 0.625rem;
 }
 
 .event-time {
   flex: none;
   font-size: 0.8125rem;
-  color: color-mix(in srgb, var(--event-color) 30%, var(--headline));
+  color: color-mix(in srgb, var(--event-color) 22%, #4a5b6e);
 }
 
 .event-title {

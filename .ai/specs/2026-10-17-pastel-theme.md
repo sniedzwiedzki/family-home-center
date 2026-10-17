@@ -19,3 +19,16 @@ Completely different colours and design: pastel colours overall, perhaps a beaut
 
 - The photo was found through the Wikimedia Commons API (read-only) because the web search tool was blocked in this session; the user had authorised searching.
 - Date column and month column were compacted (5.25rem and 1.625rem) to leave room for the person columns.
+
+## Calm direction (shaped with om-ux-shape after "colours too strong")
+
+Rule: colour appears only where it carries meaning (which person, which day type, today) and always at low saturation; everything else is neutral blue-grey.
+
+- Month strip: one quiet blue-grey (`#dde5ed`) for every month, slate text (`#3b4d63`, weight 600). The first attempt used a different saturated pastel per month and was rejected as too strong.
+- Person header: a pill tinted 34% of the person's colour over white with a hairline border; no shadow, no solid fill. "Inne" uses a neutral blue-grey.
+- Weekends: very light tints (Saturday cool grey-blue, Sunday dusty rose, ~66% opacity) and muted date numerals (`#6a88ad`, `#ae7681`); Monday to Friday neutral.
+- Today: thin (2px) soft coral frame (`#e08a78`) on a 9% coral tint; the date numeral in the same coral.
+- Event chips: person colour at 28% over white with a 50% border; muted time text.
+
+Evidence limits: judged from screenshots and the user's reactions only; no user testing. Biggest risk: chips and tints may now be too pale on the kiosk panel, which can render lighter than a laptop screen; check on the tablet.
+
