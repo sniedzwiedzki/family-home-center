@@ -1,6 +1,7 @@
 .calendar {
   --day-label-width: 5.25rem;
   --month-width: 1.625rem;
+  --month-strip: #d4e3f3;
   --header-height: 3.25rem;
   overflow-y: auto;
   /* The view keeps its place itself when days are prepended; the browser's own anchoring would double the correction. */
@@ -33,6 +34,8 @@
   grid-template-columns: var(--month-width) minmax(0, 1fr);
   min-height: 8rem;
   border-top: 0.125rem solid var(--border);
+  /* The month strip is a solid colour, not the photo, so the name stays readable. */
+  background: linear-gradient(to right, var(--month-strip) var(--month-width), transparent var(--month-width));
 }
 
 .month-label {
@@ -42,13 +45,12 @@
   margin: 0;
   padding: 0.5rem 0;
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.1;
   letter-spacing: 0.08em;
   text-align: center;
   text-transform: uppercase;
-  color: #3a5068;
-  text-shadow: 0 0 0.5rem rgba(255, 255, 255, 0.95);
+  color: #23405e;
   writing-mode: vertical-rl;
   transform: rotate(180deg);
 }
