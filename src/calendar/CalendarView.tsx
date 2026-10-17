@@ -14,6 +14,7 @@ import { useToday } from './useToday'
 import './calendar.css'
 
 const PREFETCH_MARGIN = '1500px'
+const PIN_TOLERANCE_PX = 4
 
 interface CalendarViewProps {
   port: CalendarPort
@@ -71,16 +72,18 @@ export function CalendarView({ port, members, forecasts }: CalendarViewProps) {
 
   useEffect(() => {
     const container = containerRef.current!
-    const headerHeight = container.querySelector('.column-headers')!.getBoundingClientRect().height
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.intersectionRatio >= 1) setTodayPosition('visible')
-        else setTodayPosition(entry.boundingClientRect.top < entry.rootBounds!.top ? 'above' : 'below')
-      },
-      { root: container, rootMargin: `-${headerHeight}px 0px 0px 0px`, threshold: 1 },
-    )
-    observer.observe(container.querySelector(`.day-row[data-day="${todayKey}"]`)!)
-    return () => observer.disconnect()
+    const updateTodayPosition = () => {
+      const row = container.querySelector(`.day-row[data-day="${todayKey}"]`)!.getBoundingClientRect()
+      const headerBottom = container.querySelector('.column-headers')!.getBoundingClientRect().bottom
+      const areaBottom = container.getBoundingClientRect().bottom
+      // Scroll events (not an IntersectionObserver) because a fast jump from above to below never crosses "visible".
+      setTodayPosition(
+        row.top < headerBottom - PIN_TOLERANCE_PX ? 'above' : row.bottom > areaBottom + PIN_TOLERANCE_PX ? 'below' : 'visible',
+      )
+    }
+    updateTodayPosition()
+    container.addEventListener('scroll', updateTodayPosition, { passive: true })
+    return () => container.removeEventListener('scroll', updateTodayPosition)
   }, [todayKey])
 
   const scrollToToday = () =>
