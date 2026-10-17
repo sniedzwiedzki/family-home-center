@@ -10,7 +10,7 @@ export function ColumnHeaders({ columns }: { columns: readonly CalendarColumn[] 
           key={column.id}
           className="column-header"
           data-column={column.id === OTHER_COLUMN_ID ? 'other' : 'member'}
-          style={column.color === null ? undefined : { borderBottomColor: column.color }}
+          style={column.color === null ? undefined : ({ '--person-color': column.color } as React.CSSProperties)}
         >
           {column.name}
         </div>
