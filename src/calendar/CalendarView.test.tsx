@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { FamilyMember } from '../family/familyMember'
 import { CalendarView } from './CalendarView'
 import { dayKey } from './days'
+import type { DayForecast } from '../weather/types'
 import type { CalendarEvent, CalendarPort } from './types'
 
 const members: FamilyMember[] = [{ id: 'a', name: 'Anna', tag: 'anna', color: '#ff0000' }]
@@ -24,6 +25,7 @@ const todayEvent: CalendarEvent = {
   start: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9),
   end: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 10),
 }
+const noForecasts = new Map<string, DayForecast>()
 const port = (): CalendarPort => ({ listEvents: vi.fn(async () => [todayEvent]) })
 
 const rows = (container: HTMLElement) => container.querySelectorAll('.day-row')
@@ -63,14 +65,14 @@ afterEach(() => {
 
 describe('CalendarView', () => {
   it('renders sticky column headers and 61 day rows around today', async () => {
-    const { container } = render(<CalendarView port={port()} members={members} />)
+    const { container } = render(<CalendarView port={port()} members={members} forecasts={noForecasts} />)
     expect([...container.querySelectorAll('.column-header')].map((h) => h.textContent)).toEqual(['Anna', 'Inne'])
     expect(rows(container)).toHaveLength(61)
     expect(await screen.findByText('Dzisiejsze')).toBeTruthy()
   })
 
   it('shows the event in the column of its tag', async () => {
-    const { container } = render(<CalendarView port={port()} members={members} />)
+    const { container } = render(<CalendarView port={port()} members={members} forecasts={noForecasts} />)
     await screen.findByText('Dzisiejsze')
     const row = container.querySelector(`[data-day="${dayKey(today)}"]`)!
     expect(row.querySelector('.day-cell[data-column="a"] .event-title')?.textContent).toBe('Dzisiejsze')
@@ -78,7 +80,7 @@ describe('CalendarView', () => {
   })
 
   it('marks today and scrolls it into view on mount', async () => {
-    const { container } = render(<CalendarView port={port()} members={members} />)
+    const { container } = render(<CalendarView port={port()} members={members} forecasts={noForecasts} />)
     await screen.findByText('Dzisiejsze')
     expect(container.querySelector(`[data-day="${dayKey(today)}"]`)?.classList.contains('is-today')).toBe(true)
     expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' })
@@ -88,19 +90,19 @@ describe('CalendarView', () => {
   it('shows an alert when events cannot be loaded', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined)
     const failing: CalendarPort = { listEvents: vi.fn(async () => Promise.reject(new Error('offline'))) }
-    render(<CalendarView port={failing} members={members} />)
+    render(<CalendarView port={failing} members={members} forecasts={noForecasts} />)
     expect((await screen.findByRole('alert')).textContent).toBe('Nie udało się pobrać wydarzeń.')
   })
 
   it('extends into the future when the bottom sentinel becomes visible', async () => {
-    const { container } = render(<CalendarView port={port()} members={members} />)
+    const { container } = render(<CalendarView port={port()} members={members} forecasts={noForecasts} />)
     await screen.findByText('Dzisiejsze')
     intersect(observers[0].targets[1])
     expect(rows(container)).toHaveLength(91)
   })
 
   it('extends into the past and keeps the scroll position when the top sentinel becomes visible', async () => {
-    const { container } = render(<CalendarView port={port()} members={members} />)
+    const { container } = render(<CalendarView port={port()} members={members} forecasts={noForecasts} />)
     await screen.findByText('Dzisiejsze')
     const main = container.querySelector('main')!
     main.scrollTop = 500
@@ -111,19 +113,27 @@ describe('CalendarView', () => {
   })
 
   it('ignores sentinels that are not intersecting', async () => {
-    const { container } = render(<CalendarView port={port()} members={members} />)
+    const { container } = render(<CalendarView port={port()} members={members} forecasts={noForecasts} />)
     await screen.findByText('Dzisiejsze')
     intersect(observers[0].targets[1], false)
     expect(rows(container)).toHaveLength(61)
   })
 
   it('observes both sentinels inside the calendar and disconnects on unmount', async () => {
-    const { container, unmount } = render(<CalendarView port={port()} members={members} />)
+    const { container, unmount } = render(<CalendarView port={port()} members={members} forecasts={noForecasts} />)
     await screen.findByText('Dzisiejsze')
     expect(observers).toHaveLength(1)
     expect(observers[0].targets).toHaveLength(2)
     expect(container.querySelector('main')?.contains(observers[0].targets[0])).toBe(true)
     unmount()
     expect(observers[0].disconnect).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows the forecast in the row of its day only', async () => {
+    const forecast: DayForecast = { day: dayKey(today), code: 0, tempMax: 20, tempMin: 10, precipitationChance: null }
+    const { container } = render(<CalendarView port={port()} members={members} forecasts={new Map([[forecast.day, forecast]])} />)
+    await screen.findByText('Dzisiejsze')
+    expect(container.querySelectorAll('.day-weather')).toHaveLength(1)
+    expect(container.querySelector(`[data-day="${dayKey(today)}"] .day-weather`)?.textContent).toContain('20° / 10°')
   })
 })

@@ -44,3 +44,57 @@
 .settings-button:disabled {
   opacity: 0.4;
 }
+
+.forecast-empty {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--soft);
+}
+
+.forecast-strip {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  animation: strip-shift 1s ease-out;
+}
+
+/* The strip moves one hour to the left each full hour: half of a 2h slot. */
+@keyframes strip-shift {
+  from {
+    transform: translateX(4.1667%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+.forecast-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.5rem 0;
+}
+
+.forecast-slot:first-child {
+  color: var(--primary);
+}
+
+.slot-time {
+  font-size: 1.125rem;
+  color: var(--soft);
+}
+
+.forecast-slot:first-child .slot-time {
+  color: var(--primary);
+}
+
+.slot-icon {
+  font-size: 1.75rem;
+}
+
+.slot-temp {
+  font-size: 1.375rem;
+}

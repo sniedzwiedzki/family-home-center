@@ -1,5 +1,6 @@
 import { createServer } from 'node:net'
 import { build, preview } from 'vite'
+import { startFakeWeatherServer } from './fake-weather.ts'
 import type { TestProject } from 'vitest/node'
 
 declare module 'vitest' {
@@ -23,6 +24,9 @@ function getFreePort(): Promise<number> {
 }
 
 export default async function setup(project: TestProject) {
+  const weatherPort = await getFreePort()
+  const weatherServer = await startFakeWeatherServer(weatherPort)
+  process.env.WEATHER_BASE_URL = `http://127.0.0.1:${weatherPort}/v1/forecast`
   await build({ logLevel: 'warn', build: { outDir: 'dist-integration' } })
   const port = await getFreePort()
   const server = await preview({
@@ -35,5 +39,6 @@ export default async function setup(project: TestProject) {
 
   return async () => {
     await server.close()
+    await new Promise((resolve) => weatherServer.close(resolve))
   }
 }
