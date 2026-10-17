@@ -1,0 +1,138 @@
+.event-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgba(38, 54, 70, 0.35);
+}
+
+.event-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: min(100%, 34rem);
+  max-height: 100%;
+  padding: 1.5rem;
+  overflow-y: auto;
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 1.25rem;
+  box-shadow: 0 1rem 3rem rgba(38, 54, 70, 0.35);
+  user-select: text;
+}
+
+.event-dialog h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.event-dialog label {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 0.25rem;
+  font-size: 0.9375rem;
+  color: var(--soft);
+}
+
+.event-dialog input,
+.event-dialog textarea {
+  padding: 0.625rem 0.75rem;
+  font: inherit;
+  font-size: 1.125rem;
+  color: var(--headline);
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 0.625rem;
+}
+
+.event-dialog .check {
+  flex-direction: row;
+  flex: none;
+  align-items: center;
+  gap: 0.625rem;
+  font-size: 1.125rem;
+  color: var(--headline);
+}
+
+.event-dialog .check input {
+  width: 1.375rem;
+  height: 1.375rem;
+}
+
+.event-dialog .row {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.event-dialog .people {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+
+.event-dialog legend {
+  margin-bottom: 0.25rem;
+  padding: 0;
+  font-size: 0.9375rem;
+  color: var(--soft);
+}
+
+.event-dialog .hint {
+  margin: 0;
+  color: var(--soft);
+}
+
+.person-toggle {
+  --person-color: var(--soft);
+  padding: 0.5rem 1rem;
+  font: inherit;
+  font-size: 1.0625rem;
+  color: var(--headline);
+  background: white;
+  border: 0.125rem solid color-mix(in srgb, var(--person-color) 55%, white);
+  border-radius: 999px;
+}
+
+.person-toggle[aria-pressed='true'] {
+  font-weight: 600;
+  background: color-mix(in srgb, var(--person-color) 45%, white);
+  border-color: var(--person-color);
+}
+
+.event-dialog .field-error {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: #b4533f;
+}
+
+.event-dialog .actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.event-dialog .actions button {
+  padding: 0.75rem 1.25rem;
+  font: inherit;
+  font-size: 1.125rem;
+  color: var(--headline);
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+}
+
+.event-dialog .actions .primary {
+  font-weight: 600;
+  background: color-mix(in srgb, var(--primary) 22%, white);
+  border-color: color-mix(in srgb, var(--primary) 55%, white);
+}
+
+.event-dialog .actions .danger {
+  margin-left: auto;
+  color: #b4533f;
+}

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { CalendarView } from './calendar/CalendarView'
-import { createMockCalendar } from './calendar/mockCalendar'
+import { createLocalCalendar } from './calendar/localCalendar'
 import { SettingsDialog } from './settings/SettingsDialog'
 import { useSettings } from './settings/useSettings'
 import { BottomBar } from './shell/BottomBar'
@@ -10,7 +10,7 @@ import { createOpenMeteoGeocoder } from './weather/openMeteoGeocoder'
 import { useForecast } from './weather/useForecast'
 import './App.css'
 
-const calendarPort = createMockCalendar()
+const calendarPort = createLocalCalendar(window.localStorage)
 const weatherPort = createOpenMeteoClient(fetch.bind(globalThis), __WEATHER_BASE_URL__)
 const geocoder = createOpenMeteoGeocoder(fetch.bind(globalThis), __GEOCODING_BASE_URL__)
 

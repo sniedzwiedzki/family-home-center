@@ -1,9 +1,9 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { FamilyMember } from '../family/familyMember'
 import { CalendarView } from './CalendarView'
 import { formatMonthLabel } from '../shared/format'
-import { dayKey } from './days'
+import { addDays, dayKey } from './days'
 import type { DayForecast } from '../weather/types'
 import type { CalendarEvent, CalendarPort } from './types'
 
@@ -16,7 +16,7 @@ interface FakeObserver {
 }
 let observers: FakeObserver[]
 let scrollIntoView: ReturnType<typeof vi.fn>
-let scrollHeights: number[]
+let rowTops: number[]
 let todayRect: DOMRect
 
 const today = new Date()
@@ -28,7 +28,13 @@ const todayEvent: CalendarEvent = {
   end: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 10),
 }
 const noForecasts = new Map<string, DayForecast>()
-const port = (): CalendarPort => ({ listEvents: vi.fn(async () => [todayEvent]) })
+const portOf = (listEvents: CalendarPort['listEvents']): CalendarPort => ({
+  listEvents,
+  createEvent: vi.fn(async (input) => ({ ...input, id: 'created' })),
+  updateEvent: vi.fn(async () => undefined),
+  deleteEvent: vi.fn(async () => undefined),
+})
+const port = (): CalendarPort => portOf(vi.fn(async () => [todayEvent]))
 
 const rows = (container: HTMLElement) => container.querySelectorAll('.day-row')
 
@@ -42,7 +48,7 @@ function intersect(target: Element | undefined, isIntersecting = true) {
 
 beforeEach(() => {
   observers = []
-  scrollHeights = []
+  rowTops = []
   scrollIntoView = vi.fn()
   Element.prototype.scrollIntoView = scrollIntoView as unknown as typeof Element.prototype.scrollIntoView
   vi.stubGlobal(
@@ -65,9 +71,12 @@ beforeEach(() => {
     if (this.matches('main')) return rect(0, 1000)
     if (this.matches('.column-headers')) return rect(0, 50)
     if (this.matches('.day-row.is-today:not(.is-pinned)')) return todayRect
+    if (this.matches('.day-row:not(.is-pinned)')) {
+      const top = rowTops.shift() ?? 0
+      return rect(top, top === 0 ? 0 : top + 50)
+    }
     return rect(0, 0)
   })
-  Object.defineProperty(HTMLElement.prototype, 'scrollHeight', { configurable: true, get: () => scrollHeights.shift() ?? 0 })
 })
 
 afterEach(() => {
@@ -76,10 +85,10 @@ afterEach(() => {
 })
 
 describe('CalendarView', () => {
-  it('renders sticky column headers and 61 day rows around today', async () => {
+  it('renders sticky column headers and 121 day rows (30 before today, 90 after)', async () => {
     const { container } = render(<CalendarView port={port()} members={members} forecasts={noForecasts} />)
     expect([...container.querySelectorAll('.column-name')].map((h) => h.textContent)).toEqual(['Anna', 'Inne'])
-    expect(rows(container)).toHaveLength(61)
+    expect(rows(container)).toHaveLength(121)
     expect(await screen.findByText('Dzisiejsze')).toBeTruthy()
   })
 
@@ -101,7 +110,7 @@ describe('CalendarView', () => {
 
   it('shows an alert when events cannot be loaded', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined)
-    const failing: CalendarPort = { listEvents: vi.fn(async () => Promise.reject(new Error('offline'))) }
+    const failing = portOf(vi.fn(async () => Promise.reject(new Error('offline'))))
     render(<CalendarView port={failing} members={members} forecasts={noForecasts} />)
     expect((await screen.findByRole('alert')).textContent).toBe('Nie udało się pobrać wydarzeń.')
   })
@@ -110,25 +119,56 @@ describe('CalendarView', () => {
     const { container } = render(<CalendarView port={port()} members={members} forecasts={noForecasts} />)
     await screen.findByText('Dzisiejsze')
     intersect(observers[0].targets[1])
-    expect(rows(container)).toHaveLength(91)
+    expect(rows(container)).toHaveLength(151)
   })
 
-  it('extends into the past and keeps the scroll position when the top sentinel becomes visible', async () => {
+  it('extends into the past and keeps the same row where it was when the top sentinel becomes visible', async () => {
     const { container } = render(<CalendarView port={port()} members={members} forecasts={noForecasts} />)
     await screen.findByText('Dzisiejsze')
     const main = container.querySelector('main')!
     main.scrollTop = 500
-    scrollHeights = [1000, 2600]
+    rowTops = [100, 100, 1800] // seen while looking for the anchor, when remembering it, and after the new days were added
     intersect(observers[0].targets[0])
-    expect(rows(container)).toHaveLength(91)
-    expect(main.scrollTop).toBe(500 + 1600)
+    expect(rows(container)).toHaveLength(151)
+    expect(main.scrollTop).toBe(500 + 1700)
+  })
+
+  it('anchors on the first row when none is visible below the headers', async () => {
+    const { container } = render(<CalendarView port={port()} members={members} forecasts={noForecasts} />)
+    await screen.findByText('Dzisiejsze')
+    const main = container.querySelector('main')!
+    main.scrollTop = 500
+    todayRect = rect(-500, -400) // today is off screen too, so no row is below the headers
+    intersect(observers[0].targets[0])
+    expect(rows(container)).toHaveLength(151)
+    expect(main.scrollTop).toBe(500)
+  })
+
+  it('keeps the place when both ends are extended in the same update', async () => {
+    const { container } = render(<CalendarView port={port()} members={members} forecasts={noForecasts} />)
+    await screen.findByText('Dzisiejsze')
+    const main = container.querySelector('main')!
+    main.scrollTop = 500
+    rowTops = [100, 100, 1800]
+    const observer = observers[0]
+    act(() =>
+      observer.callback(
+        [
+          { target: observer.targets[0], isIntersecting: true } as IntersectionObserverEntry,
+          { target: observer.targets[1], isIntersecting: true } as IntersectionObserverEntry,
+        ],
+        observer as unknown as IntersectionObserver,
+      ),
+    )
+    expect(rows(container)).toHaveLength(181)
+    expect(main.scrollTop).toBe(500 + 1700)
   })
 
   it('ignores sentinels that are not intersecting', async () => {
     const { container } = render(<CalendarView port={port()} members={members} forecasts={noForecasts} />)
     await screen.findByText('Dzisiejsze')
     intersect(observers[0].targets[1], false)
-    expect(rows(container)).toHaveLength(61)
+    expect(rows(container)).toHaveLength(121)
   })
 
   it('observes both sentinels inside the calendar and disconnects on unmount', async () => {
@@ -154,7 +194,7 @@ describe('CalendarView', () => {
     await screen.findByText('Dzisiejsze')
     const blocks = [...container.querySelectorAll('.month-block')]
     expect(blocks.length).toBeGreaterThanOrEqual(2)
-    expect(blocks.reduce((sum, block) => sum + block.querySelectorAll('.day-row').length, 0)).toBe(61)
+    expect(blocks.reduce((sum, block) => sum + block.querySelectorAll('.day-row').length, 0)).toBe(121)
     for (const block of blocks) {
       const first = new Date(`${block.getAttribute('data-month')}-01T12:00:00`)
       expect(block.querySelector('.month-label')?.textContent).toBe(formatMonthLabel(first))
@@ -231,6 +271,107 @@ describe('CalendarView', () => {
       const remove = vi.spyOn(main, 'removeEventListener')
       unmount()
       expect(remove).toHaveBeenCalledWith('scroll', expect.any(Function))
+    })
+  })
+
+  describe('adding and editing events', () => {
+    const tomorrow = addDays(today, 1)
+    const cell = (container: HTMLElement, day: Date, columnId: string) =>
+      container.querySelector(`.day-row[data-day="${dayKey(day)}"] .day-cell[data-column="${columnId}"]`)!
+    const pressed = (name: string) => screen.getByRole('button', { name }).getAttribute('aria-pressed')
+    const field = (label: string) => screen.getByLabelText(label) as HTMLInputElement
+    const renderEditable = async () => {
+      const calendar = port()
+      const view = render(<CalendarView port={calendar} members={members} forecasts={noForecasts} />)
+      await screen.findByText('Dzisiejsze')
+      return { calendar, ...view }
+    }
+
+    it('opens a new-event dialog for the clicked day with the column person preselected', async () => {
+      const { container } = await renderEditable()
+      fireEvent.click(cell(container, tomorrow, 'a'))
+      expect(screen.getByRole('dialog', { name: 'Nowe wydarzenie' })).toBeTruthy()
+      expect(field('Data').value).toBe(dayKey(tomorrow))
+      expect(pressed('Anna')).toBe('true')
+    })
+
+    it('preselects nobody for the "Inne" column', async () => {
+      const { container } = await renderEditable()
+      fireEvent.click(cell(container, tomorrow, 'other'))
+      expect(pressed('Anna')).toBe('false')
+    })
+
+    it('creates the event, closes the dialog and reloads the events', async () => {
+      const { calendar, container } = await renderEditable()
+      fireEvent.click(cell(container, tomorrow, 'a'))
+      fireEvent.change(field('Tytuł'), { target: { value: 'Dentysta' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Zapisz' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+      expect(calendar.createEvent).toHaveBeenCalledTimes(1)
+      expect(vi.mocked(calendar.createEvent).mock.calls[0][0]).toMatchObject({
+        title: 'Dentysta',
+        extendedProperties: { private: { fhcTags: 'anna' } },
+      })
+      await waitFor(() => expect(calendar.listEvents).toHaveBeenCalledTimes(2))
+    })
+
+    it('stays open and says so when the event cannot be stored', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => undefined)
+      const { calendar, container } = await renderEditable()
+      vi.mocked(calendar.createEvent).mockRejectedValueOnce(new Error('quota'))
+      fireEvent.click(cell(container, tomorrow, 'a'))
+      fireEvent.change(field('Tytuł'), { target: { value: 'Dentysta' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Zapisz' }))
+      expect((await screen.findByRole('alert')).textContent).toBe('Nie udało się zapisać wydarzenia')
+      expect(screen.getByRole('dialog')).toBeTruthy()
+    })
+
+    it('opens the same dialog filled in when an event is clicked, and does not open a new-event one', async () => {
+      const { container } = await renderEditable()
+      fireEvent.click(container.querySelector(`.day-row[data-day="${dayKey(today)}"] .event`)!)
+      expect(screen.getByRole('dialog', { name: 'Edytuj wydarzenie' })).toBeTruthy()
+      expect(field('Tytuł').value).toBe('Dzisiejsze')
+      expect(field('Od').value).toBe('09:00')
+      expect(pressed('Anna')).toBe('true')
+      expect(screen.queryByRole('dialog', { name: 'Nowe wydarzenie' })).toBeNull()
+    })
+
+    it('updates the edited event keeping its id', async () => {
+      const { calendar, container } = await renderEditable()
+      fireEvent.click(container.querySelector(`.day-row[data-day="${dayKey(today)}"] .event`)!)
+      fireEvent.change(field('Tytuł'), { target: { value: 'Zmienione' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Zapisz' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+      expect(calendar.updateEvent).toHaveBeenCalledTimes(1)
+      expect(vi.mocked(calendar.updateEvent).mock.calls[0][0]).toMatchObject({ id: 'today', title: 'Zmienione' })
+      expect(calendar.createEvent).not.toHaveBeenCalled()
+    })
+
+    it('deletes the edited event after confirmation, closes and reloads', async () => {
+      const { calendar, container } = await renderEditable()
+      fireEvent.click(container.querySelector(`.day-row[data-day="${dayKey(today)}"] .event`)!)
+      fireEvent.click(screen.getByRole('button', { name: 'Usuń' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Na pewno usunąć?' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+      expect(calendar.deleteEvent).toHaveBeenCalledWith('today')
+      await waitFor(() => expect(calendar.listEvents).toHaveBeenCalledTimes(2))
+    })
+
+    it('closes without saving on cancel', async () => {
+      const { calendar, container } = await renderEditable()
+      fireEvent.click(cell(container, tomorrow, 'a'))
+      fireEvent.click(screen.getByRole('button', { name: 'Anuluj' }))
+      expect(screen.queryByRole('dialog')).toBeNull()
+      expect(calendar.createEvent).not.toHaveBeenCalled()
+    })
+
+    it('gives each opened dialog fresh form state', async () => {
+      const { container } = await renderEditable()
+      fireEvent.click(cell(container, tomorrow, 'a'))
+      fireEvent.change(field('Tytuł'), { target: { value: 'Pierwsze' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Anuluj' }))
+      fireEvent.click(cell(container, tomorrow, 'other'))
+      expect(field('Tytuł').value).toBe('')
     })
   })
 })

@@ -9,10 +9,11 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers())
 
 describe('TopBar', () => {
-  it('shows the current time on the left', () => {
+  it('shows the current time in the middle', () => {
     const { container } = render(<TopBar onOpenSettings={vi.fn()} />)
     expect(screen.getByText('09:05')).toBeTruthy()
-    expect(container.querySelector('header > :first-child')?.tagName).toBe('TIME')
+    expect(container.querySelector('header > :nth-child(2)')?.tagName).toBe('TIME')
+    expect(container.querySelectorAll('header > *')).toHaveLength(3)
   })
 
   it('has the settings button on the right and reports clicks', () => {

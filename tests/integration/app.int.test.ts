@@ -19,6 +19,23 @@ async function evaluate<T>(expression: string): Promise<T> {
   return JSON.parse((await agentBrowser('eval', expression)).trim()) as T
 }
 
+const SETTINGS_WITH_FIVE_PEOPLE = {
+  familyMembers: [
+    { id: 'm1', name: 'Anna', tag: 'anna', color: '#f4a3a8' },
+    { id: 'm2', name: 'Jan', tag: 'jan', color: '#9ec5f0' },
+    { id: 'm3', name: 'Ola', tag: 'ola', color: '#a8d8b9' },
+    { id: 'm4', name: 'Tomek', tag: 'tomek', color: '#f6d58f' },
+    { id: 'm5', name: 'Zosia', tag: 'zosia', color: '#c9b3e6' },
+  ],
+  calendars: { readIds: [], writeId: null },
+  weather: { location: { name: 'Warszawa', latitude: 52.23, longitude: 21.01 } },
+  pin: null,
+}
+
+const pad = (value: number) => String(value).padStart(2, '0')
+const today = new Date()
+const TODAY_KEY = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`
+
 const SCREENSHOT_DIR = resolve('tests/integration/screenshots')
 
 async function screenshot(name: string) {
@@ -82,8 +99,11 @@ describe('app on the kiosk display', () => {
     await screenshot('today-pinned-top')
     expect(await isPinned('top')).toBe(true)
 
-    await agentBrowser('eval', "document.querySelector('main').scrollTop -= 8000")
-    await agentBrowser('wait', SETTLE_MS)
+    // The compact rows mean one batch of past days fits on screen, so load a few batches before today is below the view.
+    for (let batch = 0; batch < 3; batch++) {
+      await agentBrowser('eval', "document.querySelector('main').scrollTop = 0")
+      await agentBrowser('wait', SETTLE_MS)
+    }
     await screenshot('today-pinned-bottom')
     expect(await evaluate<object>("({ scrollTop: document.querySelector('main').scrollTop, todayTop: document.querySelector('.day-row.is-today:not(.is-pinned)').getBoundingClientRect().top, pins: document.querySelectorAll('.pin').length })")).toMatchObject({})
     expect(await isPinned('bottom')).toBe(true)
@@ -104,19 +124,7 @@ describe('app on the kiosk display', () => {
   })
 
   it('shows the forecast in the day rows and in the 24h bottom bar once a location is set', async () => {
-    const settings = {
-      familyMembers: [
-        { id: 'm1', name: 'Anna', tag: 'anna', color: '#f4a3a8' },
-        { id: 'm2', name: 'Jan', tag: 'jan', color: '#9ec5f0' },
-        { id: 'm3', name: 'Ola', tag: 'ola', color: '#a8d8b9' },
-        { id: 'm4', name: 'Tomek', tag: 'tomek', color: '#f6d58f' },
-        { id: 'm5', name: 'Zosia', tag: 'zosia', color: '#c9b3e6' },
-      ],
-      calendars: { readIds: [], writeId: null },
-      weather: { location: { name: 'Warszawa', latitude: 52.23, longitude: 21.01 } },
-      pin: null,
-    }
-    await agentBrowser('eval', `localStorage.setItem('fhc.settings.v1', ${JSON.stringify(JSON.stringify(settings))})`)
+    await agentBrowser('eval', `localStorage.setItem('fhc.settings.v1', ${JSON.stringify(JSON.stringify(SETTINGS_WITH_FIVE_PEOPLE))})`)
     await agentBrowser('open', inject('appUrl'))
     await agentBrowser('wait', SETTLE_MS)
     try {
@@ -150,7 +158,6 @@ describe('app on the kiosk display', () => {
       await agentBrowser('wait', SETTLE_MS)
 
       expect(await evaluate<string[]>("[...document.querySelectorAll('.column-name')].map((h) => h.textContent)")).toEqual(['Anna', 'Inne'])
-      expect(await evaluate<number>("document.querySelectorAll('.day-cell:not([data-column=\"other\"]) .event').length")).toBeGreaterThan(0)
       expect(await evaluate<number>("document.querySelectorAll('.forecast-slot').length")).toBe(12)
       await screenshot('calendar-with-family-and-weather')
 
@@ -159,6 +166,50 @@ describe('app on the kiosk display', () => {
       expect(await agentBrowser('get', 'text', '[role="alert"]')).toContain('Nieprawidłowy PIN')
       await enterPin('1234')
       expect(await evaluate<boolean>("[...document.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Zapisz')")).toBe(true)
+    } finally {
+      await agentBrowser('eval', 'localStorage.clear()')
+    }
+  })
+
+  it('adds an event from a person column, edits it, keeps it after a reload and deletes it', async () => {
+    const eventTitles = `[...document.querySelectorAll('.day-row[data-day="${TODAY_KEY}"] .event-title')].map((e) => e.textContent)`
+    const pressedPeople = "[...document.querySelectorAll('.person-toggle')].filter((b) => b.getAttribute('aria-pressed') === 'true').map((b) => b.textContent)"
+    const dialogOpen = (name: string) => evaluate<boolean>(`document.querySelector('[role="dialog"][aria-label="${name}"]') !== null`)
+
+    await agentBrowser('eval', `localStorage.clear(); localStorage.setItem('fhc.settings.v1', ${JSON.stringify(JSON.stringify(SETTINGS_WITH_FIVE_PEOPLE))})`)
+    await agentBrowser('open', inject('appUrl'))
+    await agentBrowser('wait', SETTLE_MS)
+    try {
+      await agentBrowser('eval', `document.querySelector('.day-row[data-day="${TODAY_KEY}"] .day-cell[data-column="m2"]').click()`)
+      expect(await dialogOpen('Nowe wydarzenie')).toBe(true)
+      expect(await evaluate<string[]>(pressedPeople)).toEqual(['Jan'])
+
+      await clickButton('Ola')
+      await fillField('Tytuł', 'Dentysta')
+      await screenshot('event-dialog')
+      await clickButton('Zapisz')
+      await agentBrowser('wait', SETTLE_MS)
+      expect(await dialogOpen('Nowe wydarzenie')).toBe(false)
+      expect(await evaluate<string[]>(eventTitles)).toEqual(['Dentysta', 'Dentysta'])
+      await screenshot('calendar-with-event')
+
+      await agentBrowser('open', inject('appUrl'))
+      await agentBrowser('wait', SETTLE_MS)
+      expect(await evaluate<string[]>(eventTitles)).toEqual(['Dentysta', 'Dentysta'])
+
+      await agentBrowser('eval', `document.querySelector('.day-row[data-day="${TODAY_KEY}"] .event').click()`)
+      expect(await dialogOpen('Edytuj wydarzenie')).toBe(true)
+      expect(await evaluate<string[]>(pressedPeople)).toEqual(['Jan', 'Ola'])
+      await fillField('Tytuł', 'Dentysta u Kowalskiego')
+      await clickButton('Zapisz')
+      await agentBrowser('wait', SETTLE_MS)
+      expect(await evaluate<string[]>(eventTitles)).toEqual(['Dentysta u Kowalskiego', 'Dentysta u Kowalskiego'])
+
+      await agentBrowser('eval', `document.querySelector('.day-row[data-day="${TODAY_KEY}"] .event').click()`)
+      await clickButton('Usuń')
+      await clickButton('Na pewno usunąć?')
+      await agentBrowser('wait', SETTLE_MS)
+      expect(await evaluate<string[]>(eventTitles)).toEqual([])
     } finally {
       await agentBrowser('eval', 'localStorage.clear()')
     }

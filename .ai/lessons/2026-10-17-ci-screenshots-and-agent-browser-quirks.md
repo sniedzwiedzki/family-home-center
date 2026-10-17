@@ -14,3 +14,5 @@ The authoring sandbox cannot run Chrome (missing system libraries) and has no Do
 - `agent-browser eval` results are JSON on stdout; `JSON.parse(stdout.trim())` works for numbers, booleans and arrays.
 - A `useEffect` that fetches must be given a stable dependency (e.g. a module-level port). Creating the port inline in a test's `renderHook` callback re-runs the effect on every render.
 - The kiosk is a **1600 x 2400 portrait** tablet (width x height). Early UI work was checked at 2400 x 1600 landscape by mistake and had to be redone; the viewport in `tests/integration/app.int.test.ts` (`KIOSK_WIDTH`, `KIOSK_HEIGHT`) is the single place to keep right, and every UI change must be reviewed from screenshots taken at it.
+- Endless-scroll windows must hold enough rows below the anchor to fill the screen: with compact rows the browser silently clamped `scrollIntoView`, and today no longer started at the top. After prepending rows, correct the scroll position from the position of a real row (`getBoundingClientRect().top` before and after), not from a `scrollHeight` difference, which also counts rows added elsewhere in the same render.
+

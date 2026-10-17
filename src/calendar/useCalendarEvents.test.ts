@@ -1,16 +1,22 @@
-import { renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { CalendarEvent, CalendarPort, DateRange } from './types'
 import { useCalendarEvents } from './useCalendarEvents'
 
 const event = (id: string): CalendarEvent => ({ id, title: id, allDay: true, start: new Date(2026, 9, 17), end: new Date(2026, 9, 18) })
+const portOf = (listEvents: CalendarPort['listEvents']): CalendarPort => ({
+  listEvents,
+  createEvent: vi.fn(),
+  updateEvent: vi.fn(),
+  deleteEvent: vi.fn(),
+})
 const range = (fromDay: number, toDay: number): DateRange => ({ from: new Date(2026, 9, fromDay), to: new Date(2026, 9, toDay) })
 
 afterEach(() => vi.restoreAllMocks())
 
 describe('useCalendarEvents', () => {
   it('loads the whole range first', async () => {
-    const port: CalendarPort = { listEvents: vi.fn(async () => [event('a')]) }
+    const port = portOf(vi.fn(async () => [event('a')]))
     const { result } = renderHook(() => useCalendarEvents(port, range(10, 20)))
     await waitFor(() => expect(result.current.events.map((e) => e.id)).toEqual(['a']))
     expect(port.listEvents).toHaveBeenCalledWith(range(10, 20))
@@ -19,7 +25,7 @@ describe('useCalendarEvents', () => {
 
   it('fetches only the newly exposed days when the range grows on both sides', async () => {
     const listEvents = vi.fn(async ({ from }: DateRange) => [event(`from-${from.getDate()}`)])
-    const port: CalendarPort = { listEvents }
+    const port = portOf(listEvents)
     const { result, rerender } = renderHook(({ r }) => useCalendarEvents(port, r), { initialProps: { r: range(10, 20) } })
     await waitFor(() => expect(result.current.events).toHaveLength(1))
     rerender({ r: range(5, 25) })
@@ -31,7 +37,7 @@ describe('useCalendarEvents', () => {
 
   it('fetches only the end when the range grows forward, only the start when it grows backward', async () => {
     const listEvents = vi.fn(async () => [])
-    const port: CalendarPort = { listEvents }
+    const port = portOf(listEvents)
     const { rerender } = renderHook(({ r }) => useCalendarEvents(port, r), { initialProps: { r: range(10, 20) } })
     await waitFor(() => expect(listEvents).toHaveBeenCalledTimes(1))
     rerender({ r: range(10, 25) })
@@ -42,8 +48,8 @@ describe('useCalendarEvents', () => {
   })
 
   it('does not refetch when only the port changes', async () => {
-    const first: CalendarPort = { listEvents: vi.fn(async () => [event('a')]) }
-    const second: CalendarPort = { listEvents: vi.fn(async () => []) }
+    const first = portOf(vi.fn(async () => [event('a')]))
+    const second = portOf(vi.fn(async () => []))
     const { result, rerender } = renderHook(({ p }) => useCalendarEvents(p, range(10, 20)), { initialProps: { p: first } })
     await waitFor(() => expect(result.current.events).toHaveLength(1))
     rerender({ p: second })
@@ -52,7 +58,7 @@ describe('useCalendarEvents', () => {
   })
 
   it('merges events by id', async () => {
-    const port: CalendarPort = { listEvents: vi.fn(async () => [event('same')]) }
+    const port = portOf(vi.fn(async () => [event('same')]))
     const { result, rerender } = renderHook(({ r }) => useCalendarEvents(port, r), { initialProps: { r: range(10, 20) } })
     await waitFor(() => expect(result.current.events).toHaveLength(1))
     rerender({ r: range(10, 25) })
@@ -63,7 +69,7 @@ describe('useCalendarEvents', () => {
   it('reports a failure and recovers on the next successful load', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined)
     const listEvents = vi.fn<CalendarPort['listEvents']>().mockRejectedValueOnce(new Error('offline')).mockResolvedValue([event('a')])
-    const port: CalendarPort = { listEvents }
+    const port = portOf(listEvents)
     const { result, rerender } = renderHook(({ r }) => useCalendarEvents(port, r), { initialProps: { r: range(10, 20) } })
     await waitFor(() => expect(result.current.hasError).toBe(true))
     rerender({ r: range(10, 21) })
@@ -73,7 +79,7 @@ describe('useCalendarEvents', () => {
 
   it('ignores results that arrive after unmount', async () => {
     let resolve: (events: CalendarEvent[]) => void = () => undefined
-    const port: CalendarPort = { listEvents: () => new Promise((r) => (resolve = r)) }
+    const port = portOf(() => new Promise((r) => (resolve = r)))
     const { unmount } = renderHook(() => useCalendarEvents(port, range(10, 20)))
     unmount()
     resolve([event('late')])
@@ -83,11 +89,21 @@ describe('useCalendarEvents', () => {
   it('ignores failures that arrive after unmount', async () => {
     const log = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     let reject: (reason: Error) => void = () => undefined
-    const port: CalendarPort = { listEvents: () => new Promise((_, r) => (reject = r)) }
+    const port = portOf(() => new Promise((_, r) => (reject = r)))
     const { unmount } = renderHook(() => useCalendarEvents(port, range(10, 20)))
     unmount()
     reject(new Error('late'))
     await new Promise((r) => setTimeout(r, 0))
     expect(log).not.toHaveBeenCalled()
+  })
+
+  it('reloads the whole range on request, replacing what was loaded', async () => {
+    const listEvents = vi.fn<CalendarPort['listEvents']>().mockResolvedValueOnce([event('old')]).mockResolvedValueOnce([event('new')])
+    const port = portOf(listEvents)
+    const { result } = renderHook(() => useCalendarEvents(port, range(10, 20)))
+    await waitFor(() => expect(result.current.events.map((e) => e.id)).toEqual(['old']))
+    act(() => result.current.reload())
+    await waitFor(() => expect(result.current.events.map((e) => e.id)).toEqual(['new']))
+    expect(listEvents).toHaveBeenLastCalledWith(range(10, 20))
   })
 })

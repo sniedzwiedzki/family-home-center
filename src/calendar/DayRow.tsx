@@ -5,6 +5,7 @@ import { dayKey, dayKind, type DayEntry } from './days'
 import type { DayForecast } from '../weather/types'
 import { DayWeather } from '../weather/DayWeather'
 import { EventItem } from './EventItem'
+import type { CalendarEvent } from './types'
 
 interface DayRowProps {
   day: Date
@@ -14,9 +15,11 @@ interface DayRowProps {
   members: readonly FamilyMember[]
   entries: readonly DayEntry[]
   forecast?: DayForecast
+  onAddEvent: (day: Date, columnId: string) => void
+  onEditEvent: (event: CalendarEvent) => void
 }
 
-export function DayRow({ day, isToday, pinned = false, columns, members, entries, forecast }: DayRowProps) {
+export function DayRow({ day, isToday, pinned = false, columns, members, entries, forecast, onAddEvent, onEditEvent }: DayRowProps) {
   const placed = entries.map((entry) => ({ entry, columnIds: columnIdsForEvent(entry.event, members) }))
 
   const kind = dayKind(day)
@@ -35,11 +38,19 @@ export function DayRow({ day, isToday, pinned = false, columns, members, entries
         {forecast && <DayWeather forecast={forecast} />}
       </div>
       {columns.map((column) => (
-        <div key={column.id} className="day-cell" data-column={column.id}>
+        <div
+          key={column.id}
+          className="day-cell"
+          data-column={column.id}
+          onClick={(click) => {
+            click.stopPropagation()
+            onAddEvent(day, column.id)
+          }}
+        >
           {placed
             .filter(({ columnIds }) => columnIds.includes(column.id))
             .map(({ entry }) => (
-              <EventItem key={entry.event.id} entry={entry} color={column.color} />
+              <EventItem key={entry.event.id} entry={entry} color={column.color} onEdit={onEditEvent} />
             ))}
         </div>
       ))}

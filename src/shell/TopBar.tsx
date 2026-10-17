@@ -6,6 +6,7 @@ export function TopBar({ onOpenSettings }: { onOpenSettings: () => void }) {
 
   return (
     <header className="top-bar">
+      <div />
       <time className="clock" dateTime={now.toISOString()}>
         {formatClock(now)}
       </time>
