@@ -79,13 +79,14 @@ describe('app on the kiosk display', () => {
 
     await agentBrowser('eval', "document.querySelector('main').scrollTop += 4000")
     await agentBrowser('wait', SETTLE_MS)
-    expect(await isPinned('top')).toBe(true)
     await screenshot('today-pinned-top')
+    expect(await isPinned('top')).toBe(true)
 
     await agentBrowser('eval', "document.querySelector('main').scrollTop -= 8000")
     await agentBrowser('wait', SETTLE_MS)
-    expect(await isPinned('bottom')).toBe(true)
     await screenshot('today-pinned-bottom')
+    expect(await evaluate<object>("({ scrollTop: document.querySelector('main').scrollTop, todayTop: document.querySelector('.day-row.is-today:not(.is-pinned)').getBoundingClientRect().top, pins: document.querySelectorAll('.pin').length })")).toMatchObject({})
+    expect(await isPinned('bottom')).toBe(true)
 
     await agentBrowser('eval', "document.querySelector('.pin-inner').click()")
     await agentBrowser('wait', '2500')
