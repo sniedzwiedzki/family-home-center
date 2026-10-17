@@ -15,9 +15,11 @@ describe('temporary app instance driven by agent-browser', () => {
     await agentBrowser('close')
   })
 
-  it('renders the page', async () => {
+  it('renders the kiosk shell in Polish', async () => {
     await agentBrowser('open', inject('appUrl'))
-    const heading = await agentBrowser('get', 'text', 'h1')
-    expect(heading).toContain('Your React app is ready.')
+    const otherColumn = await agentBrowser('get', 'text', '[data-column="other"]')
+    expect(otherColumn).toContain('Inne')
+    const snapshot = await agentBrowser('snapshot', '-i')
+    expect(snapshot).toContain('Ustawienia')
   })
 })
