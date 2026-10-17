@@ -74,3 +74,16 @@
   color: var(--primary-foreground);
   background: var(--primary);
 }
+
+.day-weather {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.25rem;
+  font-size: 1.125rem;
+  color: var(--headline);
+}
+
+.rain-chance {
+  color: var(--soft);
+}

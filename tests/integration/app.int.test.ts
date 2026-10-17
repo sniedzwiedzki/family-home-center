@@ -50,4 +50,24 @@ describe('app on the kiosk display', () => {
     await agentBrowser('wait', SETTLE_MS)
     expect(await evaluate<number>(countRows)).toBeGreaterThan(before)
   })
+
+  it('shows the forecast in the day rows and in the 24h bottom bar once a location is set', async () => {
+    const settings = {
+      familyMembers: [],
+      calendars: { readIds: [], writeId: null },
+      weather: { location: { name: 'Warszawa', latitude: 52.23, longitude: 21.01 } },
+      pin: null,
+    }
+    await agentBrowser('eval', `localStorage.setItem('fhc.settings.v1', ${JSON.stringify(JSON.stringify(settings))})`)
+    await agentBrowser('open', inject('appUrl'))
+    await agentBrowser('wait', SETTLE_MS)
+    try {
+      expect(await evaluate<number>("document.querySelectorAll('.forecast-slot').length")).toBe(12)
+      expect(await evaluate<number>("document.querySelectorAll('.day-weather').length")).toBeGreaterThan(0)
+      expect(await agentBrowser('get', 'text', '.is-today .day-weather')).toContain('20° / 10°')
+      expect(await agentBrowser('get', 'text', '.forecast-slot .slot-temp')).toContain('15°')
+    } finally {
+      await agentBrowser('eval', 'localStorage.clear()')
+    }
+  })
 })

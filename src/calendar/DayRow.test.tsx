@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { FamilyMember } from '../family/familyMember'
 import { buildColumns } from './columns'
 import { DayRow } from './DayRow'
+import type { DayForecast } from '../weather/types'
 import type { CalendarEvent } from './types'
 
 const members: FamilyMember[] = [
@@ -42,5 +43,13 @@ describe('DayRow', () => {
     expect(cellTitles(container, 'a')).toEqual(['Trening', 'Kino'])
     expect(cellTitles(container, 'j')).toEqual(['Kino'])
     expect(cellTitles(container, 'other')).toEqual(['Śmieci'])
+  })
+
+  it('shows the forecast under the day label when there is one', () => {
+    const forecast: DayForecast = { day: '2026-10-17', code: 0, tempMax: 20, tempMin: 10, precipitationChance: null }
+    const withForecast = render(<DayRow day={day} isToday={false} columns={columns} members={members} entries={[]} forecast={forecast} />)
+    expect(withForecast.container.querySelector('.day-label .day-weather')).toBeTruthy()
+    const without = render(<DayRow day={day} isToday={false} columns={columns} members={members} entries={[]} />)
+    expect(without.container.querySelector('.day-weather')).toBeNull()
   })
 })

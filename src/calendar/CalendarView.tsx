@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { FamilyMember } from '../family/familyMember'
+import type { DayForecast } from '../weather/types'
 import { buildColumns } from './columns'
 import { ColumnHeaders } from './ColumnHeaders'
 import { dayKey, groupEventsByDay, startOfDay } from './days'
@@ -12,7 +13,13 @@ import './calendar.css'
 
 const PREFETCH_MARGIN = '1500px'
 
-export function CalendarView({ port, members }: { port: CalendarPort; members: readonly FamilyMember[] }) {
+interface CalendarViewProps {
+  port: CalendarPort
+  members: readonly FamilyMember[]
+  forecasts: ReadonlyMap<string, DayForecast>
+}
+
+export function CalendarView({ port, members, forecasts }: CalendarViewProps) {
   const [anchor] = useState(() => startOfDay(new Date()))
   const today = useToday()
   const { range, days, before, extendBefore, extendAfter } = useDayWindow(anchor)
@@ -74,6 +81,7 @@ export function CalendarView({ port, members }: { port: CalendarPort; members: r
           columns={columns}
           members={members}
           entries={entriesByDay.get(dayKey(day)) ?? []}
+          forecast={forecasts.get(dayKey(day))}
         />
       ))}
       <div ref={bottomSentinel} />
