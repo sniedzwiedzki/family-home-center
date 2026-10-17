@@ -16,3 +16,5 @@ export function extractTags(event: TaggableEvent): string[] {
   const tags = [...fromProperty, ...fromTitle].map(normalizeTag).filter((tag) => tag !== '')
   return [...new Set(tags)]
 }
+
+export const stripTitleTags = (title: string): string => title.replace(TITLE_TAG_PATTERN, '').replace(/\s+/g, ' ').trim()

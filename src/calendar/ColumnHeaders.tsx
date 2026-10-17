@@ -1,11 +1,10 @@
-import type { FamilyMember } from '../family/familyMember'
-import { buildColumns, OTHER_COLUMN_ID } from './columns'
+import type { CalendarColumn } from './columns'
+import { OTHER_COLUMN_ID } from './columns'
 
-export function ColumnHeaders({ members }: { members: readonly FamilyMember[] }) {
-  const columns = buildColumns(members)
-
+export function ColumnHeaders({ columns }: { columns: readonly CalendarColumn[] }) {
   return (
-    <div className="column-headers" style={{ gridTemplateColumns: `repeat(${columns.length}, 1fr)` }}>
+    <div className="column-headers day-grid">
+      <div />
       {columns.map((column) => (
         <div
           key={column.id}
