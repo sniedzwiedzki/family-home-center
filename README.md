@@ -24,7 +24,7 @@ A big calendar with events, actions, tasks and more.
 ### AI voice assistant
 
 - A button in the center of the top bar; the user clicks it and talks to it.
-- Speech is transcribed and sent to a ChatGPT model, using the family's private ChatGPT subscription.
+- Speech is transcribed and sent to an OpenAI ChatGPT model through the OpenAI API, using an API key configured in settings.
 - The user gives instructions in natural language, e.g. "Add an event on date X for user Y"; the assistant creates or changes calendar events accordingly.
 
 ### Bottom bar
