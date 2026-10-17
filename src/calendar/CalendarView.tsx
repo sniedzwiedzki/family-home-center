@@ -3,8 +3,9 @@ import type { FamilyMember } from '../family/familyMember'
 import type { DayForecast } from '../weather/types'
 import { buildColumns } from './columns'
 import { ColumnHeaders } from './ColumnHeaders'
-import { dayKey, groupEventsByDay, startOfDay } from './days'
+import { dayKey, groupDaysByMonth, groupEventsByDay, startOfDay } from './days'
 import { DayRow } from './DayRow'
+import { MonthBlock } from './MonthBlock'
 import type { CalendarPort } from './types'
 import { useCalendarEvents } from './useCalendarEvents'
 import { useDayWindow } from './useDayWindow'
@@ -26,6 +27,7 @@ export function CalendarView({ port, members, forecasts }: CalendarViewProps) {
   const { events, hasError } = useCalendarEvents(port, range)
   const columns = useMemo(() => buildColumns(members), [members])
   const entriesByDay = useMemo(() => groupEventsByDay(events), [events])
+  const months = useMemo(() => groupDaysByMonth(days), [days])
 
   const containerRef = useRef<HTMLElement>(null)
   const topSentinel = useRef<HTMLDivElement>(null)
@@ -73,16 +75,20 @@ export function CalendarView({ port, members, forecasts }: CalendarViewProps) {
         </p>
       )}
       <div ref={topSentinel} />
-      {days.map((day) => (
-        <DayRow
-          key={dayKey(day)}
-          day={day}
-          isToday={dayKey(day) === dayKey(today)}
-          columns={columns}
-          members={members}
-          entries={entriesByDay.get(dayKey(day)) ?? []}
-          forecast={forecasts.get(dayKey(day))}
-        />
+      {months.map((month) => (
+        <MonthBlock key={month.key} monthKey={month.key} firstDay={month.days[0]}>
+          {month.days.map((day) => (
+            <DayRow
+              key={dayKey(day)}
+              day={day}
+              isToday={dayKey(day) === dayKey(today)}
+              columns={columns}
+              members={members}
+              entries={entriesByDay.get(dayKey(day)) ?? []}
+              forecast={forecasts.get(dayKey(day))}
+            />
+          ))}
+        </MonthBlock>
       ))}
       <div ref={bottomSentinel} />
     </main>

@@ -1,4 +1,6 @@
 import { execFile } from 'node:child_process'
+import { mkdirSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { promisify } from 'node:util'
 import { afterAll, beforeEach, describe, expect, inject, it } from 'vitest'
 
@@ -15,6 +17,13 @@ async function agentBrowser(...args: string[]): Promise<string> {
 
 async function evaluate<T>(expression: string): Promise<T> {
   return JSON.parse((await agentBrowser('eval', expression)).trim()) as T
+}
+
+const SCREENSHOT_DIR = resolve('tests/integration/screenshots')
+
+async function screenshot(name: string) {
+  mkdirSync(SCREENSHOT_DIR, { recursive: true })
+  await agentBrowser('screenshot', resolve(SCREENSHOT_DIR, `${name}.png`))
 }
 
 const clickButton = (text: string) =>
@@ -52,9 +61,9 @@ describe('app on the kiosk display', () => {
   it('renders the shell in Polish', async () => {
     expect(await agentBrowser('get', 'text', '.column-header[data-column="other"]')).toContain('Inne')
     expect(await agentBrowser('snapshot', '-i')).toContain('Ustawienia')
-    expect(await agentBrowser('get', 'text', '.is-today .day-label')).toMatch(
-      /poniedziałek|wtorek|środa|czwartek|piątek|sobota|niedziela/,
-    )
+    expect(await agentBrowser('get', 'text', '.is-today .day-weekday')).toMatch(/^(po|wt|śr|cz|pt|so|nd)$/)
+    expect(await evaluate<number>("document.querySelectorAll('.month-label').length")).toBeGreaterThanOrEqual(2)
+    await screenshot('calendar')
   })
 
   it('scrolls today right under the sticky column headers', async () => {
@@ -100,6 +109,7 @@ describe('app on the kiosk display', () => {
       await clickButton('Ustawienia')
       await enterPin('1234')
       await enterPin('1234')
+      await screenshot('settings-pin-created')
       await clickButton('Dodaj osobę')
       await fillField('Imię', 'Anna')
       await fillField('Tag', 'anna')
@@ -113,6 +123,7 @@ describe('app on the kiosk display', () => {
       expect(await evaluate<string[]>("[...document.querySelectorAll('.column-header')].map((h) => h.textContent)")).toEqual(['Anna', 'Inne'])
       expect(await evaluate<number>("document.querySelectorAll('.day-cell:not([data-column=\"other\"]) .event').length")).toBeGreaterThan(0)
       expect(await evaluate<number>("document.querySelectorAll('.forecast-slot').length")).toBe(12)
+      await screenshot('calendar-with-family-and-weather')
 
       await clickButton('Ustawienia')
       await enterPin('0000')

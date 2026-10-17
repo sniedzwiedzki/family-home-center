@@ -1,5 +1,6 @@
 .calendar {
-  --day-label-width: 14rem;
+  --day-label-width: 12rem;
+  --month-width: 4.5rem;
   --header-height: 4rem;
   overflow-y: auto;
 }
@@ -14,6 +15,7 @@
   top: 0;
   z-index: 1;
   height: var(--header-height);
+  padding-left: var(--month-width);
   background: var(--background);
 }
 
@@ -23,23 +25,81 @@
   border-bottom: 0.25rem solid var(--border);
 }
 
+.month-block {
+  display: grid;
+  grid-template-columns: var(--month-width) minmax(0, 1fr);
+  min-height: 10rem;
+  border-top: 0.125rem solid var(--border);
+}
+
+.month-label {
+  position: sticky;
+  top: var(--header-height);
+  align-self: start;
+  margin: 0;
+  padding: 1.25rem 0;
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-align: center;
+  text-transform: uppercase;
+  color: var(--soft);
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+
 .day-row {
   min-height: 6rem;
   scroll-margin-top: var(--header-height);
   border-bottom: 1px solid var(--border);
+  /* Weekday look; Saturday and Sunday override these variables. */
+  --day-tint: transparent;
+  --day-accent: var(--headline);
+}
+
+.day-row.is-saturday {
+  --day-tint: rgba(94, 155, 255, 0.09);
+  --day-accent: #8ab4ff;
+}
+
+.day-row.is-sunday {
+  --day-tint: rgba(255, 99, 99, 0.11);
+  --day-accent: #ff8a8a;
+}
+
+.day-row {
+  background: var(--day-tint);
 }
 
 .day-row.is-today {
-  background: rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0.25rem 0 0 var(--primary);
 }
 
 .day-label {
-  padding: 0.75rem 1rem;
-  font-size: 1.25rem;
-  color: var(--soft);
+  padding: 0.5rem 1rem;
 }
 
-.is-today .day-label {
+.day-date {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.day-number {
+  font-size: 3.25rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--day-accent);
+}
+
+.day-weekday {
+  font-size: 1.5rem;
+  text-transform: lowercase;
+  color: var(--day-accent);
+  opacity: 0.8;
+}
+
+.is-today .day-number {
   color: var(--primary);
 }
 

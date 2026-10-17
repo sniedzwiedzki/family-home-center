@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addDays, dayKey, daysInRange, groupEventsByDay, startOfDay } from './days'
+import { addDays, dayKey, dayKind, daysInRange, groupDaysByMonth, groupEventsByDay, startOfDay } from './days'
 import type { CalendarEvent } from './types'
 
 const timed = (id: string, start: Date, end: Date, title = id): CalendarEvent => ({ id, title, allDay: false, start, end })
@@ -71,5 +71,31 @@ describe('groupEventsByDay', () => {
 
   it('returns nothing for no events', () => {
     expect(groupEventsByDay([]).size).toBe(0)
+  })
+})
+
+describe('dayKind', () => {
+  it('tells Saturdays and Sundays apart from the other days', () => {
+    const kinds = Array.from({ length: 7 }, (_, i) => dayKind(new Date(2026, 9, 12 + i)))
+    expect(kinds).toEqual(['weekday', 'weekday', 'weekday', 'weekday', 'weekday', 'saturday', 'sunday'])
+  })
+})
+
+describe('groupDaysByMonth', () => {
+  it('splits days at month boundaries, keeping order', () => {
+    const groups = groupDaysByMonth(daysInRange(new Date(2026, 9, 30), new Date(2026, 10, 3)))
+    expect(groups.map((group) => [group.key, group.days.map((day) => day.getDate())])).toEqual([
+      ['2026-10', [30, 31]],
+      ['2026-11', [1, 2]],
+    ])
+  })
+
+  it('separates the same month of different years', () => {
+    const groups = groupDaysByMonth([new Date(2026, 0, 31), new Date(2027, 0, 1)])
+    expect(groups.map((group) => group.key)).toEqual(['2026-01', '2027-01'])
+  })
+
+  it('returns nothing for no days', () => {
+    expect(groupDaysByMonth([])).toEqual([])
   })
 })

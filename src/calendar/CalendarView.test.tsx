@@ -2,6 +2,7 @@ import { act, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { FamilyMember } from '../family/familyMember'
 import { CalendarView } from './CalendarView'
+import { formatMonthLabel } from '../shared/format'
 import { dayKey } from './days'
 import type { DayForecast } from '../weather/types'
 import type { CalendarEvent, CalendarPort } from './types'
@@ -135,5 +136,17 @@ describe('CalendarView', () => {
     await screen.findByText('Dzisiejsze')
     expect(container.querySelectorAll('.day-weather')).toHaveLength(1)
     expect(container.querySelector(`[data-day="${dayKey(today)}"] .day-weather`)?.textContent).toContain('20° / 10°')
+  })
+
+  it('groups the days into month blocks with the month name as a label', async () => {
+    const { container } = render(<CalendarView port={port()} members={members} forecasts={noForecasts} />)
+    await screen.findByText('Dzisiejsze')
+    const blocks = [...container.querySelectorAll('.month-block')]
+    expect(blocks.length).toBeGreaterThanOrEqual(2)
+    expect(blocks.reduce((sum, block) => sum + block.querySelectorAll('.day-row').length, 0)).toBe(61)
+    for (const block of blocks) {
+      const first = new Date(`${block.getAttribute('data-month')}-01T12:00:00`)
+      expect(block.querySelector('.month-label')?.textContent).toBe(formatMonthLabel(first))
+    }
   })
 })

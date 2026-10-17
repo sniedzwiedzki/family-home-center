@@ -1,7 +1,7 @@
 import type { FamilyMember } from '../family/familyMember'
-import { formatDayLabel } from '../shared/format'
+import { formatWeekday } from '../shared/format'
 import { columnIdsForEvent, type CalendarColumn } from './columns'
-import { dayKey, type DayEntry } from './days'
+import { dayKey, dayKind, type DayEntry } from './days'
 import type { DayForecast } from '../weather/types'
 import { DayWeather } from '../weather/DayWeather'
 import { EventItem } from './EventItem'
@@ -18,10 +18,18 @@ interface DayRowProps {
 export function DayRow({ day, isToday, columns, members, entries, forecast }: DayRowProps) {
   const placed = entries.map((entry) => ({ entry, columnIds: columnIdsForEvent(entry.event, members) }))
 
+  const kind = dayKind(day)
+  const classes = ['day-row', 'day-grid']
+  if (kind !== 'weekday') classes.push(`is-${kind}`)
+  if (isToday) classes.push('is-today')
+
   return (
-    <div className={isToday ? 'day-row day-grid is-today' : 'day-row day-grid'} data-day={dayKey(day)}>
+    <div className={classes.join(' ')} data-day={dayKey(day)}>
       <div className="day-label">
-        <div>{formatDayLabel(day)}</div>
+        <div className="day-date">
+          <span className="day-number">{day.getDate()}</span>
+          <span className="day-weekday">{formatWeekday(day)}</span>
+        </div>
         {forecast && <DayWeather forecast={forecast} />}
       </div>
       {columns.map((column) => (
