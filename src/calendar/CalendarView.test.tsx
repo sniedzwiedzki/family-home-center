@@ -1,9 +1,9 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { FamilyMember } from '../family/familyMember'
 import { CalendarView } from './CalendarView'
 import { formatMonthLabel } from '../shared/format'
-import { dayKey } from './days'
+import { addDays, dayKey } from './days'
 import type { DayForecast } from '../weather/types'
 import type { CalendarEvent, CalendarPort } from './types'
 
@@ -28,7 +28,13 @@ const todayEvent: CalendarEvent = {
   end: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 10),
 }
 const noForecasts = new Map<string, DayForecast>()
-const port = (): CalendarPort => ({ listEvents: vi.fn(async () => [todayEvent]) })
+const portOf = (listEvents: CalendarPort['listEvents']): CalendarPort => ({
+  listEvents,
+  createEvent: vi.fn(async (input) => ({ ...input, id: 'created' })),
+  updateEvent: vi.fn(async () => undefined),
+  deleteEvent: vi.fn(async () => undefined),
+})
+const port = (): CalendarPort => portOf(vi.fn(async () => [todayEvent]))
 
 const rows = (container: HTMLElement) => container.querySelectorAll('.day-row')
 
@@ -101,7 +107,7 @@ describe('CalendarView', () => {
 
   it('shows an alert when events cannot be loaded', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined)
-    const failing: CalendarPort = { listEvents: vi.fn(async () => Promise.reject(new Error('offline'))) }
+    const failing = portOf(vi.fn(async () => Promise.reject(new Error('offline'))))
     render(<CalendarView port={failing} members={members} forecasts={noForecasts} />)
     expect((await screen.findByRole('alert')).textContent).toBe('Nie udało się pobrać wydarzeń.')
   })
@@ -231,6 +237,107 @@ describe('CalendarView', () => {
       const remove = vi.spyOn(main, 'removeEventListener')
       unmount()
       expect(remove).toHaveBeenCalledWith('scroll', expect.any(Function))
+    })
+  })
+
+  describe('adding and editing events', () => {
+    const tomorrow = addDays(today, 1)
+    const cell = (container: HTMLElement, day: Date, columnId: string) =>
+      container.querySelector(`.day-row[data-day="${dayKey(day)}"] .day-cell[data-column="${columnId}"]`)!
+    const pressed = (name: string) => screen.getByRole('button', { name }).getAttribute('aria-pressed')
+    const field = (label: string) => screen.getByLabelText(label) as HTMLInputElement
+    const renderEditable = async () => {
+      const calendar = port()
+      const view = render(<CalendarView port={calendar} members={members} forecasts={noForecasts} />)
+      await screen.findByText('Dzisiejsze')
+      return { calendar, ...view }
+    }
+
+    it('opens a new-event dialog for the clicked day with the column person preselected', async () => {
+      const { container } = await renderEditable()
+      fireEvent.click(cell(container, tomorrow, 'a'))
+      expect(screen.getByRole('dialog', { name: 'Nowe wydarzenie' })).toBeTruthy()
+      expect(field('Data').value).toBe(dayKey(tomorrow))
+      expect(pressed('Anna')).toBe('true')
+    })
+
+    it('preselects nobody for the "Inne" column', async () => {
+      const { container } = await renderEditable()
+      fireEvent.click(cell(container, tomorrow, 'other'))
+      expect(pressed('Anna')).toBe('false')
+    })
+
+    it('creates the event, closes the dialog and reloads the events', async () => {
+      const { calendar, container } = await renderEditable()
+      fireEvent.click(cell(container, tomorrow, 'a'))
+      fireEvent.change(field('Tytuł'), { target: { value: 'Dentysta' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Zapisz' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+      expect(calendar.createEvent).toHaveBeenCalledTimes(1)
+      expect(vi.mocked(calendar.createEvent).mock.calls[0][0]).toMatchObject({
+        title: 'Dentysta',
+        extendedProperties: { private: { fhcTags: 'anna' } },
+      })
+      await waitFor(() => expect(calendar.listEvents).toHaveBeenCalledTimes(2))
+    })
+
+    it('stays open and says so when the event cannot be stored', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => undefined)
+      const { calendar, container } = await renderEditable()
+      vi.mocked(calendar.createEvent).mockRejectedValueOnce(new Error('quota'))
+      fireEvent.click(cell(container, tomorrow, 'a'))
+      fireEvent.change(field('Tytuł'), { target: { value: 'Dentysta' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Zapisz' }))
+      expect((await screen.findByRole('alert')).textContent).toBe('Nie udało się zapisać wydarzenia')
+      expect(screen.getByRole('dialog')).toBeTruthy()
+    })
+
+    it('opens the same dialog filled in when an event is clicked, and does not open a new-event one', async () => {
+      const { container } = await renderEditable()
+      fireEvent.click(container.querySelector(`.day-row[data-day="${dayKey(today)}"] .event`)!)
+      expect(screen.getByRole('dialog', { name: 'Edytuj wydarzenie' })).toBeTruthy()
+      expect(field('Tytuł').value).toBe('Dzisiejsze')
+      expect(field('Od').value).toBe('09:00')
+      expect(pressed('Anna')).toBe('true')
+      expect(screen.queryByRole('dialog', { name: 'Nowe wydarzenie' })).toBeNull()
+    })
+
+    it('updates the edited event keeping its id', async () => {
+      const { calendar, container } = await renderEditable()
+      fireEvent.click(container.querySelector(`.day-row[data-day="${dayKey(today)}"] .event`)!)
+      fireEvent.change(field('Tytuł'), { target: { value: 'Zmienione' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Zapisz' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+      expect(calendar.updateEvent).toHaveBeenCalledTimes(1)
+      expect(vi.mocked(calendar.updateEvent).mock.calls[0][0]).toMatchObject({ id: 'today', title: 'Zmienione' })
+      expect(calendar.createEvent).not.toHaveBeenCalled()
+    })
+
+    it('deletes the edited event after confirmation, closes and reloads', async () => {
+      const { calendar, container } = await renderEditable()
+      fireEvent.click(container.querySelector(`.day-row[data-day="${dayKey(today)}"] .event`)!)
+      fireEvent.click(screen.getByRole('button', { name: 'Usuń' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Na pewno usunąć?' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+      expect(calendar.deleteEvent).toHaveBeenCalledWith('today')
+      await waitFor(() => expect(calendar.listEvents).toHaveBeenCalledTimes(2))
+    })
+
+    it('closes without saving on cancel', async () => {
+      const { calendar, container } = await renderEditable()
+      fireEvent.click(cell(container, tomorrow, 'a'))
+      fireEvent.click(screen.getByRole('button', { name: 'Anuluj' }))
+      expect(screen.queryByRole('dialog')).toBeNull()
+      expect(calendar.createEvent).not.toHaveBeenCalled()
+    })
+
+    it('gives each opened dialog fresh form state', async () => {
+      const { container } = await renderEditable()
+      fireEvent.click(cell(container, tomorrow, 'a'))
+      fireEvent.change(field('Tytuł'), { target: { value: 'Pierwsze' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Anuluj' }))
+      fireEvent.click(cell(container, tomorrow, 'other'))
+      expect(field('Tytuł').value).toBe('')
     })
   })
 })

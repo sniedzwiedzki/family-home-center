@@ -1,13 +1,15 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { FamilyMember } from '../family/familyMember'
 import type { DayForecast } from '../weather/types'
-import { buildColumns } from './columns'
+import { buildColumns, OTHER_COLUMN_ID } from './columns'
 import { ColumnHeaders } from './ColumnHeaders'
 import { dayKey, groupDaysByMonth, groupEventsByDay, startOfDay } from './days'
 import { DayRow } from './DayRow'
+import { draftFromEvent, newDraft } from './eventDraft'
+import { EventDialog } from './EventDialog'
 import { TODAY_PIN_LABEL, type TodayPosition } from './todayPin'
 import { MonthBlock } from './MonthBlock'
-import type { CalendarPort } from './types'
+import type { CalendarEvent, CalendarEventInput, CalendarPort } from './types'
 import { useCalendarEvents } from './useCalendarEvents'
 import { useDayWindow } from './useDayWindow'
 import { useToday } from './useToday'
@@ -22,11 +24,14 @@ interface CalendarViewProps {
   forecasts: ReadonlyMap<string, DayForecast>
 }
 
+type Editor = { kind: 'new'; day: Date; columnId: string } | { kind: 'edit'; event: CalendarEvent }
+
 export function CalendarView({ port, members, forecasts }: CalendarViewProps) {
   const [anchor] = useState(() => startOfDay(new Date()))
   const today = useToday()
   const { range, days, before, extendBefore, extendAfter } = useDayWindow(anchor)
-  const { events, hasError } = useCalendarEvents(port, range)
+  const { events, hasError, reload } = useCalendarEvents(port, range)
+  const [editor, setEditor] = useState<Editor | null>(null)
   const columns = useMemo(() => buildColumns(members), [members])
   const entriesByDay = useMemo(() => groupEventsByDay(events), [events])
   const months = useMemo(() => groupDaysByMonth(days), [days])
@@ -89,6 +94,19 @@ export function CalendarView({ port, members, forecasts }: CalendarViewProps) {
   const scrollToToday = () =>
     containerRef.current!.querySelector(`.day-row[data-day="${todayKey}"]`)!.scrollIntoView({ block: 'start', behavior: 'smooth' })
 
+  const closeEditor = () => setEditor(null)
+  const saveEvent = async (current: Editor, input: CalendarEventInput) => {
+    if (current.kind === 'new') await port.createEvent(input)
+    else await port.updateEvent({ ...input, id: current.event.id })
+    reload()
+    closeEditor()
+  }
+  const deleteEvent = async (event: CalendarEvent) => {
+    await port.deleteEvent(event.id)
+    reload()
+    closeEditor()
+  }
+
   const renderDay = (day: Date, pinned = false) => (
     <DayRow
       key={dayKey(day)}
@@ -99,6 +117,8 @@ export function CalendarView({ port, members, forecasts }: CalendarViewProps) {
       members={members}
       entries={entriesByDay.get(dayKey(day)) ?? []}
       forecast={forecasts.get(dayKey(day))}
+      onAddEvent={(addDay, columnId) => setEditor({ kind: 'new', day: addDay, columnId })}
+      onEditEvent={(event) => setEditor({ kind: 'edit', event })}
     />
   )
   const pinnedToday = (placement: 'top' | 'bottom') => (
@@ -109,23 +129,43 @@ export function CalendarView({ port, members, forecasts }: CalendarViewProps) {
     </div>
   )
 
+  const dialog = editor !== null && (
+    <EventDialog
+      key={editor.kind === 'new' ? `new-${dayKey(editor.day)}-${editor.columnId}` : editor.event.id}
+      heading={editor.kind === 'new' ? 'Nowe wydarzenie' : 'Edytuj wydarzenie'}
+      initial={
+        editor.kind === 'new'
+          ? newDraft(editor.day, editor.columnId === OTHER_COLUMN_ID ? [] : [editor.columnId])
+          : draftFromEvent(editor.event, members)
+      }
+      members={members}
+      existing={editor.kind === 'edit' ? editor.event : undefined}
+      onSave={(input) => saveEvent(editor, input)}
+      onDelete={editor.kind === 'edit' ? () => deleteEvent(editor.event) : undefined}
+      onClose={closeEditor}
+    />
+  )
+
   return (
-    <main className="calendar" ref={containerRef} style={{ '--column-count': columns.length } as React.CSSProperties}>
-      <ColumnHeaders columns={columns} />
-      {hasError && (
-        <p className="calendar-error" role="alert">
-          Nie udało się pobrać wydarzeń.
-        </p>
-      )}
-      {todayPosition === 'above' && pinnedToday('top')}
-      <div ref={topSentinel} />
-      {months.map((month) => (
-        <MonthBlock key={month.key} monthKey={month.key} firstDay={month.days[0]}>
-          {month.days.map((day) => renderDay(day))}
-        </MonthBlock>
-      ))}
-      <div ref={bottomSentinel} />
-      {todayPosition === 'below' && pinnedToday('bottom')}
-    </main>
+    <>
+      <main className="calendar" ref={containerRef} style={{ '--column-count': columns.length } as React.CSSProperties}>
+        <ColumnHeaders columns={columns} />
+        {hasError && (
+          <p className="calendar-error" role="alert">
+            Nie udało się pobrać wydarzeń.
+          </p>
+        )}
+        {todayPosition === 'above' && pinnedToday('top')}
+        <div ref={topSentinel} />
+        {months.map((month) => (
+          <MonthBlock key={month.key} monthKey={month.key} firstDay={month.days[0]}>
+            {month.days.map((day) => renderDay(day))}
+          </MonthBlock>
+        ))}
+        <div ref={bottomSentinel} />
+        {todayPosition === 'below' && pinnedToday('bottom')}
+      </main>
+      {dialog}
+    </>
   )
 }

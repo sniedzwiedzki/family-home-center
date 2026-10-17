@@ -1,0 +1,129 @@
+import type { FamilyMember } from '../family/familyMember'
+import { addDays, dayKey, startOfDay } from './days'
+import { EVENT_TAGS_PROPERTY, extractTags, stripTitleTags } from './tags'
+import type { CalendarEvent, CalendarEventInput } from './types'
+
+export interface EventDraft {
+  title: string
+  description: string
+  memberIds: string[]
+  allDay: boolean
+  /** `YYYY-MM-DD`, as used by `<input type="date">`. */
+  startDate: string
+  endDate: string
+  /** `HH:mm`, as used by `<input type="time">`. */
+  startTime: string
+  endTime: string
+}
+
+export interface DraftErrors {
+  title?: string
+  date?: string
+  time?: string
+}
+
+export type DraftResult = { ok: true; input: CalendarEventInput } | { ok: false; errors: DraftErrors }
+
+const DEFAULT_START_TIME = '09:00'
+const DEFAULT_END_TIME = '10:00'
+
+const pad = (value: number) => String(value).padStart(2, '0')
+const timeKey = (date: Date) => `${pad(date.getHours())}:${pad(date.getMinutes())}`
+
+export function newDraft(day: Date, memberIds: string[]): EventDraft {
+  return {
+    title: '',
+    description: '',
+    memberIds,
+    allDay: false,
+    startDate: dayKey(day),
+    endDate: dayKey(day),
+    startTime: DEFAULT_START_TIME,
+    endTime: DEFAULT_END_TIME,
+  }
+}
+
+export function draftFromEvent(event: CalendarEvent, members: readonly FamilyMember[]): EventDraft {
+  const tags = new Set(extractTags(event))
+  const lastDay = event.allDay ? addDays(startOfDay(event.end), -1) : event.end
+  return {
+    title: stripTitleTags(event.title),
+    description: event.description ?? '',
+    memberIds: members.filter((member) => tags.has(member.tag)).map((member) => member.id),
+    allDay: event.allDay,
+    startDate: dayKey(event.start),
+    endDate: dayKey(lastDay),
+    startTime: event.allDay ? DEFAULT_START_TIME : timeKey(event.start),
+    endTime: event.allDay ? DEFAULT_END_TIME : timeKey(event.end),
+  }
+}
+
+const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/
+const TIME_PATTERN = /^(\d{2}):(\d{2})$/
+
+function parseDate(value: string): Date | null {
+  const match = DATE_PATTERN.exec(value)
+  if (match === null) return null
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+  return dayKey(date) === value ? date : null
+}
+
+function parseTime(value: string): [number, number] | null {
+  const match = TIME_PATTERN.exec(value)
+  if (match === null) return null
+  const [hours, minutes] = [Number(match[1]), Number(match[2])]
+  return hours < 24 && minutes < 60 ? [hours, minutes] : null
+}
+
+const atTime = (day: Date, [hours, minutes]: [number, number]) =>
+  new Date(day.getFullYear(), day.getMonth(), day.getDate(), hours, minutes)
+
+/** Validates the form and turns it into an event. People become tags in a hidden property; `#tags` typed in the title count too. */
+export function draftToInput(draft: EventDraft, members: readonly FamilyMember[], existing?: CalendarEvent): DraftResult {
+  const errors: DraftErrors = {}
+  const title = stripTitleTags(draft.title)
+  const typedTags = extractTags({ title: draft.title })
+  if (title === '') errors.title = 'Podaj tytuł'
+
+  const startDay = parseDate(draft.startDate)
+  const endDay = parseDate(draft.endDate)
+  if (startDay === null || endDay === null) errors.date = 'Podaj datę'
+
+  let start = startDay
+  let end = endDay === null ? null : addDays(endDay, 1)
+  if (startDay !== null && endDay !== null) {
+    if (draft.allDay) {
+      if (endDay < startDay) errors.date = 'Data końca nie może być przed początkiem'
+    } else {
+      const startTime = parseTime(draft.startTime)
+      const endTime = parseTime(draft.endTime)
+      if (startTime === null || endTime === null) {
+        errors.time = 'Podaj godziny'
+      } else {
+        start = atTime(startDay, startTime)
+        end = atTime(endDay, endTime)
+        if (end <= start) errors.time = 'Koniec musi być po początku'
+      }
+    }
+  }
+
+  if (Object.keys(errors).length > 0 || start === null || end === null) return { ok: false, errors }
+
+  const selected = members.filter((member) => draft.memberIds.includes(member.id)).map((member) => member.tag)
+  const tags = [...new Set([...selected, ...typedTags])]
+  const { [EVENT_TAGS_PROPERTY]: _previous, ...otherProperties } = existing?.extendedProperties?.private ?? {}
+  const privateProperties = tags.length > 0 ? { ...otherProperties, [EVENT_TAGS_PROPERTY]: tags.join(',') } : otherProperties
+  const description = draft.description.trim()
+
+  return {
+    ok: true,
+    input: {
+      title,
+      ...(description === '' ? {} : { description }),
+      allDay: draft.allDay,
+      start,
+      end,
+      ...(Object.keys(privateProperties).length === 0 ? {} : { extendedProperties: { private: privateProperties } }),
+    },
+  }
+}

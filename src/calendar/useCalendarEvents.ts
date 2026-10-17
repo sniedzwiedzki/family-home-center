@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { CalendarEvent, CalendarPort, DateRange } from './types'
 
 function missingChunks(wanted: DateRange, loaded: DateRange | null): DateRange[] {
@@ -12,12 +12,14 @@ function missingChunks(wanted: DateRange, loaded: DateRange | null): DateRange[]
 export function useCalendarEvents(port: CalendarPort, range: DateRange) {
   const [events, setEvents] = useState<ReadonlyMap<string, CalendarEvent>>(new Map())
   const [hasError, setHasError] = useState(false)
+  const [version, setVersion] = useState(0)
   const loaded = useRef<DateRange | null>(null)
   const fromTime = range.from.getTime()
   const toTime = range.to.getTime()
 
   useEffect(() => {
     const wanted = { from: new Date(fromTime), to: new Date(toTime) }
+    const isFullReload = loaded.current === null
     const chunks = missingChunks(wanted, loaded.current)
     let cancelled = false
 
@@ -27,7 +29,7 @@ export function useCalendarEvents(port: CalendarPort, range: DateRange) {
         loaded.current = wanted
         setHasError(false)
         setEvents((current) => {
-          const merged = new Map(current)
+          const merged = new Map(isFullReload ? [] : current)
           for (const event of results.flat()) merged.set(event.id, event)
           return merged
         })
@@ -41,7 +43,13 @@ export function useCalendarEvents(port: CalendarPort, range: DateRange) {
     return () => {
       cancelled = true
     }
-  }, [port, fromTime, toTime])
+  }, [port, fromTime, toTime, version])
 
-  return { events: [...events.values()], hasError }
+  /** Forgets everything loaded and fetches the visible range again, e.g. after an event was saved or deleted. */
+  const reload = useCallback(() => {
+    loaded.current = null
+    setVersion((current) => current + 1)
+  }, [])
+
+  return { events: [...events.values()], hasError, reload }
 }

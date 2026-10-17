@@ -16,6 +16,11 @@ export interface DateRange {
   to: Date
 }
 
+export type CalendarEventInput = Omit<CalendarEvent, 'id'>
+
 export interface CalendarPort {
   listEvents(range: DateRange): Promise<CalendarEvent[]>
+  createEvent(input: CalendarEventInput): Promise<CalendarEvent>
+  updateEvent(event: CalendarEvent): Promise<void>
+  deleteEvent(id: string): Promise<void>
 }

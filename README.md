@@ -12,7 +12,8 @@ A big calendar with events, actions, tasks and more. The first iteration covers 
 - Never-ending scroll page in both directions, starting at today; each date is a single row.
 - All-day and multi-day events appear in the row of every day they cover.
 - Application language: Polish (all UI text, dates and weather labels). The repository itself (code, docs, specs) stays in English.
-- Clicking an event lets the user edit its date, time and content, or remove it. For recurring events the user chooses: this occurrence, this and following, or the whole series.
+- Clicking an empty spot of a day in a person's column opens a dialog to add an event; that person is preselected, and more people can be added or changed. Clicking an existing event opens the same dialog to edit its date, time and content, or to remove it (with a second tap to confirm). For recurring Google events the user will choose: this occurrence, this and following, or the whole series.
+- Until the Google API key is available, events are stored only in the browser's local storage (key `fhc.events.v1`).
 - The settings button (in the top bar) opens the settings.
 
 - Each date row shows the weather forecast for that day (only for days where a forecast is available).
