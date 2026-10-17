@@ -19,7 +19,7 @@ async function evaluate<T>(expression: string): Promise<T> {
 
 describe('app on the kiosk display', () => {
   beforeEach(async () => {
-    await agentBrowser('viewport', KIOSK_WIDTH, KIOSK_HEIGHT)
+    await agentBrowser('set', 'viewport', KIOSK_WIDTH, KIOSK_HEIGHT)
     await agentBrowser('open', inject('appUrl'))
     await agentBrowser('wait', SETTLE_MS)
   })
