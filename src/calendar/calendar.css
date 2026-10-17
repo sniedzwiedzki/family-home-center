@@ -1,6 +1,6 @@
 .calendar {
   --day-label-width: 12rem;
-  --month-width: 4.5rem;
+  --month-width: 2.75rem;
   --header-height: 4rem;
   overflow-y: auto;
 }
@@ -37,10 +37,11 @@
   top: var(--header-height);
   align-self: start;
   margin: 0;
-  padding: 1.25rem 0;
-  font-size: 1.75rem;
+  padding: 1rem 0;
+  font-size: 1.5rem;
   font-weight: 600;
-  letter-spacing: 0.15em;
+  line-height: 1.1;
+  letter-spacing: 0.12em;
   text-align: center;
   text-transform: uppercase;
   color: var(--soft);
@@ -72,7 +73,45 @@
 }
 
 .day-row.is-today {
-  box-shadow: inset 0.25rem 0 0 var(--primary);
+  background-color: color-mix(in srgb, var(--primary) 12%, transparent);
+  background-image: linear-gradient(var(--day-tint), var(--day-tint));
+  box-shadow: inset 0 0 0 0.25rem var(--primary);
+}
+
+.day-row.is-pinned {
+  background-color: var(--background);
+  background-image: linear-gradient(color-mix(in srgb, var(--primary) 12%, transparent), color-mix(in srgb, var(--primary) 12%, transparent)), linear-gradient(var(--day-tint), var(--day-tint));
+  box-shadow: inset 0 0 0 0.25rem var(--primary), 0 0 2rem rgba(0, 0, 0, 0.8);
+}
+
+/* A zero-height sticky wrapper keeps today's row at the top or bottom edge of the scroll area without taking space. */
+.pin {
+  position: sticky;
+  z-index: 2;
+  height: 0;
+}
+
+.pin-top {
+  top: var(--header-height);
+}
+
+.pin-bottom {
+  bottom: 0;
+}
+
+.pin-inner {
+  position: absolute;
+  right: 0;
+  left: var(--month-width);
+  cursor: pointer;
+}
+
+.pin-top .pin-inner {
+  top: 0;
+}
+
+.pin-bottom .pin-inner {
+  bottom: 0;
 }
 
 .day-label {
@@ -142,8 +181,4 @@
   margin-top: 0.25rem;
   font-size: 1.125rem;
   color: var(--headline);
-}
-
-.rain-chance {
-  color: var(--soft);
 }

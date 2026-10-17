@@ -73,6 +73,27 @@ describe('app on the kiosk display', () => {
     expect(Math.abs(gap)).toBeLessThan(4)
   })
 
+  it('keeps today pinned to the top or bottom edge and returns to it on click', async () => {
+    const isPinned = (placement: string) => evaluate<boolean>(`document.querySelector('.pin-${placement} .day-row.is-today') !== null`)
+    const gapToHeader = "document.querySelector('.day-row.is-today:not(.is-pinned)').getBoundingClientRect().top - document.querySelector('.column-headers').getBoundingClientRect().bottom"
+
+    await agentBrowser('eval', "document.querySelector('main').scrollTop += 4000")
+    await agentBrowser('wait', SETTLE_MS)
+    expect(await isPinned('top')).toBe(true)
+    await screenshot('today-pinned-top')
+
+    await agentBrowser('eval', "document.querySelector('main').scrollTop -= 8000")
+    await agentBrowser('wait', SETTLE_MS)
+    expect(await isPinned('bottom')).toBe(true)
+    await screenshot('today-pinned-bottom')
+
+    await agentBrowser('eval', "document.querySelector('.pin-inner').click()")
+    await agentBrowser('wait', '2500')
+    expect(await isPinned('bottom')).toBe(false)
+    expect(Math.abs(await evaluate<number>(gapToHeader))).toBeLessThan(4)
+    await screenshot('today-after-return')
+  })
+
   it('loads more days when scrolling to the top', async () => {
     const countRows = "document.querySelectorAll('.day-row').length"
     const before = await evaluate<number>(countRows)
