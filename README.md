@@ -51,7 +51,7 @@ A big calendar with events, actions, tasks and more. The first iteration covers 
 
 ## Target display
 
-- 2400 x 1600 px tablet, no frames, Kiosk mode.
+- 1600 px wide x 2400 px tall (portrait) tablet, no frames, Kiosk mode. Five family member columns plus the fixed "Other" column must fit comfortably.
 
 ## Development
 

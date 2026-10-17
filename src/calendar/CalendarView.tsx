@@ -3,8 +3,10 @@ import type { FamilyMember } from '../family/familyMember'
 import type { DayForecast } from '../weather/types'
 import { buildColumns } from './columns'
 import { ColumnHeaders } from './ColumnHeaders'
-import { dayKey, groupEventsByDay, startOfDay } from './days'
+import { dayKey, groupDaysByMonth, groupEventsByDay, startOfDay } from './days'
 import { DayRow } from './DayRow'
+import { TODAY_PIN_LABEL, type TodayPosition } from './todayPin'
+import { MonthBlock } from './MonthBlock'
 import type { CalendarPort } from './types'
 import { useCalendarEvents } from './useCalendarEvents'
 import { useDayWindow } from './useDayWindow'
@@ -12,6 +14,7 @@ import { useToday } from './useToday'
 import './calendar.css'
 
 const PREFETCH_MARGIN = '1500px'
+const PIN_TOLERANCE_PX = 4
 
 interface CalendarViewProps {
   port: CalendarPort
@@ -26,11 +29,14 @@ export function CalendarView({ port, members, forecasts }: CalendarViewProps) {
   const { events, hasError } = useCalendarEvents(port, range)
   const columns = useMemo(() => buildColumns(members), [members])
   const entriesByDay = useMemo(() => groupEventsByDay(events), [events])
+  const months = useMemo(() => groupDaysByMonth(days), [days])
 
   const containerRef = useRef<HTMLElement>(null)
   const topSentinel = useRef<HTMLDivElement>(null)
   const bottomSentinel = useRef<HTMLDivElement>(null)
   const heightBeforePrepend = useRef<number | null>(null)
+  const [todayPosition, setTodayPosition] = useState<TodayPosition>('visible')
+  const todayKey = dayKey(today)
 
   useLayoutEffect(() => {
     containerRef.current!.querySelector(`[data-day="${dayKey(anchor)}"]`)!.scrollIntoView({ block: 'start' })
@@ -64,6 +70,45 @@ export function CalendarView({ port, members, forecasts }: CalendarViewProps) {
     return () => observer.disconnect()
   }, [extendBefore, extendAfter])
 
+  useEffect(() => {
+    const container = containerRef.current!
+    const updateTodayPosition = () => {
+      const row = container.querySelector(`.day-row[data-day="${todayKey}"]`)!.getBoundingClientRect()
+      const headerBottom = container.querySelector('.column-headers')!.getBoundingClientRect().bottom
+      const areaBottom = container.getBoundingClientRect().bottom
+      // Scroll events (not an IntersectionObserver) because a fast jump from above to below never crosses "visible".
+      setTodayPosition(
+        row.top < headerBottom - PIN_TOLERANCE_PX ? 'above' : row.bottom > areaBottom + PIN_TOLERANCE_PX ? 'below' : 'visible',
+      )
+    }
+    updateTodayPosition()
+    container.addEventListener('scroll', updateTodayPosition, { passive: true })
+    return () => container.removeEventListener('scroll', updateTodayPosition)
+  }, [todayKey])
+
+  const scrollToToday = () =>
+    containerRef.current!.querySelector(`.day-row[data-day="${todayKey}"]`)!.scrollIntoView({ block: 'start', behavior: 'smooth' })
+
+  const renderDay = (day: Date, pinned = false) => (
+    <DayRow
+      key={dayKey(day)}
+      day={day}
+      isToday={dayKey(day) === todayKey}
+      pinned={pinned}
+      columns={columns}
+      members={members}
+      entries={entriesByDay.get(dayKey(day)) ?? []}
+      forecast={forecasts.get(dayKey(day))}
+    />
+  )
+  const pinnedToday = (placement: 'top' | 'bottom') => (
+    <div className={`pin pin-${placement}`}>
+      <div className="pin-inner" role="button" tabIndex={0} aria-label={TODAY_PIN_LABEL} onClick={scrollToToday}>
+        {renderDay(today, true)}
+      </div>
+    </div>
+  )
+
   return (
     <main className="calendar" ref={containerRef} style={{ '--column-count': columns.length } as React.CSSProperties}>
       <ColumnHeaders columns={columns} />
@@ -72,19 +117,15 @@ export function CalendarView({ port, members, forecasts }: CalendarViewProps) {
           Nie udało się pobrać wydarzeń.
         </p>
       )}
+      {todayPosition === 'above' && pinnedToday('top')}
       <div ref={topSentinel} />
-      {days.map((day) => (
-        <DayRow
-          key={dayKey(day)}
-          day={day}
-          isToday={dayKey(day) === dayKey(today)}
-          columns={columns}
-          members={members}
-          entries={entriesByDay.get(dayKey(day)) ?? []}
-          forecast={forecasts.get(dayKey(day))}
-        />
+      {months.map((month) => (
+        <MonthBlock key={month.key} monthKey={month.key} firstDay={month.days[0]}>
+          {month.days.map((day) => renderDay(day))}
+        </MonthBlock>
       ))}
       <div ref={bottomSentinel} />
+      {todayPosition === 'below' && pinnedToday('bottom')}
     </main>
   )
 }

@@ -1,11 +1,13 @@
 import { execFile } from 'node:child_process'
+import { mkdirSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { promisify } from 'node:util'
 import { afterAll, beforeEach, describe, expect, inject, it } from 'vitest'
 
 const run = promisify(execFile)
 const SESSION = `fhc-integration-${process.pid}`
-const KIOSK_WIDTH = '2400'
-const KIOSK_HEIGHT = '1600'
+const KIOSK_WIDTH = '1600'
+const KIOSK_HEIGHT = '2400'
 const SETTLE_MS = '1000'
 
 async function agentBrowser(...args: string[]): Promise<string> {
@@ -15,6 +17,13 @@ async function agentBrowser(...args: string[]): Promise<string> {
 
 async function evaluate<T>(expression: string): Promise<T> {
   return JSON.parse((await agentBrowser('eval', expression)).trim()) as T
+}
+
+const SCREENSHOT_DIR = resolve('tests/integration/screenshots')
+
+async function screenshot(name: string) {
+  mkdirSync(SCREENSHOT_DIR, { recursive: true })
+  await agentBrowser('screenshot', resolve(SCREENSHOT_DIR, `${name}.png`))
 }
 
 const clickButton = (text: string) =>
@@ -52,9 +61,9 @@ describe('app on the kiosk display', () => {
   it('renders the shell in Polish', async () => {
     expect(await agentBrowser('get', 'text', '.column-header[data-column="other"]')).toContain('Inne')
     expect(await agentBrowser('snapshot', '-i')).toContain('Ustawienia')
-    expect(await agentBrowser('get', 'text', '.is-today .day-label')).toMatch(
-      /poniedziałek|wtorek|środa|czwartek|piątek|sobota|niedziela/,
-    )
+    expect((await agentBrowser('get', 'text', '.is-today .day-weekday')).trim()).toMatch(/^(po|wt|śr|cz|pt|so|nd)$/)
+    expect(await evaluate<number>("document.querySelectorAll('.month-label').length")).toBeGreaterThanOrEqual(2)
+    await screenshot('calendar')
   })
 
   it('scrolls today right under the sticky column headers', async () => {
@@ -62,6 +71,28 @@ describe('app on the kiosk display', () => {
       "document.querySelector('.is-today').getBoundingClientRect().top - document.querySelector('.column-headers').getBoundingClientRect().bottom",
     )
     expect(Math.abs(gap)).toBeLessThan(4)
+  })
+
+  it('keeps today pinned to the top or bottom edge and returns to it on click', async () => {
+    const isPinned = (placement: string) => evaluate<boolean>(`document.querySelector('.pin-${placement} .day-row.is-today') !== null`)
+    const gapToHeader = "document.querySelector('.day-row.is-today:not(.is-pinned)').getBoundingClientRect().top - document.querySelector('.column-headers').getBoundingClientRect().bottom"
+
+    await agentBrowser('eval', "document.querySelector('main').scrollTop += 4000")
+    await agentBrowser('wait', SETTLE_MS)
+    await screenshot('today-pinned-top')
+    expect(await isPinned('top')).toBe(true)
+
+    await agentBrowser('eval', "document.querySelector('main').scrollTop -= 8000")
+    await agentBrowser('wait', SETTLE_MS)
+    await screenshot('today-pinned-bottom')
+    expect(await evaluate<object>("({ scrollTop: document.querySelector('main').scrollTop, todayTop: document.querySelector('.day-row.is-today:not(.is-pinned)').getBoundingClientRect().top, pins: document.querySelectorAll('.pin').length })")).toMatchObject({})
+    expect(await isPinned('bottom')).toBe(true)
+
+    await agentBrowser('eval', "document.querySelector('.pin-inner').click()")
+    await agentBrowser('wait', '2500')
+    expect(await isPinned('bottom')).toBe(false)
+    expect(Math.abs(await evaluate<number>(gapToHeader))).toBeLessThan(4)
+    await screenshot('today-after-return')
   })
 
   it('loads more days when scrolling to the top', async () => {
@@ -74,7 +105,13 @@ describe('app on the kiosk display', () => {
 
   it('shows the forecast in the day rows and in the 24h bottom bar once a location is set', async () => {
     const settings = {
-      familyMembers: [],
+      familyMembers: [
+        { id: 'm1', name: 'Anna', tag: 'anna', color: '#f4a3a8' },
+        { id: 'm2', name: 'Jan', tag: 'jan', color: '#9ec5f0' },
+        { id: 'm3', name: 'Ola', tag: 'ola', color: '#a8d8b9' },
+        { id: 'm4', name: 'Tomek', tag: 'tomek', color: '#f6d58f' },
+        { id: 'm5', name: 'Zosia', tag: 'zosia', color: '#c9b3e6' },
+      ],
       calendars: { readIds: [], writeId: null },
       weather: { location: { name: 'Warszawa', latitude: 52.23, longitude: 21.01 } },
       pin: null,
@@ -85,8 +122,9 @@ describe('app on the kiosk display', () => {
     try {
       expect(await evaluate<number>("document.querySelectorAll('.forecast-slot').length")).toBe(12)
       expect(await evaluate<number>("document.querySelectorAll('.day-weather').length")).toBeGreaterThan(0)
-      expect(await agentBrowser('get', 'text', '.is-today .day-weather')).toContain('20° / 10°')
+      expect(await agentBrowser('get', 'text', '.is-today .day-weather')).toContain('20°/10°')
       expect(await agentBrowser('get', 'text', '.forecast-slot .slot-temp')).toContain('15°')
+      await screenshot('five-people-portrait')
     } finally {
       await agentBrowser('eval', 'localStorage.clear()')
     }
@@ -100,6 +138,7 @@ describe('app on the kiosk display', () => {
       await clickButton('Ustawienia')
       await enterPin('1234')
       await enterPin('1234')
+      await screenshot('settings-pin-created')
       await clickButton('Dodaj osobę')
       await fillField('Imię', 'Anna')
       await fillField('Tag', 'anna')
@@ -110,9 +149,10 @@ describe('app on the kiosk display', () => {
       await clickButton('Zapisz')
       await agentBrowser('wait', SETTLE_MS)
 
-      expect(await evaluate<string[]>("[...document.querySelectorAll('.column-header')].map((h) => h.textContent)")).toEqual(['Anna', 'Inne'])
+      expect(await evaluate<string[]>("[...document.querySelectorAll('.column-name')].map((h) => h.textContent)")).toEqual(['Anna', 'Inne'])
       expect(await evaluate<number>("document.querySelectorAll('.day-cell:not([data-column=\"other\"]) .event').length")).toBeGreaterThan(0)
       expect(await evaluate<number>("document.querySelectorAll('.forecast-slot').length")).toBe(12)
+      await screenshot('calendar-with-family-and-weather')
 
       await clickButton('Ustawienia')
       await enterPin('0000')

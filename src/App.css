@@ -13,9 +13,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 2rem;
-  min-height: 4rem;
-  background: var(--background);
+  padding: 0 1.25rem;
+  min-height: 3.25rem;
+  background: var(--glass);
+  backdrop-filter: blur(0.75rem);
   border-color: var(--border);
   border-style: solid;
   border-width: 0;
@@ -30,12 +31,12 @@
 }
 
 .clock {
-  font-size: 2rem;
+  font-size: 1.625rem;
   font-variant-numeric: tabular-nums;
 }
 
 .settings-button {
-  font-size: 2rem;
+  font-size: 1.625rem;
   color: inherit;
   background: none;
   border: 0;
@@ -43,7 +44,7 @@
 
 .forecast-empty {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1rem;
   color: var(--soft);
 }
 
@@ -71,7 +72,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0.5rem 0;
+  padding: 0.25rem 0;
 }
 
 .forecast-slot:first-child {
@@ -79,7 +80,7 @@
 }
 
 .slot-time {
-  font-size: 1.125rem;
+  font-size: 0.875rem;
   color: var(--soft);
 }
 
@@ -87,10 +88,16 @@
   color: var(--primary);
 }
 
+.slot-weather {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
 .slot-icon {
-  font-size: 1.75rem;
+  font-size: 1.125rem;
 }
 
 .slot-temp {
-  font-size: 1.375rem;
+  font-size: 1.0625rem;
 }

@@ -1,13 +1,15 @@
 :root {
-  --background: #141313;
-  --headline: #edf5cd;
-  --soft: #948d85;
-  --primary: #e5f520;
-  --primary-foreground: #1a1919;
-  --border: rgba(255, 255, 255, 0.1);
+  --background: #e9f0f7;
+  --headline: #263646;
+  --soft: #667b90;
+  --primary: #e08a78;
+  --primary-foreground: #ffffff;
+  --border: rgba(38, 54, 70, 0.12);
+  --surface: rgba(255, 255, 255, 0.64);
+  --glass: rgba(255, 255, 255, 0.8);
   --radius: 8px;
   --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 * {
@@ -15,7 +17,7 @@
 }
 
 html {
-  /* 1rem = 24px on the 2400 px wide kiosk display, scales down for dev previews. */
+  /* 1rem = 16px on the 1600 px wide kiosk display, scales down for dev previews. */
   font-size: 1vw;
 }
 
@@ -28,7 +30,9 @@ body {
 body {
   min-height: 100vh;
   min-height: 100svh;
-  background: var(--background);
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.3)),
+    var(--background) url('./assets/tatry.jpg') center / cover no-repeat fixed;
   color: var(--headline);
   font-family: Inter, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;

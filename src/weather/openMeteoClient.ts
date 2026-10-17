@@ -11,13 +11,11 @@ const responseSchema = z.object({
     weather_code: numbers,
     temperature_2m_max: numbers,
     temperature_2m_min: numbers,
-    precipitation_probability_max: numbers,
   }),
   hourly: z.object({
     time: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)),
     weather_code: numbers,
     temperature_2m: numbers,
-    precipitation_probability: numbers,
   }),
 })
 
@@ -37,7 +35,7 @@ function toDays(daily: z.infer<typeof responseSchema>['daily']): DayForecast[] {
     const tempMax = valueAt(daily.temperature_2m_max, index)
     const tempMin = valueAt(daily.temperature_2m_min, index)
     if (code === null || tempMax === null || tempMin === null) return []
-    return [{ day, code, tempMax, tempMin, precipitationChance: valueAt(daily.precipitation_probability_max, index) }]
+    return [{ day, code, tempMax, tempMin }]
   })
 }
 
@@ -46,7 +44,7 @@ function toHours(hourly: z.infer<typeof responseSchema>['hourly']): HourForecast
     const code = valueAt(hourly.weather_code, index)
     const temp = valueAt(hourly.temperature_2m, index)
     if (code === null || temp === null) return []
-    return [{ time: parseLocalTime(time), code, temp, precipitationChance: valueAt(hourly.precipitation_probability, index) }]
+    return [{ time: parseLocalTime(time), code, temp }]
   })
 }
 
@@ -58,8 +56,8 @@ export function createOpenMeteoClient(fetchImpl: typeof fetch, baseUrl: string):
         longitude: String(longitude),
         timezone: 'auto',
         forecast_days: String(FORECAST_DAYS),
-        daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max',
-        hourly: 'weather_code,temperature_2m,precipitation_probability',
+        daily: 'weather_code,temperature_2m_max,temperature_2m_min',
+        hourly: 'weather_code,temperature_2m',
       })
       const response = await fetchImpl(`${baseUrl}?${query}`)
       if (!response.ok) throw new Error(`Open-Meteo responded with ${response.status}`)

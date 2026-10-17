@@ -4,7 +4,7 @@ import App from './App'
 import type { DayForecast, Forecast } from './weather/types'
 import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEY } from './settings/settings'
 
-const forecast: Forecast = { days: [{ day: '2026-10-17', code: 0, tempMax: 20, tempMin: 10, precipitationChance: null }], hours: [] }
+const forecast: Forecast = { days: [{ day: '2026-10-17', code: 0, tempMax: 20, tempMin: 10 }], hours: [] }
 const useForecast = vi.hoisted(() => vi.fn())
 
 vi.mock('./weather/useForecast', () => ({ useForecast }))

@@ -43,3 +43,27 @@ export function groupEventsByDay(events: readonly CalendarEvent[]): Map<string, 
   for (const entries of groups.values()) entries.sort(compareEntries)
   return groups
 }
+
+export type DayKind = 'weekday' | 'saturday' | 'sunday'
+
+export function dayKind(date: Date): DayKind {
+  const weekday = date.getDay()
+  return weekday === 6 ? 'saturday' : weekday === 0 ? 'sunday' : 'weekday'
+}
+
+export interface MonthGroup {
+  key: string
+  days: Date[]
+}
+
+/** Splits consecutive days into calendar months, in order. */
+export function groupDaysByMonth(days: readonly Date[]): MonthGroup[] {
+  const groups: MonthGroup[] = []
+  for (const day of days) {
+    const key = dayKey(day).slice(0, 7)
+    const last = groups.at(-1)
+    if (last?.key === key) last.days.push(day)
+    else groups.push({ key, days: [day] })
+  }
+  return groups
+}

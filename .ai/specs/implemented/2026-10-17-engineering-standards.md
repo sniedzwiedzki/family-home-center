@@ -33,7 +33,7 @@ Rules:
 - Depend on ports, not vendor SDKs: the assistant talks to an `AssistantPort`, so the model provider (Gemini by default) can change without touching callers.
 - Explicit over implicit: no hidden globals; wire dependencies visibly.
 - No speculative features: no RBAC, multi-tenant, queues or plugin systems unless a spec asks for them.
-- Kiosk constraints: the app runs unattended on a 2400 x 1600 tablet. It must survive network loss (show the last known data, retry with backoff), refresh data on its own, never leak timers or listeners, and not require keyboard or mouse.
+- Kiosk constraints: the app runs unattended on a 1600 x 2400 (portrait) tablet. It must survive network loss (show the last known data, retry with backoff), refresh data on its own, never leak timers or listeners, and not require keyboard or mouse.
 
 ## 3. Principles
 
@@ -71,7 +71,7 @@ Rules:
 - [ ] Errors, empty and offline states are handled and rendered with the shared components.
 - [ ] Timers, listeners and subscriptions are cleaned up (kiosk runs for days).
 - [ ] Behavior change ships with a test that fails on the old code; a bug fix ships a regression test.
-- [ ] `npm run lint` and `npm run build` pass; UI changes were checked in the browser at 2400 x 1600.
+- [ ] `npm run lint` and `npm run build` pass; UI changes were checked in the browser at 1600 x 2400 (portrait).
 
 ## 7. Follow-ups (done)
 

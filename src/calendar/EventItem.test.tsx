@@ -25,8 +25,8 @@ describe('EventItem', () => {
 
   it('uses the column color for the accent when there is one', () => {
     const colored = render(<EventItem entry={{ event: base, isContinuation: false }} color="#ff0000" />)
-    expect(colored.container.querySelector<HTMLElement>('.event')?.style.borderLeftColor).toBe('rgb(255, 0, 0)')
+    expect(colored.container.querySelector<HTMLElement>('.event')?.style.getPropertyValue('--event-color')).toBe('#ff0000')
     const plain = render(<EventItem entry={{ event: base, isContinuation: false }} color={null} />)
-    expect(plain.container.querySelector<HTMLElement>('.event')?.style.borderLeftColor).toBe('')
+    expect(plain.container.querySelector<HTMLElement>('.event')?.style.getPropertyValue('--event-color')).toBe('')
   })
 })

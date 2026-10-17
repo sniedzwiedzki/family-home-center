@@ -10,13 +10,11 @@ const body = (overrides: object = {}) => ({
     weather_code: [3, 61, null, 0],
     temperature_2m_max: [14.4, 11, 10, null],
     temperature_2m_min: [8.2, 6, 5, 4],
-    precipitation_probability_max: [10, null, 5, 0],
   },
   hourly: {
     time: ['2026-10-17T14:00', '2026-10-17T15:00', '2026-10-17T16:00', '2026-10-17T17:00'],
     weather_code: [3, null, 61],
     temperature_2m: [13.5, 13, null, 12],
-    precipitation_probability: [0, 10, 20],
   },
   ...overrides,
 })
@@ -41,22 +39,24 @@ describe('createOpenMeteoClient', () => {
   it('maps daily forecasts and skips days with missing essentials', async () => {
     const { days } = await createOpenMeteoClient(fetchReturning(body()), BASE_URL).getForecast(location)
     expect(days).toEqual([
-      { day: '2026-10-17', code: 3, tempMax: 14.4, tempMin: 8.2, precipitationChance: 10 },
-      { day: '2026-10-18', code: 61, tempMax: 11, tempMin: 6, precipitationChance: null },
+      { day: '2026-10-17', code: 3, tempMax: 14.4, tempMin: 8.2 },
+      { day: '2026-10-18', code: 61, tempMax: 11, tempMin: 6 },
     ])
   })
 
   it('maps hourly forecasts to local times and skips hours with missing essentials', async () => {
     const { hours } = await createOpenMeteoClient(fetchReturning(body()), BASE_URL).getForecast(location)
-    expect(hours).toEqual([{ time: new Date(2026, 9, 17, 14), code: 3, temp: 13.5, precipitationChance: 0 }])
+    expect(hours).toEqual([{ time: new Date(2026, 9, 17, 14), code: 3, temp: 13.5 }])
   })
 
-  it('treats values missing from short arrays as unknown', async () => {
+  it('skips hours whose values are missing from short arrays', async () => {
     const { hours } = await createOpenMeteoClient(
-      fetchReturning(body({ hourly: { time: ['2026-10-17T14:00'], weather_code: [0], temperature_2m: [10], precipitation_probability: [] } })),
+      fetchReturning(
+        body({ hourly: { time: ['2026-10-17T14:00', '2026-10-17T15:00'], weather_code: [0, 0], temperature_2m: [10] } }),
+      ),
       BASE_URL,
     ).getForecast(location)
-    expect(hours[0].precipitationChance).toBeNull()
+    expect(hours.map((hour) => hour.temp)).toEqual([10])
   })
 
   it('fails on an HTTP error', async () => {

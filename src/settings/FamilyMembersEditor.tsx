@@ -1,6 +1,6 @@
 import type { DraftMember, MemberErrors } from '../family/memberErrors'
 
-const PALETTE = ['#e5484d', '#3e63dd', '#30a46c', '#f5a524', '#8e4ec6', '#12a594']
+const PALETTE = ['#f4a3a8', '#9ec5f0', '#a8d8b9', '#f6d58f', '#c9b3e6', '#9fd8d2']
 
 interface FamilyMembersEditorProps {
   members: readonly DraftMember[]

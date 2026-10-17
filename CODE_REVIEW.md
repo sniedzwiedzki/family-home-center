@@ -28,7 +28,7 @@ Review rules for Family Home Center (React + TypeScript + Vite kiosk app). `om-c
 ### Kiosk reliability (unattended, runs for days)
 - Timers, intervals, listeners and subscriptions are cleaned up on unmount. (major)
 - Offline and API-failure states keep the last known data visible and retry with backoff. (major)
-- The UI works on a 2400 x 1600 display without keyboard or mouse; user-visible text is Polish.
+- The UI works on a 1600 x 2400 (portrait) display without keyboard or mouse; user-visible text is Polish.
 
 ### Code quality
 - No `any`, `@ts-ignore` without a reason, empty `catch`, dead or commented-out code, debug `console.log`, or unexplained magic numbers.

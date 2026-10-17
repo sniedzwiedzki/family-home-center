@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { forecastSlots, startOfHour } from './slots'
 import type { HourForecast } from './types'
 
-const hour = (day: number, h: number): HourForecast => ({ time: new Date(2026, 9, day, h), code: 0, temp: h, precipitationChance: null })
+const hour = (day: number, h: number): HourForecast => ({ time: new Date(2026, 9, day, h), code: 0, temp: h })
 
 describe('startOfHour', () => {
   it('drops minutes and seconds', () => {

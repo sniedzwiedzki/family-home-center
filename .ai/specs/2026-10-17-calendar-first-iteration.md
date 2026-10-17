@@ -5,7 +5,7 @@ Status: in progress (phases 1-3 and 6 done; 4-5 pending)
 
 ## Goal
 
-A kiosk calendar for a 2400 x 1600 tablet: endless scroll of day rows from Google Calendar, one column per family member plus a fixed "Other" column, weather in rows and in a bottom bar, a top bar with the clock and settings. Polish UI. Standards: `.ai/specs/implemented/2026-10-17-engineering-standards.md`; 100% unit coverage for new code.
+A kiosk calendar for a 1600 x 2400 (portrait) tablet: endless scroll of day rows from Google Calendar, one column per family member plus a fixed "Other" column, weather in rows and in a bottom bar, a top bar with the clock and settings. Polish UI. Standards: `.ai/specs/implemented/2026-10-17-engineering-standards.md`; 100% unit coverage for new code.
 
 ## Scope
 
@@ -49,7 +49,7 @@ Concept folders (created when first used): `src/calendar`, `src/family`, `src/we
 
 ## Phases
 
-1. **Foundation**: settings schema + storage, family members model, tag/column mapping helpers, Polish formatting, layout shell (top bar with clock and settings button, bottom bar, 2400 x 1600 kiosk CSS, remove starter template and `Backdrop`).
+1. **Foundation**: settings schema + storage, family members model, tag/column mapping helpers, Polish formatting, layout shell (top bar with clock and settings button, bottom bar, 1600 x 2400 portrait kiosk CSS, remove starter template and `Backdrop`).
 2. **Calendar view**: endless virtualised day rows, member columns + "Inne", multi-day expansion, today anchoring, mock calendar data behind `CalendarPort`.
 3. **Weather**: Open-Meteo client, day-row forecasts, bottom-bar 24h strip with hourly shift.
 4. **Google**: auth client (sign-in screen, silent renewal), calendar list, events read for the visible range.

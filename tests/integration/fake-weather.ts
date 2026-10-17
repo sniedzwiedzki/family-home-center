@@ -15,13 +15,11 @@ function buildForecast(today: Date) {
       weather_code: days.map(() => 0),
       temperature_2m_max: days.map(() => 20),
       temperature_2m_min: days.map(() => 10),
-      precipitation_probability_max: days.map(() => 30),
     },
     hourly: {
       time: hours,
       weather_code: hours.map(() => 0),
       temperature_2m: hours.map(() => 15),
-      precipitation_probability: hours.map(() => 0),
     },
   }
 }

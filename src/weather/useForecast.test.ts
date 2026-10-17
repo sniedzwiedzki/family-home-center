@@ -5,7 +5,7 @@ import { useForecast } from './useForecast'
 
 const warsaw: GeoLocation = { name: 'Warszawa', latitude: 52.23, longitude: 21.01 }
 const krakow: GeoLocation = { name: 'Kraków', latitude: 50.06, longitude: 19.94 }
-const forecast = (temp: number): Forecast => ({ days: [{ day: '2026-10-17', code: 0, tempMax: temp, tempMin: 0, precipitationChance: null }], hours: [] })
+const forecast = (temp: number): Forecast => ({ days: [{ day: '2026-10-17', code: 0, tempMax: temp, tempMin: 0 }], hours: [] })
 const MINUTE = 60_000
 
 beforeEach(() => vi.useFakeTimers())

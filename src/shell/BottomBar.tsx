@@ -19,12 +19,12 @@ export function BottomBar({ forecast }: { forecast: Forecast | null }) {
               {slot === null ? (
                 <span className="slot-missing">–</span>
               ) : (
-                <>
+                <span className="slot-weather">
                   <span className="slot-icon" title={describeWeather(slot.code).label}>
                     {describeWeather(slot.code).icon}
                   </span>
                   <span className="slot-temp">{`${Math.round(slot.temp)}°`}</span>
-                </>
+                </span>
               )}
             </li>
           ))}

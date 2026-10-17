@@ -59,3 +59,9 @@ jobs:
       - run: npm run test:integration
         env:
           AGENT_BROWSER_ARGS: --no-sandbox
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-screenshots
+          path: tests/integration/screenshots
+          if-no-files-found: ignore
