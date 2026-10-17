@@ -61,7 +61,7 @@ describe('app on the kiosk display', () => {
   it('renders the shell in Polish', async () => {
     expect(await agentBrowser('get', 'text', '.column-header[data-column="other"]')).toContain('Inne')
     expect(await agentBrowser('snapshot', '-i')).toContain('Ustawienia')
-    expect(await agentBrowser('get', 'text', '.is-today .day-weekday')).toMatch(/^(po|wt|śr|cz|pt|so|nd)$/)
+    expect((await agentBrowser('get', 'text', '.is-today .day-weekday')).trim()).toMatch(/^(po|wt|śr|cz|pt|so|nd)$/)
     expect(await evaluate<number>("document.querySelectorAll('.month-label').length")).toBeGreaterThanOrEqual(2)
     await screenshot('calendar')
   })
