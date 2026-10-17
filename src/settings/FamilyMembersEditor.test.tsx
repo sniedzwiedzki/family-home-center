@@ -40,7 +40,7 @@ describe('FamilyMembersEditor', () => {
     const onChange = vi.fn()
     render(<FamilyMembersEditor members={[]} errors={[]} onChange={onChange} />)
     fireEvent.click(screen.getByRole('button', { name: 'Dodaj osobę' }))
-    expect(onChange).toHaveBeenCalledWith([{ id: '00000000-0000-4000-8000-000000000001', name: '', tag: '', color: '#e5484d' }])
+    expect(onChange).toHaveBeenCalledWith([{ id: '00000000-0000-4000-8000-000000000001', name: '', tag: '', color: '#f4a3a8' }])
   })
 
   it('wraps around the palette', () => {
@@ -48,7 +48,7 @@ describe('FamilyMembersEditor', () => {
     const onChange = vi.fn()
     render(<FamilyMembersEditor members={many} errors={many.map(() => ({}))} onChange={onChange} />)
     fireEvent.click(screen.getByRole('button', { name: 'Dodaj osobę' }))
-    expect(onChange.mock.calls[0][0][6].color).toBe('#e5484d')
+    expect(onChange.mock.calls[0][0][6].color).toBe('#f4a3a8')
   })
 
   it('shows the errors of each member', () => {

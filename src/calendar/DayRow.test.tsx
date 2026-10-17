@@ -62,10 +62,22 @@ describe('DayRow', () => {
   })
 
   it('shows the forecast under the day label when there is one', () => {
-    const forecast: DayForecast = { day: '2026-10-17', code: 0, tempMax: 20, tempMin: 10, precipitationChance: null }
+    const forecast: DayForecast = { day: '2026-10-17', code: 0, tempMax: 20, tempMin: 10 }
     const withForecast = render(<DayRow day={day} isToday={false} columns={columns} members={members} entries={[]} forecast={forecast} />)
     expect(withForecast.container.querySelector('.day-label .day-weather')).toBeTruthy()
     const without = render(<DayRow day={day} isToday={false} columns={columns} members={members} entries={[]} />)
     expect(without.container.querySelector('.day-weather')).toBeNull()
+  })
+
+  it('marks a pinned copy and leaves out the day key so it cannot be mistaken for the real row', () => {
+    const { container } = render(<DayRow day={day} isToday pinned columns={columns} members={members} entries={[]} />)
+    const row = container.querySelector('.day-row')!
+    expect(row.classList.contains('is-pinned')).toBe(true)
+    expect(row.hasAttribute('data-day')).toBe(false)
+  })
+
+  it('is not pinned by default', () => {
+    const { container } = render(<DayRow day={day} isToday columns={columns} members={members} entries={[]} />)
+    expect(container.querySelector('.day-row')?.classList.contains('is-pinned')).toBe(false)
   })
 })

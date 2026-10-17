@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { FamilyMember } from '../family/familyMember'
 import { CalendarView } from './CalendarView'
@@ -17,6 +17,7 @@ interface FakeObserver {
 let observers: FakeObserver[]
 let scrollIntoView: ReturnType<typeof vi.fn>
 let scrollHeights: number[]
+let todayRect: DOMRect
 
 const today = new Date()
 const todayEvent: CalendarEvent = {
@@ -30,6 +31,9 @@ const noForecasts = new Map<string, DayForecast>()
 const port = (): CalendarPort => ({ listEvents: vi.fn(async () => [todayEvent]) })
 
 const rows = (container: HTMLElement) => container.querySelectorAll('.day-row')
+
+const rect = (top: number, bottom: number) =>
+  ({ top, bottom, height: bottom - top, left: 0, right: 0, width: 0, x: 0, y: top, toJSON: () => ({}) }) as DOMRect
 
 function intersect(target: Element | undefined, isIntersecting = true) {
   const observer = observers[0]
@@ -56,6 +60,13 @@ beforeEach(() => {
       }
     },
   )
+  todayRect = rect(100, 200)
+  vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+    if (this.matches('main')) return rect(0, 1000)
+    if (this.matches('.column-headers')) return rect(0, 50)
+    if (this.matches('.day-row.is-today:not(.is-pinned)')) return todayRect
+    return rect(0, 0)
+  })
   Object.defineProperty(HTMLElement.prototype, 'scrollHeight', { configurable: true, get: () => scrollHeights.shift() ?? 0 })
 })
 
@@ -67,7 +78,7 @@ afterEach(() => {
 describe('CalendarView', () => {
   it('renders sticky column headers and 61 day rows around today', async () => {
     const { container } = render(<CalendarView port={port()} members={members} forecasts={noForecasts} />)
-    expect([...container.querySelectorAll('.column-header')].map((h) => h.textContent)).toEqual(['Anna', 'Inne'])
+    expect([...container.querySelectorAll('.column-name')].map((h) => h.textContent)).toEqual(['Anna', 'Inne'])
     expect(rows(container)).toHaveLength(61)
     expect(await screen.findByText('Dzisiejsze')).toBeTruthy()
   })
@@ -131,11 +142,11 @@ describe('CalendarView', () => {
   })
 
   it('shows the forecast in the row of its day only', async () => {
-    const forecast: DayForecast = { day: dayKey(today), code: 0, tempMax: 20, tempMin: 10, precipitationChance: null }
+    const forecast: DayForecast = { day: dayKey(today), code: 0, tempMax: 20, tempMin: 10 }
     const { container } = render(<CalendarView port={port()} members={members} forecasts={new Map([[forecast.day, forecast]])} />)
     await screen.findByText('Dzisiejsze')
     expect(container.querySelectorAll('.day-weather')).toHaveLength(1)
-    expect(container.querySelector(`[data-day="${dayKey(today)}"] .day-weather`)?.textContent).toContain('20° / 10°')
+    expect(container.querySelector(`[data-day="${dayKey(today)}"] .day-weather`)?.textContent).toContain('20°/10°')
   })
 
   it('groups the days into month blocks with the month name as a label', async () => {
@@ -148,5 +159,78 @@ describe('CalendarView', () => {
       const first = new Date(`${block.getAttribute('data-month')}-01T12:00:00`)
       expect(block.querySelector('.month-label')?.textContent).toBe(formatMonthLabel(first))
     }
+  })
+
+  describe('today pinned to the edge of the scroll area', () => {
+    const renderCalendar = async () => {
+      const view = render(<CalendarView port={port()} members={members} forecasts={noForecasts} />)
+      await screen.findByText('Dzisiejsze')
+      return { ...view, main: view.container.querySelector('main')! }
+    }
+    const scrollTodayTo = (main: HTMLElement, top: number, bottom: number) => {
+      todayRect = rect(top, bottom)
+      act(() => {
+        fireEvent.scroll(main)
+      })
+    }
+
+    it('is not pinned while today is on screen', async () => {
+      const { container } = await renderCalendar()
+      expect(container.querySelector('.pin')).toBeNull()
+    })
+
+    it('pins a copy of today to the top once it has scrolled above the column headers', async () => {
+      const { container, main } = await renderCalendar()
+      scrollTodayTo(main, -500, -400)
+      const pinned = container.querySelector('.pin-top .day-row.is-pinned.is-today')!
+      expect(pinned).toBeTruthy()
+      expect(pinned.hasAttribute('data-day')).toBe(false)
+      expect(container.querySelector('.pin-bottom')).toBeNull()
+      expect(screen.getByRole('button', { name: 'Wróć do dzisiejszego dnia' })).toBeTruthy()
+    })
+
+    it('pins a copy of today to the bottom once it is below the visible area', async () => {
+      const { container, main } = await renderCalendar()
+      scrollTodayTo(main, 1500, 1600)
+      expect(container.querySelector('.pin-bottom .day-row.is-pinned.is-today')).toBeTruthy()
+      expect(container.querySelector('.pin-top')).toBeNull()
+    })
+
+    it('keeps the pinned copy showing the day events', async () => {
+      const { container, main } = await renderCalendar()
+      scrollTodayTo(main, -500, -400)
+      expect(container.querySelector('.pin-top .event-title')?.textContent).toBe('Dzisiejsze')
+    })
+
+    it('tolerates a few pixels of overlap at either edge', async () => {
+      const { container, main } = await renderCalendar()
+      scrollTodayTo(main, 47, 147)
+      expect(container.querySelector('.pin')).toBeNull()
+      scrollTodayTo(main, 900, 1003)
+      expect(container.querySelector('.pin')).toBeNull()
+    })
+
+    it('drops the pinned copy when today is back on screen', async () => {
+      const { container, main } = await renderCalendar()
+      scrollTodayTo(main, -500, -400)
+      scrollTodayTo(main, 100, 200)
+      expect(container.querySelector('.pin')).toBeNull()
+    })
+
+    it('scrolls smoothly back to today, starting at that day, when the pinned copy is clicked', async () => {
+      const { container, main } = await renderCalendar()
+      scrollTodayTo(main, -500, -400)
+      scrollIntoView.mockClear()
+      fireEvent.click(screen.getByRole('button', { name: 'Wróć do dzisiejszego dnia' }))
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start', behavior: 'smooth' })
+      expect(scrollIntoView.mock.contexts[0]).toBe(container.querySelector(`.day-row[data-day="${dayKey(today)}"]`))
+    })
+
+    it('stops listening for scrolls on unmount', async () => {
+      const { main, unmount } = await renderCalendar()
+      const remove = vi.spyOn(main, 'removeEventListener')
+      unmount()
+      expect(remove).toHaveBeenCalledWith('scroll', expect.any(Function))
+    })
   })
 })

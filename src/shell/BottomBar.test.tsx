@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Forecast } from '../weather/types'
 import { BottomBar } from './BottomBar'
 
-const hourly = (h: number, day = 17) => ({ time: new Date(2026, 9, day, h), code: 0, temp: h + 0.4, precipitationChance: null })
+const hourly = (h: number, day = 17) => ({ time: new Date(2026, 9, day, h), code: 0, temp: h + 0.4 })
 const forecast: Forecast = { days: [], hours: [hourly(14), hourly(16), hourly(20)] }
 
 beforeEach(() => {
@@ -40,5 +40,11 @@ describe('BottomBar', () => {
     act(() => vi.advanceTimersByTime(30 * 60_000))
     expect(slotTimes(container)[0]).toBe('15:00')
     expect(slotTimes(container)[1]).toBe('17:00')
+  })
+
+  it('puts the temperature next to the icon, in one row under the time', () => {
+    const { container } = render(<BottomBar forecast={forecast} />)
+    const weather = container.querySelector('.forecast-slot .slot-weather')!
+    expect([...weather.children].map((child) => child.className)).toEqual(['slot-icon', 'slot-temp'])
   })
 })

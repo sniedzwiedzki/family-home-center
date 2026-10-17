@@ -1,7 +1,7 @@
 # Pastel theme with a Tatra background
 
 Date: 2026-10-17
-Status: in progress (proposal, awaiting the user's reaction)
+Status: implemented
 
 ## Requirement (from the user)
 

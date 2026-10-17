@@ -149,7 +149,7 @@ describe('app on the kiosk display', () => {
       await clickButton('Zapisz')
       await agentBrowser('wait', SETTLE_MS)
 
-      expect(await evaluate<string[]>("[...document.querySelectorAll('.column-header')].map((h) => h.textContent)")).toEqual(['Anna', 'Inne'])
+      expect(await evaluate<string[]>("[...document.querySelectorAll('.column-name')].map((h) => h.textContent)")).toEqual(['Anna', 'Inne'])
       expect(await evaluate<number>("document.querySelectorAll('.day-cell:not([data-column=\"other\"]) .event').length")).toBeGreaterThan(0)
       expect(await evaluate<number>("document.querySelectorAll('.forecast-slot').length")).toBe(12)
       await screenshot('calendar-with-family-and-weather')

@@ -10,14 +10,12 @@ export interface DayForecast {
   code: number
   tempMax: number
   tempMin: number
-  precipitationChance: number | null
 }
 
 export interface HourForecast {
   time: Date
   code: number
   temp: number
-  precipitationChance: number | null
 }
 
 export interface Forecast {
