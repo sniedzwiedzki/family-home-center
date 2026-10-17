@@ -1,7 +1,7 @@
 # Engineering standards
 
 Date: 2026-10-17
-Status: active
+Status: implemented
 
 Adapted from `.ai/docs/engineering-standards.md` (written for another project, DevMentor: a Next.js monorepo with a database and API). Only the principles that fit this project are kept: a single-package React + TypeScript + Vite app that talks to external APIs (Google Calendar, weather, Gemini) from the browser and has no backend or database of its own.
 
@@ -73,8 +73,8 @@ Rules:
 - [ ] Behavior change ships with a test that fails on the old code; a bug fix ships a regression test.
 - [ ] `npm run lint` and `npm run build` pass; UI changes were checked in the browser at 2400 x 1600.
 
-## 7. Open follow-ups (not part of this change)
+## 7. Follow-ups (done)
 
-- `tsconfig.app.json` does not enable `"strict": true`; decide whether to turn it on (recommended) before the first feature code lands.
-- No test runner is configured; pick one (Vitest fits Vite) when the first pure-logic helper is written, so the regression-test rules can be followed.
-- `npm run typecheck` does not exist; `npm run build` runs `tsc -b`, which covers it.
+- `"strict": true` enabled in `tsconfig.app.json`.
+- Vitest added; run with `npm test`. Test files are named `*.test.ts(x)` next to the code they test.
+- There is no separate `npm run typecheck`; `npm run build` runs `tsc -b`, which covers it.

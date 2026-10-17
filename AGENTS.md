@@ -45,7 +45,7 @@ Adapted from Boris Cherny's Claude Code tips. They complement the rules above.
 
 ## Engineering standards
 
-The full standards (structure and naming, architecture, security, code quality, review checklist) are in `.ai/specs/2026-10-17-engineering-standards.md`. Read it before writing code. The essentials:
+The full standards (structure and naming, architecture, security, code quality, review checklist) are in `.ai/specs/implemented/2026-10-17-engineering-standards.md`. Read it before writing code. The essentials:
 
 - Concept folders under `src/` (`calendar`, `family`, `weather`, `assistant`, `settings`), created only when their first file is added.
 - Components render, hooks orchestrate, one client per external integration (the only place that calls `fetch`), pure helpers hold logic. Depend on ports, not vendor SDKs.
@@ -60,6 +60,7 @@ npm install
 npm run dev
 npm run build
 npm run lint
+npm test
 ```
 
-Run `npm run lint` and `npm run build` before reporting work as done.
+Run `npm run lint`, `npm test` and `npm run build` before reporting work as done.
