@@ -18,7 +18,8 @@
   z-index: 1;
   height: var(--header-height);
   padding-left: var(--month-width);
-  background: var(--background);
+  background: var(--glass);
+  backdrop-filter: blur(0.75rem);
 }
 
 .column-header {
@@ -46,7 +47,8 @@
   letter-spacing: 0.1em;
   text-align: center;
   text-transform: uppercase;
-  color: var(--soft);
+  color: #3a5068;
+  text-shadow: 0 0 0.5rem rgba(255, 255, 255, 0.95);
   writing-mode: vertical-rl;
   transform: rotate(180deg);
 }
@@ -56,18 +58,18 @@
   scroll-margin-top: var(--header-height);
   border-bottom: 1px solid var(--border);
   /* Weekday look; Saturday and Sunday override these variables. */
-  --day-tint: transparent;
+  --day-tint: var(--surface);
   --day-accent: var(--headline);
 }
 
 .day-row.is-saturday {
-  --day-tint: rgba(94, 155, 255, 0.09);
-  --day-accent: #8ab4ff;
+  --day-tint: rgba(196, 219, 247, 0.74);
+  --day-accent: #3f74b8;
 }
 
 .day-row.is-sunday {
-  --day-tint: rgba(255, 99, 99, 0.11);
-  --day-accent: #ff8a8a;
+  --day-tint: rgba(250, 206, 214, 0.74);
+  --day-accent: #c0475e;
 }
 
 .day-row {
@@ -75,15 +77,12 @@
 }
 
 .day-row.is-today {
-  background-color: color-mix(in srgb, var(--primary) 12%, transparent);
-  background-image: linear-gradient(var(--day-tint), var(--day-tint));
+  background: color-mix(in srgb, var(--primary) 16%, white);
   box-shadow: inset 0 0 0 0.1875rem var(--primary);
 }
 
 .day-row.is-pinned {
-  background-color: var(--background);
-  background-image: linear-gradient(color-mix(in srgb, var(--primary) 12%, transparent), color-mix(in srgb, var(--primary) 12%, transparent)), linear-gradient(var(--day-tint), var(--day-tint));
-  box-shadow: inset 0 0 0 0.1875rem var(--primary), 0 0 1.5rem rgba(0, 0, 0, 0.8);
+  box-shadow: inset 0 0 0 0.1875rem var(--primary), 0 0.5rem 1.5rem rgba(38, 54, 70, 0.3);
 }
 
 /* A zero-height sticky wrapper keeps today's row at the top or bottom edge of the scroll area without taking space. */
@@ -161,15 +160,15 @@
   gap: 0.5rem;
   max-width: 100%;
   padding: 0.25rem 0.625rem;
-  background: color-mix(in srgb, var(--event-color) 22%, #1a1919);
-  border: 0.0625rem solid color-mix(in srgb, var(--event-color) 60%, transparent);
+  background: color-mix(in srgb, var(--event-color) 42%, white);
+  border: 0.0625rem solid color-mix(in srgb, var(--event-color) 85%, white);
   border-radius: 0.625rem;
 }
 
 .event-time {
   flex: none;
   font-size: 0.8125rem;
-  color: color-mix(in srgb, var(--event-color) 55%, var(--headline));
+  color: color-mix(in srgb, var(--event-color) 30%, var(--headline));
 }
 
 .event-title {

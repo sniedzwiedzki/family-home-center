@@ -106,11 +106,11 @@ describe('app on the kiosk display', () => {
   it('shows the forecast in the day rows and in the 24h bottom bar once a location is set', async () => {
     const settings = {
       familyMembers: [
-        { id: 'm1', name: 'Anna', tag: 'anna', color: '#e5484d' },
-        { id: 'm2', name: 'Jan', tag: 'jan', color: '#3e63dd' },
-        { id: 'm3', name: 'Ola', tag: 'ola', color: '#30a46c' },
-        { id: 'm4', name: 'Tomek', tag: 'tomek', color: '#f5a524' },
-        { id: 'm5', name: 'Zosia', tag: 'zosia', color: '#8e4ec6' },
+        { id: 'm1', name: 'Anna', tag: 'anna', color: '#f4a3a8' },
+        { id: 'm2', name: 'Jan', tag: 'jan', color: '#9ec5f0' },
+        { id: 'm3', name: 'Ola', tag: 'ola', color: '#a8d8b9' },
+        { id: 'm4', name: 'Tomek', tag: 'tomek', color: '#f6d58f' },
+        { id: 'm5', name: 'Zosia', tag: 'zosia', color: '#c9b3e6' },
       ],
       calendars: { readIds: [], writeId: null },
       weather: { location: { name: 'Warszawa', latitude: 52.23, longitude: 21.01 } },

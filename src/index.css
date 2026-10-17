@@ -1,13 +1,15 @@
 :root {
-  --background: #141313;
-  --headline: #edf5cd;
-  --soft: #948d85;
-  --primary: #e5f520;
-  --primary-foreground: #1a1919;
-  --border: rgba(255, 255, 255, 0.1);
+  --background: #e9f0f7;
+  --headline: #263646;
+  --soft: #667b90;
+  --primary: #ec6f58;
+  --primary-foreground: #ffffff;
+  --border: rgba(38, 54, 70, 0.12);
+  --surface: rgba(255, 255, 255, 0.64);
+  --glass: rgba(255, 255, 255, 0.8);
   --radius: 8px;
   --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 * {
@@ -28,7 +30,7 @@ body {
 body {
   min-height: 100vh;
   min-height: 100svh;
-  background: var(--background);
+  background: var(--background) url('./assets/tatry.svg') center bottom / cover no-repeat fixed;
   color: var(--headline);
   font-family: Inter, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
