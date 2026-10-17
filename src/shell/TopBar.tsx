@@ -1,7 +1,7 @@
 import { formatClock } from '../shared/format'
 import { useNow } from './useNow'
 
-export function TopBar() {
+export function TopBar({ onOpenSettings }: { onOpenSettings: () => void }) {
   const now = useNow()
 
   return (
@@ -9,7 +9,7 @@ export function TopBar() {
       <time className="clock" dateTime={now.toISOString()}>
         {formatClock(now)}
       </time>
-      <button type="button" className="settings-button" aria-label="Ustawienia" disabled>
+      <button type="button" className="settings-button" aria-label="Ustawienia" onClick={onOpenSettings}>
         ⚙
       </button>
     </header>

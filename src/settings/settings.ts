@@ -3,6 +3,12 @@ import { familyMembersSchema } from '../family/familyMember'
 
 export const SETTINGS_STORAGE_KEY = 'fhc.settings.v1'
 
+export const geoLocationSchema = z.object({
+  name: z.string().trim().min(1),
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+})
+
 export const settingsSchema = z.object({
   familyMembers: familyMembersSchema,
   calendars: z.object({
@@ -10,13 +16,7 @@ export const settingsSchema = z.object({
     writeId: z.string().nullable(),
   }),
   weather: z.object({
-    location: z
-      .object({
-        name: z.string().min(1),
-        latitude: z.number().min(-90).max(90),
-        longitude: z.number().min(-180).max(180),
-      })
-      .nullable(),
+    location: geoLocationSchema.nullable(),
   }),
   pin: z.string().regex(/^\d{4,8}$/).nullable(),
 })
