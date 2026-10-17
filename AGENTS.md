@@ -43,6 +43,16 @@ Adapted from Boris Cherny's Claude Code tips. They complement the rules above.
 - **Use subagents and worktrees for independent work.** Offload research and unrelated tasks to subagents to keep the main context clean, and run parallel work in separate git worktrees. Never let parallel tasks edit the same files.
 - **Turn repetition into skills.** If a workflow is repeated more than once a day, make it a skill or command and commit it to the repo.
 
+## Engineering standards
+
+The full standards (structure and naming, architecture, security, code quality, review checklist) are in `.ai/specs/2026-10-17-engineering-standards.md`. Read it before writing code. The essentials:
+
+- Concept folders under `src/` (`calendar`, `family`, `weather`, `assistant`, `settings`), created only when their first file is added.
+- Components render, hooks orchestrate, one client per external integration (the only place that calls `fetch`), pure helpers hold logic. Depend on ports, not vendor SDKs.
+- Validate all external data and all AI assistant output with schemas; the assistant acts only through typed tools, and destructive actions need user confirmation. Secrets never go in the repo or in logs.
+- No `any`, no empty `catch`, no dead code, no magic numbers; keep diffs limited to the stated purpose.
+- The kiosk runs unattended: handle offline states, clean up timers and listeners.
+
 ## Project commands
 
 ```bash
