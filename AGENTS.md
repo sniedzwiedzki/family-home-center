@@ -32,6 +32,17 @@ Naming: `YYYY-MM-DD` is the creation date, `slug` is lowercase kebab-case (e.g. 
 7. **Follow naming.** Files in `specs/`, `runs/` and `lessons/` must use the `YYYY-MM-DD-slug.md` format. Files named `README.md` and `.gitkeep` are the only exceptions.
 8. **English only in the repo.** The user may write prompts in Polish, but everything in the repository (code, comments, commit messages, docs, specs, run logs, lessons) must be written in English. The only exception is the Polish UI text of the calendar app itself.
 
+## Working practices
+
+Adapted from Boris Cherny's Claude Code tips. They complement the rules above.
+
+- **Plan complex tasks first.** For anything multi-step or touching several areas, plan before editing (plan mode where available) and put the plan in the spec (rule 2). If the work goes sideways, stop and re-plan instead of pushing through. For risky plans, have a second agent review them before implementing.
+- **Verify, don't assume.** Prove every change works: run lint and build, and for UI changes run the dev server and check the feature in the browser (the kiosk target is 2400 x 1600). Report what you actually verified in the run log (rule 4). For bug reports or failing checks, reproduce first, then fix without waiting for step-by-step guidance.
+- **Be specific.** Resolve ambiguity in the spec before coding. After a mediocre fix, rewrite it the elegant way rather than layering patches on top.
+- **Learn from corrections.** When the user corrects you, write a lesson (rule 5) and, if it is a durable rule, add it to this file, so the mistake is not repeated.
+- **Use subagents and worktrees for independent work.** Offload research and unrelated tasks to subagents to keep the main context clean, and run parallel work in separate git worktrees. Never let parallel tasks edit the same files.
+- **Turn repetition into skills.** If a workflow is repeated more than once a day, make it a skill or command and commit it to the repo.
+
 ## Project commands
 
 ```bash
