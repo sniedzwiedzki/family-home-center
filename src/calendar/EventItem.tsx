@@ -10,7 +10,7 @@ function timeLabel({ event, isContinuation }: DayEntry): string {
 
 export function EventItem({ entry, color }: { entry: DayEntry; color: string | null }) {
   return (
-    <div className="event" style={color === null ? undefined : { borderLeftColor: color }}>
+    <div className="event" style={color === null ? undefined : ({ '--event-color': color } as React.CSSProperties)}>
       <span className="event-time">{timeLabel(entry)}</span>
       <span className="event-title">{stripTitleTags(entry.event.title)}</span>
     </div>

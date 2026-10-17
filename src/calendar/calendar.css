@@ -3,6 +3,8 @@
   --month-width: 2.75rem;
   --header-height: 4rem;
   overflow-y: auto;
+  /* The view keeps its place itself when days are prepended; the browser's own anchoring would double the correction. */
+  overflow-anchor: none;
 }
 
 .day-grid {
@@ -144,23 +146,30 @@
 
 .day-cell {
   display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
-  padding: 0.5rem;
+  flex-flow: row wrap;
+  align-content: flex-start;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.75rem 0.5rem;
 }
 
+/* A chip as wide as its text; chips sit side by side and wrap onto the next line only when the column is full. */
 .event {
-  display: flex;
-  flex-direction: column;
-  padding: 0.375rem 0.75rem;
-  background: rgba(255, 255, 255, 0.07);
-  border-left: 0.25rem solid var(--soft);
-  border-radius: 0.25rem;
+  --event-color: var(--soft);
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.625rem;
+  max-width: 100%;
+  padding: 0.375rem 1rem;
+  background: color-mix(in srgb, var(--event-color) 22%, #1a1919);
+  border: 0.0625rem solid color-mix(in srgb, var(--event-color) 60%, transparent);
+  border-radius: 0.875rem;
 }
 
 .event-time {
+  flex: none;
   font-size: 1rem;
-  color: var(--soft);
+  color: color-mix(in srgb, var(--event-color) 55%, var(--headline));
 }
 
 .event-title {
