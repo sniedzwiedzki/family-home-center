@@ -65,6 +65,7 @@ When Google is connected, the calendar shows and changes events in your real Goo
 | A Google account that owns or can edit the family calendars | Google Calendar |
 | A Google Cloud project with the **Google Calendar API** enabled | [console.cloud.google.com](https://console.cloud.google.com), APIs & Services, Library |
 | A configured **Google Auth platform** (app name, audience, your account as a test user, the two scopes) | Menu, Google Auth platform |
+| Branding details (home page, privacy policy link, authorized domain) so the app can be published | Menu, Google Auth platform, Branding |
 | An **OAuth client** of type "Web application" whose redirect URI is the OAuth Playground | Menu, Google Auth platform, Clients |
 | The **refresh token** from the OAuth 2.0 Playground | [developers.google.com/oauthplayground](https://developers.google.com/oauthplayground/) |
 | The three values typed into the app | Ustawienia, Google Calendar |
@@ -80,7 +81,16 @@ Menu names come from Google's documentation and pages checked on 2026-10-18; the
 5. **Add the scopes.** Menu, Google Auth platform, **Data Access**, **Add or Remove Scopes**, tick these two and Save:
    - `https://www.googleapis.com/auth/calendar.events` (view and edit events on all your calendars);
    - `https://www.googleapis.com/auth/calendar.calendarlist.readonly` (see the list of calendars you are subscribed to).
-6. **Publish the app, so the token does not expire after a week.** Menu, Google Auth platform, **Audience**, **Publish app**. Google's rule: while the publishing status is *Testing*, authorizations by test users, and refresh tokens, expire seven days after consent, so the kiosk would stop after a week. In production Google shows an "unverified app" warning during authorization (the Calendar scopes are expected to be marked sensitive on the Data Access page), which you click through once; for a private app no verification is needed and the cap is 100 users.
+6. **Publish the app, so the token does not expire after a week.** Google's rule: while the publishing status is *Testing*, authorizations by test users, and refresh tokens, expire seven days after consent, so the kiosk would stop after a week. To switch to production, the Console first requires the branding details (Publish app otherwise answers "Valid app name, support email, homepage URL and privacy policy URL are required for switching the app to external production mode"):
+   1. Menu, Google Auth platform, **Branding**. Fill *App name* and *User support email* (from the wizard), and under *App domain*:
+      - *Application home page*: `https://sniedzwiedzki.github.io/family-home-center/` (the app itself);
+      - *Application privacy policy link*: `https://sniedzwiedzki.github.io/family-home-center/privacy.html` (a page that is part of this app and is published with it; open it once to see that it loads);
+      - *Application terms of service link*: optional, leave empty.
+   2. Under *Authorized domains* add `sniedzwiedzki.github.io` (Google: add the authorized domain before the links, and every domain used in the project must be listed there). *Developer contact information*: your email. Save.
+   3. Menu, Google Auth platform, **Audience**, **Publish app**, confirm.
+
+   Google's documentation says a homepage "hosted on a verified domain you own" and domain verification in Search Console are requirements for **verification** (which a private app does not need), not for publishing; whether the Console accepts `sniedzwiedzki.github.io` as an authorized domain without such verification has not been tested. In production Google shows an "unverified app" warning during authorization (the Calendar scopes are expected to be marked sensitive on the Data Access page), which you click through once; the cap for an unverified app is 100 users.
+   **If the Console refuses this** (for example it rejects `github.io` as an authorized domain, or insists on domain verification), there are two ways out: stay in *Testing* and repeat point 8 every seven days (the app then shows "Token odświeżania wygasł lub został cofnięty." until you paste a new token), or give GitHub Pages your own domain, verify it in Search Console and use it in the branding fields.
 7. **Create the OAuth client.** Menu, Google Auth platform, **Clients**, **Create Client**, Application type **Web application**, a name (for example `kiosk`). Under **Authorized redirect URIs** click Add URI and enter exactly `https://developers.google.com/oauthplayground` (the Playground needs it to receive the authorization). *Authorized JavaScript origins* can stay empty. Leave "Use this client for an AI-powered agent" off. Create, then copy the **Client ID** and the **Client secret** (the Console shows the secret for a Web application client; if yours shows none, the refresh in the app will answer `invalid_client`).
 8. **Get the refresh token from the OAuth 2.0 Playground** ([developers.google.com/oauthplayground](https://developers.google.com/oauthplayground/)), on a computer:
    1. Click the gear icon (top right, "OAuth 2.0 configuration"). Tick **Use your own OAuth credentials** and paste the Client ID and the Client secret. Leave *Access type* on **Offline** and *Force prompt* on **Consent Screen** (the defaults). Close the panel.
@@ -114,6 +124,7 @@ The refresh token stops working when you revoke the app in your Google account, 
 | `access_denied` or "has not completed the Google verification process" in the Playground | the account is not a test user (point 4) |
 | `redirect_uri_mismatch` in the Playground | the redirect URI of the client is not exactly `https://developers.google.com/oauthplayground` (point 7) |
 | `Error 403: org_internal` or `admin_policy_enforced` | a Google Workspace administrator restricts the app; use a personal account |
+| "Valid app name, support email, homepage URL and privacy policy URL are required..." when publishing | the Branding page is incomplete: fill the home page and privacy policy links and the authorized domain (point 6) |
 
 ### Tests
 

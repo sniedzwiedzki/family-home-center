@@ -23,3 +23,8 @@ Connect the kiosk to Google Calendar so that nothing has to be renewed by a pers
 ## Testing
 
 Unit tests mock `fetch` and use fake credentials; the integration test runs the real app against a local fake Google server (token endpoint and Calendar API) with fake credentials. No real key is ever used in automation; the real connection is tried by hand from the README instructions.
+
+## Privacy policy page (added after the first real attempt)
+
+Publishing the Google app to production (needed so the refresh token does not expire after seven days) is refused by the Console until the Branding page has an app name, support email, application home page and privacy policy link. The app therefore ships a static privacy policy, `public/privacy.html` (English and Polish; served at `<site>/privacy.html`), that states which Google data is accessed (the two scopes), that it stays in the browser, that nothing is sold or shared, and that the Limited Use requirements are followed. The settings screen links to it ("Polityka prywatności") as the in-product privacy notice. Whether the Console accepts `sniedzwiedzki.github.io` as an authorized domain without Search Console verification is unknown; the README gives a fallback (stay in Testing and renew the token weekly, or use a custom domain).
+

@@ -39,6 +39,12 @@ export function GoogleSettingsEditor({ draft, check, onChange }: GoogleSettingsE
     <section className="settings-section" aria-labelledby="google-heading">
       <h3 id="google-heading">Google Calendar</h3>
       <p className="hint">Bez połączenia wydarzenia zapisują się tylko na tym tablecie. Instrukcja jest w README (sekcja Google Calendar integration).</p>
+      <p className="hint">
+        Dane z Google służą tylko do pokazywania i zmiany wydarzeń i zostają w tej przeglądarce.{' '}
+        <a href="./privacy.html" target="_blank" rel="noreferrer">
+          Polityka prywatności
+        </a>
+      </p>
       <div className="location-fields">
         <label>
           Identyfikator klienta
