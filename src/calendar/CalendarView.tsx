@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { FamilyMember } from '../family/familyMember'
-import type { DayForecast } from '../weather/types'
+import type { DayForecast, HourForecast } from '../weather/types'
 import { buildColumns, OTHER_COLUMN_ID } from './columns'
 import { ColumnHeaders } from './ColumnHeaders'
 import { addDays, dayKey, groupDaysByMonth, groupEventsByDay, startOfDay } from './days'
@@ -24,6 +24,7 @@ interface CalendarViewProps {
   port: CalendarPort
   members: readonly FamilyMember[]
   forecasts: ReadonlyMap<string, DayForecast>
+  hourForecasts: ReadonlyMap<number, HourForecast>
   /** A counter; every change reloads the events. */
   refreshSignal: number
 }
@@ -36,7 +37,7 @@ interface DayChoice {
 
 type Editor = { kind: 'new'; day: Date; columnId: string } | { kind: 'edit'; event: CalendarEvent }
 
-export function CalendarView({ port, members, forecasts, refreshSignal }: CalendarViewProps) {
+export function CalendarView({ port, members, forecasts, hourForecasts, refreshSignal }: CalendarViewProps) {
   const [anchor] = useState(() => startOfDay(new Date()))
   const today = useToday()
   const now = useClock()
@@ -148,7 +149,7 @@ export function CalendarView({ port, members, forecasts, refreshSignal }: Calend
       members={members}
       entries={entriesByDay.get(dayKey(day)) ?? []}
       forecast={forecasts.get(dayKey(day))}
-      expansion={pinned ? undefined : { expanded: dayKey(day) === expandedKey, now, onToggle: () => toggleDay(dayKey(day)) }}
+      expansion={pinned ? undefined : { expanded: dayKey(day) === expandedKey, now, hourForecasts, onToggle: () => toggleDay(dayKey(day)) }}
       onAddEvent={(addDay, columnId) => setEditor({ kind: 'new', day: addDay, columnId })}
       onEditEvent={(event) => setEditor({ kind: 'edit', event })}
     />

@@ -6,15 +6,15 @@ import type { DiscoveredCalendar } from './google/calendarList'
 import type { DayForecast, Forecast } from './weather/types'
 import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEY } from './settings/settings'
 
-const forecast: Forecast = { days: [{ day: '2026-10-17', code: 0, tempMax: 20, tempMin: 10 }], hours: [] }
+const forecast: Forecast = { days: [{ day: '2026-10-17', code: 0, tempMax: 20, tempMin: 10 }], hours: [{ time: new Date(2026, 9, 17, 8), code: 0, temp: 12 }] }
 const useForecast = vi.hoisted(() => vi.fn())
 const captured = vi.hoisted(() => ({ port: null as unknown, checkGoogle: null as unknown }))
 
 vi.mock('./weather/useForecast', () => ({ useForecast }))
 vi.mock('./calendar/CalendarView', () => ({
-  CalendarView: ({ port, members, forecasts, refreshSignal }: { port: unknown; members: { name: string }[]; forecasts: ReadonlyMap<string, DayForecast>; refreshSignal: number }) => {
+  CalendarView: ({ port, members, forecasts, hourForecasts, refreshSignal }: { port: unknown; members: { name: string }[]; forecasts: ReadonlyMap<string, DayForecast>; hourForecasts: ReadonlyMap<number, unknown>; refreshSignal: number }) => {
     captured.port = port
-    return <main data-testid='calendar' data-refresh={refreshSignal}>{`${members.map((m) => m.name).join(',')}|${[...forecasts.keys()].join(',')}`}</main>
+    return <main data-testid='calendar' data-refresh={refreshSignal} data-hours={[...hourForecasts.keys()].join(',')}>{`${members.map((m) => m.name).join(',')}|${[...forecasts.keys()].join(',')}`}</main>
   },
 }))
 vi.mock('./settings/SettingsDialog', () => ({
@@ -69,6 +69,7 @@ describe('App', () => {
     render(<App />)
     expect(useForecast).toHaveBeenCalledWith(expect.anything(), location, 0)
     expect(screen.getByTestId('calendar').textContent).toBe('|2026-10-17')
+    expect(screen.getByTestId('calendar').getAttribute('data-hours')).toBe(String(new Date(2026, 9, 17, 8).getTime()))
     expect(screen.getByTestId('bottom').textContent).toBe('forecast')
   })
 

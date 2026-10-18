@@ -5,6 +5,8 @@ import { columnIdsForEvent, type CalendarColumn } from './columns'
 import { hourRange, MINUTES_PER_HOUR, placeSpans, timedSpans } from './dayHours'
 import type { DayEntry } from './days'
 import { EventItem } from './EventItem'
+import { describeWeather } from '../weather/weatherCodes'
+import type { HourForecast } from '../weather/types'
 import type { CalendarEvent } from './types'
 
 interface HourBodyProps {
@@ -14,15 +16,19 @@ interface HourBodyProps {
   columns: readonly CalendarColumn[]
   members: readonly FamilyMember[]
   entries: readonly DayEntry[]
+  /** Forecast by hour start (ms); shown beside every second hour. */
+  hourForecasts: ReadonlyMap<number, HourForecast>
   onAddEvent: (day: Date, columnId: string) => void
   onEditEvent: (event: CalendarEvent) => void
 }
 
 const hoursFrom = (startHour: number, minute: number): number => minute / MINUTES_PER_HOUR - startHour
+const FORECAST_STEP_HOURS = 2
+
 const offset = (hours: number): string => `calc(var(--hour-height) * ${hours})`
 
 /** The hour grid of an expanded day: an hour axis and, per column, the events at the hours they take place. */
-export function HourBody({ day, now, columns, members, entries, onAddEvent, onEditEvent }: HourBodyProps) {
+export function HourBody({ day, now, columns, members, entries, hourForecasts, onAddEvent, onEditEvent }: HourBodyProps) {
   const spans = timedSpans(day, entries)
   const { startHour, endHour } = hourRange(spans)
   const placed = spans.map((span) => ({ span, columnIds: columnIdsForEvent(span.entry.event, members) }))
@@ -37,6 +43,17 @@ export function HourBody({ day, now, columns, members, entries, onAddEvent, onEd
             {startHour + index}:00
           </span>
         ))}
+        {Array.from({ length: endHour - startHour }, (_, index) => startHour + index)
+          .filter((hour) => hour % FORECAST_STEP_HOURS === 0)
+          .map((hour) => ({ hour, forecast: hourForecasts.get(new Date(day.getFullYear(), day.getMonth(), day.getDate(), hour).getTime()) }))
+          .map(({ hour, forecast }) =>
+            forecast === undefined ? null : (
+              <span key={hour} className="hour-weather" style={{ top: offset(hour - startHour) }} title={describeWeather(forecast.code).label}>
+                <span className="hour-weather-icon">{describeWeather(forecast.code).icon}</span>
+                {`${Math.round(forecast.temp)}°`}
+              </span>
+            ),
+          )}
       </div>
       {columns.map((column) => (
         <div

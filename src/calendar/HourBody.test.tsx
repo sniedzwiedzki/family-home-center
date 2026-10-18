@@ -2,6 +2,7 @@ import { fireEvent, render } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { FamilyMember } from '../family/familyMember'
 import { buildColumns } from './columns'
+import type { HourForecast } from '../weather/types'
 import type { DayEntry } from './days'
 import { HourBody } from './HourBody'
 
@@ -18,8 +19,9 @@ const entry = (id: string, title: string, start: Date, end: Date): DayEntry => (
   isContinuation: false,
 })
 
+let hourForecasts = new Map<number, HourForecast>()
 const renderBody = (entries: DayEntry[], now?: Date, handlers: { onAddEvent?: () => void; onEditEvent?: () => void } = {}) =>
-  render(<HourBody day={day} now={now} columns={columns} members={members} entries={entries} onAddEvent={handlers.onAddEvent ?? noop} onEditEvent={handlers.onEditEvent ?? noop} />)
+  render(<HourBody day={day} now={now} columns={columns} members={members} entries={entries} hourForecasts={hourForecasts} onAddEvent={handlers.onAddEvent ?? noop} onEditEvent={handlers.onEditEvent ?? noop} />)
 
 const labels = (container: HTMLElement) => [...container.querySelectorAll('.hour-label')].map((label) => label.textContent)
 const eventIn = (container: HTMLElement, columnId: string) => container.querySelector<HTMLElement>(`.hour-track[data-column="${columnId}"] .event`)!
@@ -91,5 +93,22 @@ describe('HourBody', () => {
     fireEvent.click(eventIn(container, 'a'))
     expect(onEditEvent).toHaveBeenCalledTimes(1)
     expect(onAddEvent).toHaveBeenCalledTimes(1)
+  })
+
+  describe('forecast', () => {
+    const forecastAt = (hour: number, code: number, temp: number): [number, HourForecast] => [at(hour).getTime(), { time: at(hour), code, temp }]
+    const shown = (container: HTMLElement) => [...container.querySelectorAll('.hour-weather')].map((node) => [node.textContent, node.getAttribute('title')])
+
+    it('shows icon and rounded temperature beside every second hour that has a forecast', () => {
+      hourForecasts = new Map([forecastAt(8, 0, 12.6), forecastAt(9, 3, 11), forecastAt(10, 3, -1.4)])
+      const { container } = renderBody([])
+      expect(shown(container)).toEqual([['☀️13°', 'Bezchmurnie'], ['☁️-1°', 'Pochmurno']])
+      expect(container.querySelector<HTMLElement>('.hour-weather')?.style.top).toBe('calc(var(--hour-height) * 1)')
+    })
+
+    it('shows nothing for hours without a forecast', () => {
+      hourForecasts = new Map()
+      expect(shown(renderBody([]).container)).toEqual([])
+    })
   })
 })

@@ -2,7 +2,7 @@ import type { FamilyMember } from '../family/familyMember'
 import { formatWeekday } from '../shared/format'
 import { columnIdsForEvent, type CalendarColumn } from './columns'
 import { dayKey, dayKind, type DayEntry } from './days'
-import type { DayForecast } from '../weather/types'
+import type { DayForecast, HourForecast } from '../weather/types'
 import { DayWeather } from '../weather/DayWeather'
 import { ChevronIcon } from '../shell/icons'
 import { isTimed } from './dayHours'
@@ -14,6 +14,7 @@ export interface DayExpansion {
   expanded: boolean
   /** Moves the now-line of an expanded today. */
   now: Date
+  hourForecasts: ReadonlyMap<number, HourForecast>
   onToggle: () => void
 }
 
@@ -89,6 +90,7 @@ export function DayRow({ day, isToday, pinned = false, columns, members, entries
           columns={columns}
           members={members}
           entries={entries}
+          hourForecasts={expansion.hourForecasts}
           onAddEvent={onAddEvent}
           onEditEvent={onEditEvent}
         />

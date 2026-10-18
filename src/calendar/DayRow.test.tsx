@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { FamilyMember } from '../family/familyMember'
 import { buildColumns } from './columns'
 import { DayRow } from './DayRow'
-import type { DayForecast } from '../weather/types'
+import type { DayForecast, HourForecast } from '../weather/types'
 import type { CalendarEvent } from './types'
 
 const members: FamilyMember[] = [
@@ -115,7 +115,7 @@ describe('DayRow', () => {
       isContinuation: false,
     })
     const now = new Date(2026, 9, 17, 10, 30)
-    const expansion = (expanded: boolean, onToggle: () => void = noop) => ({ expanded, now, onToggle })
+    const expansion = (expanded: boolean, onToggle: () => void = noop) => ({ expanded, now, hourForecasts: new Map<number, HourForecast>(), onToggle })
     const renderRow = (props: { expanded: boolean; isToday?: boolean; entries?: ReturnType<typeof entry>[]; onToggle?: () => void }) =>
       render(
         <DayRow

@@ -305,6 +305,23 @@ button.day-date {
   transform: translateY(-50%);
 }
 
+/* Under the hour label, at the right edge of the label column. */
+.hour-weather {
+  position: absolute;
+  right: 0.5rem;
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+  margin-top: 0.75rem;
+  font-size: 1rem;
+  line-height: 1.2;
+  color: var(--headline);
+}
+
+.hour-weather-icon {
+  font-size: 1.125rem;
+}
+
 .hour-labels .hour-label:first-child {
   transform: none;
 }
