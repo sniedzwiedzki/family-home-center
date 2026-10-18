@@ -10,18 +10,27 @@ function timeLabel({ event, isContinuation }: DayEntry): string {
   return `${formatClock(event.start)}–${formatClock(event.end)}`
 }
 
+/** CSS positions of an event drawn on the hour grid. */
+export interface EventPlacement {
+  top: string
+  height: string
+  left: string
+  width: string
+}
+
 interface EventItemProps {
   entry: DayEntry
   color: string | null
+  placement?: EventPlacement
   onEdit: (event: CalendarEvent) => void
 }
 
-export function EventItem({ entry, color, onEdit }: EventItemProps) {
+export function EventItem({ entry, color, placement, onEdit }: EventItemProps) {
   return (
     <button
       type="button"
-      className="event"
-      style={color === null ? undefined : ({ '--event-color': color } as CSSProperties)}
+      className={placement === undefined ? 'event' : 'event is-timed'}
+      style={{ ...(color === null ? {} : { '--event-color': color }), ...placement } as CSSProperties}
       onClick={(click) => {
         click.stopPropagation()
         onEdit(entry.event)

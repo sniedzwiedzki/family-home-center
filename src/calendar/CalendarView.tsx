@@ -3,7 +3,8 @@ import type { FamilyMember } from '../family/familyMember'
 import type { DayForecast } from '../weather/types'
 import { buildColumns, OTHER_COLUMN_ID } from './columns'
 import { ColumnHeaders } from './ColumnHeaders'
-import { dayKey, groupDaysByMonth, groupEventsByDay, startOfDay } from './days'
+import { addDays, dayKey, groupDaysByMonth, groupEventsByDay, startOfDay } from './days'
+import { isDayOver } from './dayHours'
 import { DayRow } from './DayRow'
 import { draftFromEvent, newDraft } from './eventDraft'
 import { EventDialog } from './EventDialog'
@@ -11,6 +12,7 @@ import { TODAY_PIN_LABEL, type TodayPosition } from './todayPin'
 import { MonthBlock } from './MonthBlock'
 import type { CalendarEvent, CalendarEventInput, CalendarPort, RecurrenceScope } from './types'
 import { useCalendarEvents } from './useCalendarEvents'
+import { useClock } from './useClock'
 import { useDayWindow } from './useDayWindow'
 import { useToday } from './useToday'
 import './calendar.css'
@@ -26,11 +28,18 @@ interface CalendarViewProps {
   refreshSignal: number
 }
 
+/** The day the user expanded or collapsed (`null`: none expanded). It only holds on the day it was chosen. */
+interface DayChoice {
+  day: string | null
+  madeOn: string
+}
+
 type Editor = { kind: 'new'; day: Date; columnId: string } | { kind: 'edit'; event: CalendarEvent }
 
 export function CalendarView({ port, members, forecasts, refreshSignal }: CalendarViewProps) {
   const [anchor] = useState(() => startOfDay(new Date()))
   const today = useToday()
+  const now = useClock()
   const { range, days, before, extendBefore, extendAfter } = useDayWindow(anchor)
   const { events, hasError, reload } = useCalendarEvents(port, range, refreshSignal)
   const [editor, setEditor] = useState<Editor | null>(null)
@@ -44,10 +53,20 @@ export function CalendarView({ port, members, forecasts, refreshSignal }: Calend
   const topAnchor = useRef<{ element: Element; top: number } | null>(null)
   const [todayPosition, setTodayPosition] = useState<TodayPosition>('visible')
   const todayKey = dayKey(today)
+  const [choice, setChoice] = useState<DayChoice | null>(null)
+  const [homeTarget, setHomeTarget] = useState<{ day: string } | null>(null)
+  // Today stays expanded until its hours and events are over, then the next day takes over.
+  const defaultExpanded = isDayOver(now, entriesByDay.get(todayKey) ?? []) ? dayKey(addDays(today, 1)) : todayKey
+  const expandedKey = choice !== null && choice.madeOn === todayKey ? choice.day : defaultExpanded
 
   useLayoutEffect(() => {
     containerRef.current!.querySelector(`[data-day="${dayKey(anchor)}"]`)!.scrollIntoView({ block: 'start' })
   }, [anchor])
+
+  useLayoutEffect(() => {
+    if (homeTarget === null) return
+    containerRef.current!.querySelector(`.day-row[data-day="${homeTarget.day}"]`)!.scrollIntoView({ block: 'start', behavior: 'smooth' })
+  }, [homeTarget])
 
   useLayoutEffect(() => {
     if (topAnchor.current === null) return
@@ -95,10 +114,16 @@ export function CalendarView({ port, members, forecasts, refreshSignal }: Calend
     updateTodayPosition()
     container.addEventListener('scroll', updateTodayPosition, { passive: true })
     return () => container.removeEventListener('scroll', updateTodayPosition)
-  }, [todayKey])
+  }, [todayKey, expandedKey])
 
   const scrollToToday = () =>
     containerRef.current!.querySelector(`.day-row[data-day="${todayKey}"]`)!.scrollIntoView({ block: 'start', behavior: 'smooth' })
+
+  const toggleDay = (key: string) => setChoice({ day: expandedKey === key ? null : key, madeOn: todayKey })
+  const goHome = () => {
+    setChoice(null)
+    setHomeTarget({ day: defaultExpanded })
+  }
 
   const closeEditor = () => setEditor(null)
   const saveEvent = async (current: Editor, input: CalendarEventInput) => {
@@ -123,6 +148,7 @@ export function CalendarView({ port, members, forecasts, refreshSignal }: Calend
       members={members}
       entries={entriesByDay.get(dayKey(day)) ?? []}
       forecast={forecasts.get(dayKey(day))}
+      expansion={pinned ? undefined : { expanded: dayKey(day) === expandedKey, now, onToggle: () => toggleDay(dayKey(day)) }}
       onAddEvent={(addDay, columnId) => setEditor({ kind: 'new', day: addDay, columnId })}
       onEditEvent={(event) => setEditor({ kind: 'edit', event })}
     />
@@ -155,7 +181,7 @@ export function CalendarView({ port, members, forecasts, refreshSignal }: Calend
   return (
     <>
       <main className="calendar" ref={containerRef} style={{ '--column-count': columns.length } as React.CSSProperties}>
-        <ColumnHeaders columns={columns} />
+        <ColumnHeaders columns={columns} onHome={goHome} />
         {hasError && (
           <p className="calendar-error" role="alert">
             Nie udało się pobrać wydarzeń.

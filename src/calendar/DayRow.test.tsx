@@ -108,4 +108,70 @@ describe('DayRow', () => {
     expect(onEditEvent.mock.calls[0][0].id).toBe('1')
     expect(onAddEvent).not.toHaveBeenCalled()
   })
+
+  describe('expansion', () => {
+    const timed = (id: string, title: string, from: number, to: number) => ({
+      event: { id, title, allDay: false, start: new Date(2026, 9, 17, from), end: new Date(2026, 9, 17, to) },
+      isContinuation: false,
+    })
+    const now = new Date(2026, 9, 17, 10, 30)
+    const expansion = (expanded: boolean, onToggle: () => void = noop) => ({ expanded, now, onToggle })
+    const renderRow = (props: { expanded: boolean; isToday?: boolean; entries?: ReturnType<typeof entry>[]; onToggle?: () => void }) =>
+      render(
+        <DayRow
+          day={day}
+          isToday={props.isToday ?? false}
+          columns={columns}
+          members={members}
+          entries={props.entries ?? []}
+          expansion={expansion(props.expanded, props.onToggle)}
+          onAddEvent={noop}
+          onEditEvent={noop}
+        />,
+      )
+
+    it('makes the date a button that reports its toggling and tells whether the day is expanded', () => {
+      const onToggle = vi.fn()
+      const collapsed = renderRow({ expanded: false, onToggle })
+      const button = collapsed.container.querySelector('button.day-date')!
+      expect(button.getAttribute('aria-expanded')).toBe('false')
+      expect(button.textContent).toBe('17so')
+      fireEvent.click(button)
+      expect(onToggle).toHaveBeenCalledTimes(1)
+      expect(collapsed.container.querySelector('.hour-body')).toBeNull()
+      expect(collapsed.container.querySelector('.day-row')?.classList.contains('is-expanded')).toBe(false)
+      const expanded = renderRow({ expanded: true })
+      expect(expanded.container.querySelector('button.day-date')?.getAttribute('aria-expanded')).toBe('true')
+    })
+
+    it('keeps the date a plain element without expansion', () => {
+      const { container } = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday={false} columns={columns} members={members} entries={[]} />)
+      expect(container.querySelector('button')).toBeNull()
+      expect(container.querySelector('.day-date')?.textContent).toBe('17so')
+    })
+
+    it('shows timed events on the hour grid and all-day events and continuations above it', () => {
+      const entries = [
+        entry('1', 'Cały dzień #anna'),
+        { event: { ...event('2', 'Wielodniowe #anna'), allDay: false }, isContinuation: true },
+        timed('3', 'Trening #anna', 9, 10),
+      ]
+      const { container } = renderRow({ expanded: true, entries })
+      expect(container.querySelector('.day-row')?.classList.contains('is-expanded')).toBe(true)
+      const head = [...container.querySelectorAll('.day-row > .day-cell .event-title')].map((node) => node.textContent)
+      expect(head).toEqual(['Cały dzień', 'Wielodniowe'])
+      const grid = [...container.querySelectorAll('.hour-body .event-title')].map((node) => node.textContent)
+      expect(grid).toEqual(['Trening'])
+    })
+
+    it('shows the timed events in the compact row when collapsed', () => {
+      const { container } = renderRow({ expanded: false, entries: [timed('3', 'Trening #anna', 9, 10)] })
+      expect(container.querySelector('.day-row > .day-cell .event-title')?.textContent).toBe('Trening')
+    })
+
+    it('draws the now-line only when the row is today', () => {
+      expect(renderRow({ expanded: true, isToday: true }).container.querySelector('.now-line')).toBeTruthy()
+      expect(renderRow({ expanded: true }).container.querySelector('.now-line')).toBeNull()
+    })
+  })
 })

@@ -46,7 +46,12 @@ function intersect(target: Element | undefined, isIntersecting = true) {
   act(() => observer.callback([{ target, isIntersecting } as IntersectionObserverEntry], observer as unknown as IntersectionObserver))
 }
 
+const atTime = (hour: number, minute = 0) => new Date(today.getFullYear(), today.getMonth(), today.getDate(), hour, minute)
+
 beforeEach(() => {
+  // Only Date is faked, so the events load as usual; the hour view depends on the time of day.
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(atTime(12))
   observers = []
   rowTops = []
   scrollIntoView = vi.fn()
@@ -80,6 +85,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.useRealTimers()
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
@@ -421,5 +427,115 @@ describe('CalendarView', () => {
     expect(await screen.findByText('Nowe')).toBeTruthy()
     expect(screen.queryByText('Dzisiejsze')).toBeNull()
     expect(listEvents).toHaveBeenCalledTimes(2)
+  })
+
+  describe('hour view of one expanded day', () => {
+    const tomorrow = addDays(today, 1)
+    const dayAfter = addDays(today, 2)
+    const rowOf = (container: HTMLElement, day: Date) => container.querySelector(`.day-row[data-day="${dayKey(day)}"]`)!
+    const expandedDays = (container: HTMLElement) =>
+      [...container.querySelectorAll('.day-row.is-expanded')].map((row) => row.getAttribute('data-day'))
+    const toggle = (container: HTMLElement, day: Date) => fireEvent.click(rowOf(container, day).querySelector('button.day-date')!)
+    const renderAt = async (time: Date, listEvents: CalendarEvent[] = [todayEvent]) => {
+      vi.setSystemTime(time)
+      const view = render(<CalendarView port={portOf(vi.fn(async () => listEvents))} members={members} refreshSignal={0} forecasts={noForecasts} />)
+      await screen.findByText(listEvents[0].title.replace(' #anna', ''))
+      return view
+    }
+
+    it('expands today by default and draws its event on the hour grid with the now-line', async () => {
+      const { container } = await renderAt(atTime(12))
+      expect(expandedDays(container)).toEqual([dayKey(today)])
+      expect(rowOf(container, today).querySelector('.hour-track[data-column="a"] .event.is-timed .event-title')?.textContent).toBe('Dzisiejsze')
+      expect(rowOf(container, today).querySelector('.now-line')).toBeTruthy()
+      expect(rowOf(container, tomorrow).querySelector('.hour-body')).toBeNull()
+    })
+
+    it('expands the next day once nothing is left of today after 20:00', async () => {
+      const { container } = await renderAt(atTime(20, 5))
+      expect(expandedDays(container)).toEqual([dayKey(tomorrow)])
+    })
+
+    it('keeps today expanded after 20:00 while an evening event is still going on', async () => {
+      const evening: CalendarEvent = { ...todayEvent, id: 'evening', title: 'Wieczorem #anna', start: atTime(21), end: atTime(22) }
+      const { container } = await renderAt(atTime(20, 30), [evening])
+      expect(expandedDays(container)).toEqual([dayKey(today)])
+      expect(rowOf(container, today).querySelectorAll('.hour-label')).toHaveLength(15)
+    })
+
+    it('expands the clicked day, collapsing the one that was open', async () => {
+      const { container } = await renderAt(atTime(12))
+      toggle(container, tomorrow)
+      expect(expandedDays(container)).toEqual([dayKey(tomorrow)])
+      toggle(container, dayAfter)
+      expect(expandedDays(container)).toEqual([dayKey(dayAfter)])
+    })
+
+    it('collapses the open day when its date is clicked, and expands it again on the next click', async () => {
+      const { container } = await renderAt(atTime(12))
+      toggle(container, today)
+      expect(expandedDays(container)).toEqual([])
+      expect(rowOf(container, today).querySelector('.day-date')?.getAttribute('aria-expanded')).toBe('false')
+      expect(rowOf(container, today).querySelector('.day-cell[data-column="a"] .event-title')?.textContent).toBe('Dzisiejsze')
+      toggle(container, today)
+      expect(expandedDays(container)).toEqual([dayKey(today)])
+    })
+
+    it('forgets the choice when the next day begins', async () => {
+      vi.useRealTimers()
+      vi.useFakeTimers()
+      vi.setSystemTime(atTime(23, 30))
+      const { container } = render(<CalendarView port={port()} members={members} refreshSignal={0} forecasts={noForecasts} />)
+      await act(() => vi.advanceTimersByTimeAsync(0))
+      toggle(container, addDays(today, 2))
+      expect(expandedDays(container)).toEqual([dayKey(addDays(today, 2))])
+      // Step by step, as in real time: each tick of the clock is rendered before the next one is scheduled.
+      for (let step = 0; step < 7; step++) await act(() => vi.advanceTimersByTimeAsync(5 * 60_000))
+      expect(expandedDays(container)).toEqual([dayKey(tomorrow)])
+    })
+
+    it('does not offer expanding on the pinned copy of today', async () => {
+      const { container, ...view } = await renderAt(atTime(12))
+      todayRect = rect(-500, -400)
+      act(() => {
+        fireEvent.scroll(container.querySelector('main')!)
+      })
+      expect(container.querySelector('.pin-top button.day-date')).toBeNull()
+      expect(container.querySelector('.pin-top .hour-body')).toBeNull()
+      view.unmount()
+    })
+
+    describe('the home button', () => {
+      const home = () => screen.getByRole('button', { name: 'Wróć do widoku początkowego' })
+
+      it('restores today as the only expanded day and scrolls to it', async () => {
+        const { container } = await renderAt(atTime(12))
+        toggle(container, dayAfter)
+        scrollIntoView.mockClear()
+        fireEvent.click(home())
+        expect(expandedDays(container)).toEqual([dayKey(today)])
+        expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start', behavior: 'smooth' })
+        expect(scrollIntoView.mock.contexts[0]).toBe(rowOf(container, today))
+      })
+
+      it('also restores the default after today was collapsed, and scrolls again on a second press', async () => {
+        const { container } = await renderAt(atTime(12))
+        toggle(container, today)
+        fireEvent.click(home())
+        expect(expandedDays(container)).toEqual([dayKey(today)])
+        scrollIntoView.mockClear()
+        fireEvent.click(home())
+        expect(scrollIntoView).toHaveBeenCalledTimes(1)
+      })
+
+      it('goes to the next day when that one is the default', async () => {
+        const { container } = await renderAt(atTime(21))
+        toggle(container, today)
+        scrollIntoView.mockClear()
+        fireEvent.click(home())
+        expect(expandedDays(container)).toEqual([dayKey(tomorrow)])
+        expect(scrollIntoView.mock.contexts[0]).toBe(rowOf(container, tomorrow))
+      })
+    })
   })
 })
