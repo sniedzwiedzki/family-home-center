@@ -16,15 +16,13 @@ interface HourBodyProps {
   columns: readonly CalendarColumn[]
   members: readonly FamilyMember[]
   entries: readonly DayEntry[]
-  /** Forecast by hour start (ms); shown beside every second hour. */
+  /** Forecast by hour start (ms); shown left of each hour. */
   hourForecasts: ReadonlyMap<number, HourForecast>
   onAddEvent: (day: Date, columnId: string) => void
   onEditEvent: (event: CalendarEvent) => void
 }
 
 const hoursFrom = (startHour: number, minute: number): number => minute / MINUTES_PER_HOUR - startHour
-const FORECAST_STEP_HOURS = 2
-
 const offset = (hours: number): string => `calc(var(--hour-height) * ${hours})`
 
 /** The hour grid of an expanded day: an hour axis and, per column, the events at the hours they take place. */
@@ -39,16 +37,15 @@ export function HourBody({ day, now, columns, members, entries, hourForecasts, o
     <div className="hour-body day-grid" style={{ '--hours': endHour - startHour } as CSSProperties}>
       <div className="hour-labels">
         {Array.from({ length: endHour - startHour }, (_, index) => (
-          <span key={index} className="hour-label" style={{ top: offset(index) }}>
+          <span key={index} className={index === 0 ? 'hour-label is-first' : 'hour-label'} style={{ top: offset(index) }}>
             {startHour + index}:00
           </span>
         ))}
         {Array.from({ length: endHour - startHour }, (_, index) => startHour + index)
-          .filter((hour) => hour % FORECAST_STEP_HOURS === 0)
           .map((hour) => ({ hour, forecast: hourForecasts.get(new Date(day.getFullYear(), day.getMonth(), day.getDate(), hour).getTime()) }))
           .map(({ hour, forecast }) =>
             forecast === undefined ? null : (
-              <span key={hour} className="hour-weather" style={{ top: offset(hour - startHour) }} title={describeWeather(forecast.code).label}>
+              <span key={hour} className={hour === startHour ? 'hour-weather is-first' : 'hour-weather'} style={{ top: offset(hour - startHour) }} title={describeWeather(forecast.code).label}>
                 <span className="hour-weather-icon">{describeWeather(forecast.code).icon}</span>
                 {`${Math.round(forecast.temp)}°`}
               </span>

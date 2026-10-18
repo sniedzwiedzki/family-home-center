@@ -452,13 +452,13 @@ describe('CalendarView', () => {
       expect(rowOf(container, tomorrow).querySelector('.hour-body')).toBeNull()
     })
 
-    it('shows the forecast of every second hour of the expanded day only', async () => {
+    it('shows the forecast of every hour of the expanded day only', async () => {
       const at = (hour: number) => new Date(today.getFullYear(), today.getMonth(), today.getDate(), hour)
       const hours = new Map([8, 9, 10].map((hour) => [at(hour).getTime(), { time: at(hour), code: 0, temp: hour + 0.4 }]))
       vi.setSystemTime(atTime(12))
       const { container } = render(<CalendarView port={port()} members={members} refreshSignal={0} forecasts={noForecasts} hourForecasts={hours} />)
       await screen.findByText('Dzisiejsze')
-      expect([...container.querySelectorAll('.hour-weather')].map((node) => node.textContent)).toEqual(['☀️8°', '☀️10°'])
+      expect([...container.querySelectorAll('.hour-weather')].map((node) => node.textContent)).toEqual(['☀️8°', '☀️9°', '☀️10°'])
     })
 
     it('expands the next day once nothing is left of today after 20:00', async () => {

@@ -99,11 +99,18 @@ describe('HourBody', () => {
     const forecastAt = (hour: number, code: number, temp: number): [number, HourForecast] => [at(hour).getTime(), { time: at(hour), code, temp }]
     const shown = (container: HTMLElement) => [...container.querySelectorAll('.hour-weather')].map((node) => [node.textContent, node.getAttribute('title')])
 
-    it('shows icon and rounded temperature beside every second hour that has a forecast', () => {
+    it('shows icon and rounded temperature for every hour that has a forecast', () => {
       hourForecasts = new Map([forecastAt(8, 0, 12.6), forecastAt(9, 3, 11), forecastAt(10, 3, -1.4)])
       const { container } = renderBody([])
-      expect(shown(container)).toEqual([['☀️13°', 'Bezchmurnie'], ['☁️-1°', 'Pochmurno']])
+      expect(shown(container)).toEqual([['☀️13°', 'Bezchmurnie'], ['☁️11°', 'Pochmurno'], ['☁️-1°', 'Pochmurno']])
       expect(container.querySelector<HTMLElement>('.hour-weather')?.style.top).toBe('calc(var(--hour-height) * 1)')
+    })
+
+    it('sets the forecast of the first hour apart like its label, which sits below the line', () => {
+      hourForecasts = new Map([forecastAt(7, 0, 5), forecastAt(8, 0, 6)])
+      const { container } = renderBody([])
+      expect([...container.querySelectorAll('.hour-weather')].map((node) => node.classList.contains('is-first'))).toEqual([true, false])
+      expect([...container.querySelectorAll('.hour-label')].slice(0, 2).map((node) => node.classList.contains('is-first'))).toEqual([true, false])
     })
 
     it('shows nothing for hours without a forecast', () => {
