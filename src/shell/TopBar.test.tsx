@@ -19,17 +19,15 @@ describe('TopBar', () => {
   it('has the settings button on the right and reports clicks', () => {
     const onOpenSettings = vi.fn()
     const { container } = render(<TopBar onOpenSettings={onOpenSettings} onRefresh={vi.fn()} />)
-    expect(container.querySelector('header > :last-child')?.className).toBe('top-bar-actions')
-    expect(container.querySelector('.top-bar-actions > :last-child')?.getAttribute('aria-label')).toBe('Ustawienia')
+    expect(container.querySelector('header > :last-child')?.getAttribute('aria-label')).toBe('Ustawienia')
     fireEvent.click(screen.getByRole('button', { name: 'Ustawienia' }))
     expect(onOpenSettings).toHaveBeenCalledTimes(1)
   })
 
-  it('has a refresh button next to the settings button that reports clicks', () => {
+  it('has the refresh button on the left and reports clicks', () => {
     const onRefresh = vi.fn()
     const { container } = render(<TopBar onOpenSettings={vi.fn()} onRefresh={onRefresh} />)
-    const actions = container.querySelector('.top-bar-actions')!
-    expect([...actions.children].map((child) => child.getAttribute('aria-label'))).toEqual(['Odśwież', 'Ustawienia'])
+    expect(container.querySelector('header > :first-child')?.getAttribute('aria-label')).toBe('Odśwież')
     fireEvent.click(screen.getByRole('button', { name: 'Odśwież' }))
     expect(onRefresh).toHaveBeenCalledTimes(1)
   })
