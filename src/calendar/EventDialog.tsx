@@ -1,7 +1,8 @@
 import { useState, type CSSProperties, type FormEvent, type KeyboardEvent } from 'react'
 import type { FamilyMember } from '../family/familyMember'
+import { describeFailure } from '../shared/userFacingError'
 import { draftToInput, type DraftErrors, type EventDraft } from './eventDraft'
-import type { CalendarEvent, CalendarEventInput } from './types'
+import type { CalendarEvent, CalendarEventInput, RecurrenceScope } from './types'
 import './eventDialog.css'
 
 const SAVE_ERROR = 'Nie udało się zapisać wydarzenia'
@@ -14,8 +15,8 @@ interface EventDialogProps {
   /** Present when editing; its other hidden properties survive the save. */
   existing?: CalendarEvent
   onSave: (input: CalendarEventInput) => Promise<void>
-  /** Present when editing; deleting needs a second tap. */
-  onDelete?: () => Promise<void>
+  /** Present when editing; deleting needs a second tap, and for a recurring event a choice of what to delete. */
+  onDelete?: (scope: RecurrenceScope) => Promise<void>
   onClose: () => void
 }
 
@@ -41,22 +42,20 @@ export function EventDialog({ heading, initial, members, existing, onSave, onDel
       await onSave(result.input)
     } catch (error) {
       console.error('Could not save the event', error)
-      setFailure(SAVE_ERROR)
+      setFailure(describeFailure(error, SAVE_ERROR))
     }
   }
 
-  const remove = async () => {
-    if (!isConfirmingDelete) {
-      setIsConfirmingDelete(true)
-      return
-    }
+  const remove = async (scope: RecurrenceScope) => {
     try {
-      await onDelete!()
+      await onDelete!(scope)
     } catch (error) {
       console.error('Could not delete the event', error)
-      setFailure(DELETE_ERROR)
+      setFailure(describeFailure(error, DELETE_ERROR))
     }
   }
+
+  const isRecurring = existing?.recurringEventId !== undefined
 
   const closeOnEscape = (event: KeyboardEvent) => {
     if (event.key === 'Escape') onClose()
@@ -66,6 +65,7 @@ export function EventDialog({ heading, initial, members, existing, onSave, onDel
     <div className="event-dialog-backdrop" role="dialog" aria-modal="true" aria-label={heading} onKeyDown={closeOnEscape}>
       <form className="event-dialog" onSubmit={submit} noValidate>
         <h2>{heading}</h2>
+        {isRecurring && <p className="hint">To wydarzenie cykliczne. Zmiany dotyczą tylko tego wystąpienia.</p>}
 
         <label>
           Tytuł
@@ -154,9 +154,24 @@ export function EventDialog({ heading, initial, members, existing, onSave, onDel
           <button type="button" onClick={onClose}>
             Anuluj
           </button>
-          {onDelete !== undefined && (
-            <button type="button" className="danger" onClick={remove}>
-              {isConfirmingDelete ? 'Na pewno usunąć?' : 'Usuń'}
+          {onDelete !== undefined && !isConfirmingDelete && (
+            <button type="button" className="danger" onClick={() => setIsConfirmingDelete(true)}>
+              Usuń
+            </button>
+          )}
+          {onDelete !== undefined && isConfirmingDelete && isRecurring && (
+            <>
+              <button type="button" className="danger" onClick={() => remove('occurrence')}>
+                Usuń to wystąpienie
+              </button>
+              <button type="button" className="danger" onClick={() => remove('series')}>
+                Usuń całą serię
+              </button>
+            </>
+          )}
+          {onDelete !== undefined && isConfirmingDelete && !isRecurring && (
+            <button type="button" className="danger" onClick={() => remove('occurrence')}>
+              Na pewno usunąć?
             </button>
           )}
         </div>

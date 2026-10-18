@@ -115,3 +115,36 @@
   height: 6rem;
   font-size: 2.25rem;
 }
+
+.settings-overlay .calendar-choices {
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.settings-overlay .calendar-choices li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.settings-overlay .calendar-choices label {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--headline);
+}
+
+.settings-overlay .hint {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  color: var(--soft);
+}
+
+.settings-overlay .calendar-choices input {
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+}

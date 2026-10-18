@@ -47,8 +47,8 @@ export function createLocalCalendar(storage: EventStorage): CalendarPort {
       writeEvents(storage, events.map((stored) => (stored.id === event.id ? event : stored)))
     },
 
-    deleteEvent: async (id: string) => {
-      writeEvents(storage, readEvents(storage).filter((event) => event.id !== id))
+    deleteEvent: async (target: CalendarEvent) => {
+      writeEvents(storage, readEvents(storage).filter((event) => event.id !== target.id))
     },
   }
 }

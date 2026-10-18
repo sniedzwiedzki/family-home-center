@@ -3,7 +3,8 @@ import { DEFAULT_SETTINGS, loadSettings, saveSettings, SETTINGS_STORAGE_KEY, typ
 
 const valid: Settings = {
   familyMembers: [{ id: 'a', name: 'Anna', tag: 'anna', color: '#ff0000' }],
-  calendars: { readIds: ['primary'], writeId: 'primary' },
+  calendars: { readIds: ['primary'], writeId: 'primary', known: [{ id: 'primary', name: 'Ja', canWrite: true }] },
+  google: { clientId: 'fake-client', clientSecret: 'fake-secret', refreshToken: 'fake-refresh' },
   weather: { location: { name: 'Warszawa', latitude: 52.23, longitude: 21.01 } },
   pin: '1234',
 }
@@ -19,6 +20,21 @@ describe('loadSettings', () => {
 
   it('returns stored valid settings', () => {
     expect(loadSettings(storageWith(JSON.stringify(valid)))).toEqual(valid)
+  })
+
+  it('still loads settings saved before the Google fields existed', () => {
+    const { google: _google, calendars, ...older } = valid
+    const stored = { ...older, calendars: { readIds: calendars.readIds, writeId: calendars.writeId } }
+    expect(loadSettings(storageWith(JSON.stringify(stored)))).toEqual({
+      ...older,
+      google: null,
+      calendars: { readIds: ['primary'], writeId: 'primary', known: [] },
+    })
+  })
+
+  it('rejects Google credentials with an empty value', () => {
+    const broken = { ...valid, google: { clientId: 'x', clientSecret: ' ', refreshToken: 'y' } }
+    expect(loadSettings(storageWith(JSON.stringify(broken)))).toEqual(DEFAULT_SETTINGS)
   })
 
   it('falls back to defaults when the shape is invalid', () => {

@@ -1,7 +1,7 @@
 # Calendar first iteration
 
 Date: 2026-10-17
-Status: in progress (phases 1-3 and 6 done; 5 done on local storage, see `2026-10-17-event-editor.md`; 4 pending)
+Status: implemented (phases 1-6); the Google part still needs its first real-account test
 
 ## Goal
 
@@ -52,8 +52,8 @@ Concept folders (created when first used): `src/calendar`, `src/family`, `src/we
 1. **Foundation**: settings schema + storage, family members model, tag/column mapping helpers, Polish formatting, layout shell (top bar with clock and settings button, bottom bar, 1600 x 2400 portrait kiosk CSS, remove starter template and `Backdrop`).
 2. **Calendar view**: endless virtualised day rows, member columns + "Inne", multi-day expansion, today anchoring, mock calendar data behind `CalendarPort`.
 3. **Weather**: Open-Meteo client, day-row forecasts, bottom-bar 24h strip with hourly shift.
-4. **Google**: auth client (sign-in screen, silent renewal), calendar list, events read for the visible range.
-5. **Editing**: event dialog (add/edit/delete, tag read/write) done on local storage; the recurring-scope choice comes with the Google client.
+4. **Google**: done as `.ai/specs/2026-10-18-google-calendar-refresh-token.md` (refresh token instead of a sign-in popup, calendar list, read and write, recurring deletes); real-account check pending.
+5. **Editing**: event dialog (add/edit/delete, tag read/write) works on local storage and on Google; editing a recurring event changes only that occurrence, deleting offers occurrence or series.
 6. **Settings UI**: PIN lock, family members (name, tag, colour), weather location (city search or coordinates). Done. Google login/logout and calendar selection (read + default write) move to phase 4, where the Google client exists.
 
 Each phase ships as its own PR with unit tests at 100% and an integration test (agent-browser) for the visible behaviour.

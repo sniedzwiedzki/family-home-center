@@ -57,7 +57,7 @@ describe('createLocalCalendar', () => {
     const calendar = createLocalCalendar(window.localStorage)
     const event = await calendar.createEvent(input('Do usunięcia', 10))
     await calendar.createEvent(input('Zostaje', 11))
-    await calendar.deleteEvent(event.id)
+    await calendar.deleteEvent(event, 'occurrence')
     expect((await calendar.listEvents(range(1, 31))).map((e) => e.title)).toEqual(['Zostaje'])
   })
 
