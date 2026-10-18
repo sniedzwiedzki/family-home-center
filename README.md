@@ -17,11 +17,13 @@ A big calendar with events, actions, tasks and more. The first iteration covers 
 - The settings button (in the top bar) opens the settings.
 
 - Each date row shows the weather forecast for that day (only for days where a forecast is available).
+- **Refresh**: events reload every 5 minutes and when the internet comes back, the forecast every 30 minutes (a minute after a failure); the ↻ button next to the settings does both on demand, and the screen keeps the old data until the new arrives.
 
 ### Top bar
 
 - Sticky at the top of the view.
-- Current time in the center (bold), settings button on the right; the AI assistant button (planned) goes on the left.
+- Current time in the center (bold); on the right a refresh button (↻) and the settings button (⚙); the AI assistant button (planned) goes on the left.
+- The refresh button reloads the calendar events and the weather forecast right away; the icon spins briefly after a tap.
 
 ### AI voice assistant (planned, after the first iteration)
 
@@ -102,7 +104,7 @@ Menu names come from Google's documentation and pages checked on 2026-10-18; the
 
 ### How it behaves
 
-- **Reading**: the visible range of days is read from every ticked calendar, expanded into single occurrences (`singleEvents=true`), and reloaded every 5 minutes and when the browser comes back online. A failure keeps the events on screen and shows "Nie udało się pobrać wydarzeń."
+- **Reading**: the visible range of days is read from every ticked calendar, expanded into single occurrences (`singleEvents=true`), and reloaded every 5 minutes, when the browser comes back online and when the ↻ button is pressed. A failure keeps the events on screen and shows "Nie udało się pobrać wydarzeń."
 - **Writing**: new events go to the "Zapisuj tutaj" calendar. Editing reads the event, changes only title, description, time and people, and writes it back whole, so attendees, reminders and other fields set in Google stay untouched.
 - **People**: stored in the event's private extended property `fhcTags` (comma separated tags); `#tag` in the title is read too.
 - **Recurring events**: editing one changes only that occurrence. Deleting asks "Usuń to wystąpienie" or "Usuń całą serię". Editing a whole series, or "this and following", is not built: do that in Google Calendar.

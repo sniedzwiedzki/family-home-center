@@ -38,12 +38,29 @@
   font-variant-numeric: tabular-nums;
 }
 
-.settings-button {
+.top-bar-actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
   justify-self: end;
+}
+
+.settings-button,
+.refresh-button {
   font-size: 1.625rem;
   color: inherit;
   background: none;
   border: 0;
+}
+
+.refresh-button.is-spinning {
+  animation: refresh-spin 0.8s ease-in-out;
+}
+
+@keyframes refresh-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .forecast-empty {

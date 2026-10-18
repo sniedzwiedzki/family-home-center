@@ -22,15 +22,17 @@ interface CalendarViewProps {
   port: CalendarPort
   members: readonly FamilyMember[]
   forecasts: ReadonlyMap<string, DayForecast>
+  /** A counter; every change reloads the events. */
+  refreshSignal: number
 }
 
 type Editor = { kind: 'new'; day: Date; columnId: string } | { kind: 'edit'; event: CalendarEvent }
 
-export function CalendarView({ port, members, forecasts }: CalendarViewProps) {
+export function CalendarView({ port, members, forecasts, refreshSignal }: CalendarViewProps) {
   const [anchor] = useState(() => startOfDay(new Date()))
   const today = useToday()
   const { range, days, before, extendBefore, extendAfter } = useDayWindow(anchor)
-  const { events, hasError, reload } = useCalendarEvents(port, range)
+  const { events, hasError, reload } = useCalendarEvents(port, range, refreshSignal)
   const [editor, setEditor] = useState<Editor | null>(null)
   const columns = useMemo(() => buildColumns(members), [members])
   const entriesByDay = useMemo(() => groupEventsByDay(events), [events])

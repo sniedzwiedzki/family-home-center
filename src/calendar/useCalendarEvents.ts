@@ -11,19 +11,22 @@ function missingChunks(wanted: DateRange, loaded: DateRange | null): DateRange[]
   return chunks
 }
 
-export function useCalendarEvents(port: CalendarPort, range: DateRange) {
+/** `refreshSignal` is a counter: every change reloads everything from the port, like a manual refresh. */
+export function useCalendarEvents(port: CalendarPort, range: DateRange, refreshSignal = 0) {
   const [events, setEvents] = useState<ReadonlyMap<string, CalendarEvent>>(new Map())
   const [hasError, setHasError] = useState(false)
   const [version, setVersion] = useState(0)
   const loaded = useRef<DateRange | null>(null)
   const lastPort = useRef(port)
+  const lastSignal = useRef(refreshSignal)
   const fromTime = range.from.getTime()
   const toTime = range.to.getTime()
 
   useEffect(() => {
-    if (lastPort.current !== port) {
-      // A different source (for example Google instead of local storage): what was loaded belongs to the old one.
+    if (lastPort.current !== port || lastSignal.current !== refreshSignal) {
+      // A different source (for example Google instead of local storage) or a manual refresh: start from scratch.
       lastPort.current = port
+      lastSignal.current = refreshSignal
       loaded.current = null
     }
     const wanted = { from: new Date(fromTime), to: new Date(toTime) }
@@ -51,7 +54,7 @@ export function useCalendarEvents(port: CalendarPort, range: DateRange) {
     return () => {
       cancelled = true
     }
-  }, [port, fromTime, toTime, version])
+  }, [port, fromTime, toTime, version, refreshSignal])
 
   /** Forgets everything loaded and fetches the visible range again, e.g. after an event was saved or deleted. */
   const reload = useCallback(() => {
