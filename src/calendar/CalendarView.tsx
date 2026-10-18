@@ -35,7 +35,7 @@ interface DayChoice {
   madeOn: string
 }
 
-type Editor = { kind: 'new'; day: Date; columnId: string } | { kind: 'edit'; event: CalendarEvent }
+type Editor = { kind: 'new'; day: Date; columnId: string; hour?: number } | { kind: 'edit'; event: CalendarEvent }
 
 export function CalendarView({ port, members, forecasts, hourForecasts, refreshSignal }: CalendarViewProps) {
   const [anchor] = useState(() => startOfDay(new Date()))
@@ -150,7 +150,7 @@ export function CalendarView({ port, members, forecasts, hourForecasts, refreshS
       entries={entriesByDay.get(dayKey(day)) ?? []}
       forecast={forecasts.get(dayKey(day))}
       expansion={pinned ? undefined : { expanded: dayKey(day) === expandedKey, now, hourForecasts, onToggle: () => toggleDay(dayKey(day)) }}
-      onAddEvent={(addDay, columnId) => setEditor({ kind: 'new', day: addDay, columnId })}
+      onAddEvent={(addDay, columnId, hour) => setEditor({ kind: 'new', day: addDay, columnId, hour })}
       onEditEvent={(event) => setEditor({ kind: 'edit', event })}
     />
   )
@@ -168,7 +168,7 @@ export function CalendarView({ port, members, forecasts, hourForecasts, refreshS
       heading={editor.kind === 'new' ? 'Nowe wydarzenie' : 'Edytuj wydarzenie'}
       initial={
         editor.kind === 'new'
-          ? newDraft(editor.day, editor.columnId === OTHER_COLUMN_ID ? [] : [editor.columnId])
+          ? newDraft(editor.day, editor.columnId === OTHER_COLUMN_ID ? [] : [editor.columnId], editor.hour)
           : draftFromEvent(editor.event, members)
       }
       members={members}

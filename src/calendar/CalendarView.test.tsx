@@ -452,6 +452,15 @@ describe('CalendarView', () => {
       expect(rowOf(container, tomorrow).querySelector('.hour-body')).toBeNull()
     })
 
+    it('opens the new-event dialog at the hour that was clicked in the hour view', async () => {
+      const { container } = await renderAt(atTime(12))
+      const track = rowOf(container, today).querySelector<HTMLElement>('.hour-track[data-column="a"]')!
+      vi.spyOn(track, 'getBoundingClientRect').mockReturnValue({ top: 0, height: 1300 } as DOMRect)
+      fireEvent.click(track, { clientY: 750 })
+      expect((screen.getByLabelText('Od') as HTMLInputElement).value).toBe('14:00')
+      expect((screen.getByLabelText('Do') as HTMLInputElement).value).toBe('15:00')
+    })
+
     it('shows the forecast of every hour of the expanded day only', async () => {
       const at = (hour: number) => new Date(today.getFullYear(), today.getMonth(), today.getDate(), hour)
       const hours = new Map([8, 9, 10].map((hour) => [at(hour).getTime(), { time: at(hour), code: 0, temp: hour + 0.4 }]))

@@ -30,7 +30,11 @@ const DEFAULT_END_TIME = '10:00'
 const pad = (value: number) => String(value).padStart(2, '0')
 const timeKey = (date: Date) => `${pad(date.getHours())}:${pad(date.getMinutes())}`
 
-export function newDraft(day: Date, memberIds: string[]): EventDraft {
+const LAST_HOUR = 23
+const LAST_END_TIME = '23:59'
+
+/** A new event on the day, by default 09:00-10:00; `startHour` (a click on the hour grid) makes it that hour. */
+export function newDraft(day: Date, memberIds: string[], startHour?: number): EventDraft {
   return {
     title: '',
     description: '',
@@ -38,8 +42,8 @@ export function newDraft(day: Date, memberIds: string[]): EventDraft {
     allDay: false,
     startDate: dayKey(day),
     endDate: dayKey(day),
-    startTime: DEFAULT_START_TIME,
-    endTime: DEFAULT_END_TIME,
+    startTime: startHour === undefined ? DEFAULT_START_TIME : `${pad(startHour)}:00`,
+    endTime: startHour === undefined ? DEFAULT_END_TIME : startHour >= LAST_HOUR ? LAST_END_TIME : `${pad(startHour + 1)}:00`,
   }
 }
 

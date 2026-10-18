@@ -153,6 +153,28 @@ describe('app on the kiosk display', () => {
     expect(Math.abs(await evaluate<number>(`document.querySelector('.day-row[data-day="${defaultKey}"]').getBoundingClientRect().top - document.querySelector('.column-headers').getBoundingClientRect().bottom`))).toBeLessThan(4)
   })
 
+  it('starts a new event at the hour that was clicked in the hour view', async () => {
+    const clickHour = (hour: number) =>
+      agentBrowser(
+        'eval',
+        `(() => {
+          const track = document.querySelector('.day-row.is-expanded .hour-track')
+          const rect = track.getBoundingClientRect()
+          const hours = Number(getComputedStyle(track.parentElement).getPropertyValue('--hours'))
+          const first = Number(document.querySelector('.day-row.is-expanded .hour-label').textContent.split(':')[0])
+          track.dispatchEvent(new MouseEvent('click', { bubbles: true, clientY: rect.top + ((${hour} - first + 0.5) / hours) * rect.height }))
+        })()`,
+      )
+    const timeField = (label: string) =>
+      evaluate<string>(
+        `[...document.querySelectorAll('label')].find((l) => l.textContent.trim() === ${JSON.stringify(label)}).querySelector('input').value`,
+      )
+
+    await clickHour(15)
+    expect(await timeField('Od')).toBe('15:00')
+    expect(await timeField('Do')).toBe('16:00')
+  })
+
   it('loads more days when scrolling to the top', async () => {
     const countRows = "document.querySelectorAll('.day-row').length"
     const before = await evaluate<number>(countRows)
