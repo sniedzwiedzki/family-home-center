@@ -314,4 +314,14 @@ describe('app on the kiosk display', () => {
       await agentBrowser('eval', 'localStorage.clear()')
     }
   })
+
+  it('serves the privacy policy page that the Google consent screen links to', async () => {
+    const response = await fetch(`${inject('appUrl')}/privacy.html`)
+    const page = await response.text()
+    expect(response.ok).toBe(true)
+    expect(page).toContain('Family Home Center: privacy policy')
+    expect(page).toContain('Family Home Center: polityka prywatności')
+    expect(page).toContain('calendar.events')
+    expect(page).toContain('Limited Use')
+  })
 })

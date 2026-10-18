@@ -35,6 +35,14 @@ describe('GoogleSettingsEditor', () => {
     expect(button('Odłącz Google').disabled).toBe(true)
   })
 
+  it('tells where the Google data goes and links to the privacy policy page that ships with the app', () => {
+    show(EMPTY_GOOGLE_DRAFT)
+    expect(screen.getByText(/zostają w tej przeglądarce/)).toBeTruthy()
+    const link = screen.getByRole('link', { name: 'Polityka prywatności' })
+    expect(link.getAttribute('href')).toBe('./privacy.html')
+    expect(link.getAttribute('target')).toBe('_blank')
+  })
+
   it('lets the user type the three values', () => {
     show(EMPTY_GOOGLE_DRAFT)
     fireEvent.change(input('Identyfikator klienta'), { target: { value: 'id' } })
