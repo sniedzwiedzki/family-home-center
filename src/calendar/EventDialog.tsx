@@ -79,7 +79,7 @@ export function EventDialog({ heading, initial, members, existing, onSave, onDel
 
         <label>
           Opis
-          <textarea rows={2} value={draft.description} onChange={(event) => change({ description: event.target.value })} />
+          <textarea rows={6} value={draft.description} onChange={(event) => change({ description: event.target.value })} />
         </label>
 
         <fieldset className="people">

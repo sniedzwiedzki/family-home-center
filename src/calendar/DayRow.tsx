@@ -28,7 +28,7 @@ interface DayRowProps {
   forecast?: DayForecast
   /** Left out, the day is compact and cannot be expanded: the pinned copy of today. */
   expansion?: DayExpansion
-  onAddEvent: (day: Date, columnId: string) => void
+  onAddEvent: (day: Date, columnId: string, hour?: number) => void
   onEditEvent: (event: CalendarEvent) => void
 }
 

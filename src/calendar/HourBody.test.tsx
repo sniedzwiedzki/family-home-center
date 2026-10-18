@@ -88,11 +88,36 @@ describe('HourBody', () => {
     const onAddEvent = vi.fn()
     const onEditEvent = vi.fn()
     const { container } = renderBody([entry('1', 'Trening #anna', at(9), at(10))], undefined, { onAddEvent, onEditEvent })
-    fireEvent.click(container.querySelector('.hour-track[data-column="j"]')!)
-    expect(onAddEvent).toHaveBeenCalledWith(day, 'j')
+    const track = container.querySelector<HTMLElement>('.hour-track[data-column="j"]')!
+    vi.spyOn(track, 'getBoundingClientRect').mockReturnValue({ top: 0, height: 1300 } as DOMRect)
+    fireEvent.click(track, { clientY: 250 })
+    expect(onAddEvent).toHaveBeenCalledWith(day, 'j', 9)
     fireEvent.click(eventIn(container, 'a'))
     expect(onEditEvent).toHaveBeenCalledTimes(1)
     expect(onAddEvent).toHaveBeenCalledTimes(1)
+  })
+
+  describe('clicking a track', () => {
+    // A 1300 px tall track from y = 100: 13 hours of 100 px, 7:00 to 20:00.
+    const clickAt = (clientY: number) => {
+      const onAddEvent = vi.fn()
+      const { container } = renderBody([], undefined, { onAddEvent })
+      const track = container.querySelector<HTMLElement>('.hour-track[data-column="a"]')!
+      vi.spyOn(track, 'getBoundingClientRect').mockReturnValue({ top: 100, height: 1300 } as DOMRect)
+      fireEvent.click(track, { clientY })
+      return onAddEvent
+    }
+
+    it('reports the hour under the click', () => {
+      expect(clickAt(130)).toHaveBeenCalledWith(day, 'a', 7)
+      expect(clickAt(100 + 3 * 100 + 50)).toHaveBeenCalledWith(day, 'a', 10)
+      expect(clickAt(1399)).toHaveBeenCalledWith(day, 'a', 19)
+    })
+
+    it('stays inside the shown hours', () => {
+      expect(clickAt(50)).toHaveBeenCalledWith(day, 'a', 7)
+      expect(clickAt(1400)).toHaveBeenCalledWith(day, 'a', 19)
+    })
   })
 
   describe('forecast', () => {

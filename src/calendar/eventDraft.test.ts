@@ -42,6 +42,17 @@ describe('newDraft', () => {
   })
 })
 
+describe('newDraft from a clicked hour', () => {
+  it('lasts one hour from the clicked hour', () => {
+    expect(newDraft(new Date(2026, 9, 5), [], 14)).toMatchObject({ startTime: '14:00', endTime: '15:00' })
+    expect(newDraft(new Date(2026, 9, 5), [], 7)).toMatchObject({ startTime: '07:00', endTime: '08:00' })
+  })
+
+  it('ends at 23:59 when the clicked hour is the last of the day', () => {
+    expect(newDraft(new Date(2026, 9, 5), [], 23)).toMatchObject({ startTime: '23:00', endTime: '23:59' })
+  })
+})
+
 describe('draftFromEvent', () => {
   const timed: CalendarEvent = {
     id: 'e',

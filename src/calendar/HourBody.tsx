@@ -18,7 +18,8 @@ interface HourBodyProps {
   entries: readonly DayEntry[]
   /** Forecast by hour start (ms); shown left of each hour. */
   hourForecasts: ReadonlyMap<number, HourForecast>
-  onAddEvent: (day: Date, columnId: string) => void
+  /** `hour` is the whole hour that was clicked. */
+  onAddEvent: (day: Date, columnId: string, hour: number) => void
   onEditEvent: (event: CalendarEvent) => void
 }
 
@@ -59,7 +60,9 @@ export function HourBody({ day, now, columns, members, entries, hourForecasts, o
           data-column={column.id}
           onClick={(click) => {
             click.stopPropagation()
-            onAddEvent(day, column.id)
+            const { top, height } = click.currentTarget.getBoundingClientRect()
+            const hour = startHour + Math.floor(((click.clientY - top) / height) * (endHour - startHour))
+            onAddEvent(day, column.id, Math.min(Math.max(hour, startHour), endHour - 1))
           }}
         >
           {placeSpans(placed.filter(({ columnIds }) => columnIds.includes(column.id)).map(({ span }) => span)).map((span) => (
