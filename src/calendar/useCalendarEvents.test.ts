@@ -107,6 +107,16 @@ describe('useCalendarEvents', () => {
     expect(listEvents).toHaveBeenLastCalledWith(range(10, 20))
   })
 
+  it('loads everything again when the refresh signal changes', async () => {
+    const listEvents = vi.fn<CalendarPort['listEvents']>().mockResolvedValueOnce([event('old')]).mockResolvedValueOnce([event('new')])
+    const port = portOf(listEvents)
+    const { result, rerender } = renderHook(({ signal }) => useCalendarEvents(port, range(10, 20), signal), { initialProps: { signal: 0 } })
+    await waitFor(() => expect(result.current.events.map((e) => e.id)).toEqual(['old']))
+    rerender({ signal: 1 })
+    await waitFor(() => expect(result.current.events.map((e) => e.id)).toEqual(['new']))
+    expect(listEvents).toHaveBeenLastCalledWith(range(10, 20))
+  })
+
   describe('automatic refresh', () => {
     afterEach(() => vi.useRealTimers())
 

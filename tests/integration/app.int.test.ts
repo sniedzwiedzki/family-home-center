@@ -324,4 +324,34 @@ describe('app on the kiosk display', () => {
     expect(page).toContain('calendar.events')
     expect(page).toContain('Limited Use')
   })
+
+  it('refreshes the calendar on demand with the refresh button', async () => {
+    const titlesIn = (column: string) =>
+      evaluate<string[]>(`[...document.querySelectorAll('.day-row[data-day="${TODAY_KEY}"] .day-cell[data-column="${column}"] .event-title')].map((e) => e.textContent)`)
+    const at = (hour: number) => new Date(today.getFullYear(), today.getMonth(), today.getDate(), hour).toISOString()
+
+    await agentBrowser('eval', `localStorage.clear(); localStorage.setItem('fhc.settings.v1', ${JSON.stringify(JSON.stringify(SETTINGS_WITH_GOOGLE))})`)
+    await agentBrowser('open', inject('appUrl'))
+    await agentBrowser('wait', SETTLE_MS)
+    try {
+      expect(await titlesIn('m3')).toEqual([])
+      await fetch(`${inject('googleUrl')}/calendar/v3/calendars/family%40example.com/events`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${FAKE_GOOGLE.accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          summary: 'Dodane gdzie indziej',
+          start: { dateTime: at(12) },
+          end: { dateTime: at(13) },
+          extendedProperties: { private: { fhcTags: 'ola' } },
+        }),
+      })
+      expect(await titlesIn('m3')).toEqual([])
+      await clickButton('Odśwież')
+      await agentBrowser('wait', SETTLE_MS)
+      expect(await titlesIn('m3')).toEqual(['Dodane gdzie indziej'])
+      await screenshot('after-refresh')
+    } finally {
+      await agentBrowser('eval', 'localStorage.clear()')
+    }
+  })
 })

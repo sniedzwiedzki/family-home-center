@@ -9,8 +9,11 @@ interface Loaded {
   forecast: Forecast
 }
 
-/** Keeps the last good forecast on screen when a refresh fails and retries sooner than the normal refresh. */
-export function useForecast(port: WeatherPort, location: GeoLocation | null): Forecast | null {
+/**
+ * Keeps the last good forecast on screen when a refresh fails and retries sooner than the normal refresh.
+ * `refreshSignal` is a counter: every change fetches again right away, like a manual refresh.
+ */
+export function useForecast(port: WeatherPort, location: GeoLocation | null, refreshSignal = 0): Forecast | null {
   const [loaded, setLoaded] = useState<Loaded | null>(null)
 
   useEffect(() => {
@@ -37,7 +40,7 @@ export function useForecast(port: WeatherPort, location: GeoLocation | null): Fo
       cancelled = true
       window.clearTimeout(timer)
     }
-  }, [port, location])
+  }, [port, location, refreshSignal])
 
   return loaded !== null && loaded.location === location ? loaded.forecast : null
 }

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TopBar } from './TopBar'
 
@@ -10,7 +10,7 @@ afterEach(() => vi.useRealTimers())
 
 describe('TopBar', () => {
   it('shows the current time in the middle', () => {
-    const { container } = render(<TopBar onOpenSettings={vi.fn()} />)
+    const { container } = render(<TopBar onOpenSettings={vi.fn()} onRefresh={vi.fn()} />)
     expect(screen.getByText('09:05')).toBeTruthy()
     expect(container.querySelector('header > :nth-child(2)')?.tagName).toBe('TIME')
     expect(container.querySelectorAll('header > *')).toHaveLength(3)
@@ -18,9 +18,38 @@ describe('TopBar', () => {
 
   it('has the settings button on the right and reports clicks', () => {
     const onOpenSettings = vi.fn()
-    const { container } = render(<TopBar onOpenSettings={onOpenSettings} />)
-    expect(container.querySelector('header > :last-child')?.tagName).toBe('BUTTON')
+    const { container } = render(<TopBar onOpenSettings={onOpenSettings} onRefresh={vi.fn()} />)
+    expect(container.querySelector('header > :last-child')?.className).toBe('top-bar-actions')
+    expect(container.querySelector('.top-bar-actions > :last-child')?.getAttribute('aria-label')).toBe('Ustawienia')
     fireEvent.click(screen.getByRole('button', { name: 'Ustawienia' }))
     expect(onOpenSettings).toHaveBeenCalledTimes(1)
+  })
+
+  it('has a refresh button next to the settings button that reports clicks', () => {
+    const onRefresh = vi.fn()
+    const { container } = render(<TopBar onOpenSettings={vi.fn()} onRefresh={onRefresh} />)
+    const actions = container.querySelector('.top-bar-actions')!
+    expect([...actions.children].map((child) => child.getAttribute('aria-label'))).toEqual(['Odśwież', 'Ustawienia'])
+    fireEvent.click(screen.getByRole('button', { name: 'Odśwież' }))
+    expect(onRefresh).toHaveBeenCalledTimes(1)
+  })
+
+  it('spins the refresh icon for the length of the animation after a click', () => {
+    render(<TopBar onOpenSettings={vi.fn()} onRefresh={vi.fn()} />)
+    const button = screen.getByRole('button', { name: 'Odśwież' })
+    expect(button.classList.contains('is-spinning')).toBe(false)
+    fireEvent.click(button)
+    expect(button.classList.contains('is-spinning')).toBe(true)
+    act(() => vi.advanceTimersByTime(799))
+    expect(button.classList.contains('is-spinning')).toBe(true)
+    act(() => vi.advanceTimersByTime(1))
+    expect(button.classList.contains('is-spinning')).toBe(false)
+  })
+
+  it('stops its spin timer when the bar goes away', () => {
+    const { unmount } = render(<TopBar onOpenSettings={vi.fn()} onRefresh={vi.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Odśwież' }))
+    unmount()
+    expect(vi.getTimerCount()).toBe(0)
   })
 })

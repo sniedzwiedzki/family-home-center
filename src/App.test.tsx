@@ -12,9 +12,9 @@ const captured = vi.hoisted(() => ({ port: null as unknown, checkGoogle: null as
 
 vi.mock('./weather/useForecast', () => ({ useForecast }))
 vi.mock('./calendar/CalendarView', () => ({
-  CalendarView: ({ port, members, forecasts }: { port: unknown; members: { name: string }[]; forecasts: ReadonlyMap<string, DayForecast> }) => {
+  CalendarView: ({ port, members, forecasts, refreshSignal }: { port: unknown; members: { name: string }[]; forecasts: ReadonlyMap<string, DayForecast>; refreshSignal: number }) => {
     captured.port = port
-    return <main data-testid='calendar'>{`${members.map((m) => m.name).join(',')}|${[...forecasts.keys()].join(',')}`}</main>
+    return <main data-testid='calendar' data-refresh={refreshSignal}>{`${members.map((m) => m.name).join(',')}|${[...forecasts.keys()].join(',')}`}</main>
   },
 }))
 vi.mock('./settings/SettingsDialog', () => ({
@@ -67,7 +67,7 @@ describe('App', () => {
     window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ ...DEFAULT_SETTINGS, weather: { location } }))
     useForecast.mockReturnValue(forecast)
     render(<App />)
-    expect(useForecast).toHaveBeenCalledWith(expect.anything(), location)
+    expect(useForecast).toHaveBeenCalledWith(expect.anything(), location, 0)
     expect(screen.getByTestId('calendar').textContent).toBe('|2026-10-17')
     expect(screen.getByTestId('bottom').textContent).toBe('forecast')
   })
@@ -129,5 +129,16 @@ describe('App', () => {
       const check = captured.checkGoogle as (credentials: object) => Promise<DiscoveredCalendar[]>
       expect(await check({ clientId: 'a', clientSecret: 'b', refreshToken: 'c' })).toEqual(found)
     })
+  })
+
+  it('refreshes the calendar and the weather when the refresh button is pressed', () => {
+    render(<App />)
+    expect(screen.getByTestId('calendar').getAttribute('data-refresh')).toBe('0')
+    expect(useForecast).toHaveBeenLastCalledWith(expect.anything(), null, 0)
+    fireEvent.click(screen.getByRole('button', { name: 'Odśwież' }))
+    expect(screen.getByTestId('calendar').getAttribute('data-refresh')).toBe('1')
+    expect(useForecast).toHaveBeenLastCalledWith(expect.anything(), null, 1)
+    fireEvent.click(screen.getByRole('button', { name: 'Odśwież' }))
+    expect(screen.getByTestId('calendar').getAttribute('data-refresh')).toBe('2')
   })
 })

@@ -30,7 +30,8 @@ const checkGoogle = createConnectionCheck({
 function App() {
   const { settings, updateSettings } = useSettings()
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  const forecast = useForecast(weatherPort, settings.weather.location)
+  const [refreshSignal, setRefreshSignal] = useState(0)
+  const forecast = useForecast(weatherPort, settings.weather.location, refreshSignal)
   const forecasts = useMemo(() => new Map((forecast?.days ?? []).map((day) => [day.day, day])), [forecast])
 
   const { google, calendars } = settings
@@ -52,8 +53,8 @@ function App() {
 
   return (
     <div className="kiosk">
-      <TopBar onOpenSettings={() => setIsSettingsOpen(true)} />
-      <CalendarView port={calendarPort} members={settings.familyMembers} forecasts={forecasts} />
+      <TopBar onOpenSettings={() => setIsSettingsOpen(true)} onRefresh={() => setRefreshSignal((signal) => signal + 1)} />
+      <CalendarView port={calendarPort} members={settings.familyMembers} forecasts={forecasts} refreshSignal={refreshSignal} />
       <BottomBar forecast={forecast} />
       {isSettingsOpen && (
         <SettingsDialog

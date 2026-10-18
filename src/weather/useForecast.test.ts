@@ -67,6 +67,19 @@ describe('useForecast', () => {
     expect(result.current).toBeNull()
   })
 
+  it('fetches again right away when the refresh signal changes, keeping the shown forecast meanwhile', async () => {
+    const getForecast = vi.fn<WeatherPort['getForecast']>().mockResolvedValueOnce(forecast(10)).mockResolvedValueOnce(forecast(25))
+    const port: WeatherPort = { getForecast }
+    const { result, rerender } = renderHook(({ signal }) => useForecast(port, warsaw, signal), { initialProps: { signal: 0 } })
+    await act(async () => {})
+    expect(result.current?.days[0].tempMax).toBe(10)
+    rerender({ signal: 1 })
+    expect(result.current?.days[0].tempMax).toBe(10)
+    await act(async () => {})
+    expect(result.current?.days[0].tempMax).toBe(25)
+    expect(getForecast).toHaveBeenCalledTimes(2)
+  })
+
   it('stops refreshing after unmount', async () => {
     const getForecast = vi.fn(async () => forecast(1))
     const port: WeatherPort = { getForecast }
