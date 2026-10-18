@@ -12,7 +12,7 @@ Host the app on a free host that can be deployed directly from GitHub, so the ta
 - Site: `https://sniedzwiedzki.github.io/family-home-center/` (a project site, so the app lives under a sub-path). The repository is public, which GitHub Pages needs on the free plan.
 - Build: Vite `base: './'` for every build, so asset paths are relative and the same bundle works under any sub-path (Pages, a local web server such as Fully's) and at the root. The root-absolute default produced a blank page when served from a sub-path (verified).
 - Workflow `.github/workflows/deploy.yml`: runs after the `CI` workflow completes successfully on `main` (or by hand with `workflow_dispatch`), builds with `npm run build`, uploads `dist` as the Pages artifact and deploys it with `actions/deploy-pages`. Nothing is deployed when CI is red.
-- Pages is enabled with the source "GitHub Actions" (`build_type=workflow`) through the repository settings API.
+- Pages must be switched to the source "GitHub Actions" once by hand (Settings, Pages): the agent's token gets `403 Resource not accessible by personal access token` from the Pages API, so it cannot do it. A token with Pages write permission could (`POST /repos/{owner}/{repo}/pages` with `build_type=workflow`).
 - No secrets are in the bundle: the Google client id, secret and refresh token are typed into the app's settings on the tablet and live only in its local storage.
 
 ## Consequences

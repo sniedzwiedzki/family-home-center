@@ -58,7 +58,7 @@ A big calendar with events, actions, tasks and more. The first iteration covers 
 
 The app is a static bundle. Every push to `main` that passes CI is deployed by `.github/workflows/deploy.yml` to `https://sniedzwiedzki.github.io/family-home-center/`; the Fully Kiosk Browser on the tablet uses that address as its start URL, so updating the tablet means merging to `main` and reloading the page.
 
-- **One-time setup**: repository Settings, Pages, Source "GitHub Actions" (already enabled through the API when this was added). The repository must stay public on the free plan.
+- **One-time setup, by hand**: repository Settings, Pages, Build and deployment, Source "GitHub Actions". Until this is switched on the deploy job fails. (The access token the AI agent works with is not allowed to change Pages settings.) The repository must stay public on the free plan.
 - **Relative paths**: `vite.config.ts` sets `base: './'`, so the same build also works from any sub-path or local web server.
 - **Manual run**: Actions, "Deploy to GitHub Pages", Run workflow (deploys the selected branch only if the environment allows it; by default only `main` can deploy).
 - **Keep the address stable**: the app's settings, events and (later) the Google token live in the browser's local storage, which belongs to the address `https://sniedzwiedzki.github.io`. Another host or domain starts with empty settings.
