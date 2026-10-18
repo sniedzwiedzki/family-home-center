@@ -16,7 +16,7 @@ Out (later iterations): AI voice assistant (kept in README as planned), tasks, a
 
 | Topic | Decision |
 |---|---|
-| Google auth | Browser only (Google Identity Services token flow), no backend. The ~1h token is renewed with `requestAccessToken({ prompt: 'none' })` when possible; otherwise the kiosk shows a sign-in screen. Google's documentation requires a user gesture for renewal, so silent renewal is NOT guaranteed (see Open items). |
+| Google auth | Browser only (Google Identity Services token flow), no backend. The ~1h token is renewed with `requestAccessToken({ prompt: 'none' })` when possible; otherwise the kiosk shows a sign-in screen. Silent renewal is not guaranteed by Google, so it is tried on the real kiosk browser first (see Open items). |
 | Calendars read | Chosen in settings (checkbox list of the account's calendars; all selected by default). |
 | Calendar written | One default calendar chosen in settings receives new events. |
 | Tag storage | Source of truth: event `extendedProperties.private` (`fhcTags`, comma-separated). `#tag` tokens in the title are also recognised so events can be tagged from a phone. |
@@ -61,4 +61,4 @@ Each phase ships as its own PR with unit tests at 100% and an integration test (
 ## Open items
 
 - Google Cloud project, OAuth client id and consent screen are needed from the user before phase 4 can be verified against the real API (steps in the README).
-- **Decision before phase 4: unattended token renewal.** The browser-only token model may need a tap about every hour (documented: renewal needs a user gesture; `prompt: 'none'` may work but is not promised). Try it on the kiosk browser first; if a tap is unacceptable, switch to the authorization code flow with a small backend that keeps a refresh token (needs hosting and the app in production status, because test-user authorizations and refresh tokens expire after seven days).
+- **Decision (made 2026-10-18): unattended token renewal starts with `prompt: 'none'`.** Phase 4 renews the token with `requestAccessToken({ prompt: 'none' })` before it expires and falls back to the sign-in screen when that fails. Google documents that renewal needs a user gesture and does not promise `prompt: 'none'` works without one, so the result must be tried on the kiosk's own browser: if the kiosk still needs a tap about every hour, revisit the alternative (authorization code flow with a small backend that keeps a refresh token; needs hosting and the app in production status, because test-user authorizations and refresh tokens expire after seven days).
