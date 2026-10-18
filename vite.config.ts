@@ -3,6 +3,8 @@ import { defineConfig } from 'vite'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // Relative asset paths: the same build works under a sub-path (GitHub Pages, a local web server) and at the root.
+  base: './',
   plugins: [react()],
   define: {
     // Overridable at build time so integration tests can point the app at a local fake weather and geocoding API.

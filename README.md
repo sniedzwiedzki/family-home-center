@@ -54,6 +54,17 @@ A big calendar with events, actions, tasks and more. The first iteration covers 
 
 - 1600 px wide x 2400 px tall (portrait) tablet, no frames, Kiosk mode. Five family member columns plus the fixed "Other" column must fit comfortably.
 
+## Deployment (GitHub Pages)
+
+The app is a static bundle. Every push to `main` that passes CI is deployed by `.github/workflows/deploy.yml` to `https://sniedzwiedzki.github.io/family-home-center/`; the Fully Kiosk Browser on the tablet uses that address as its start URL, so updating the tablet means merging to `main` and reloading the page.
+
+- **One-time setup**: repository Settings, Pages, Source "GitHub Actions" (already enabled through the API when this was added). The repository must stay public on the free plan.
+- **Relative paths**: `vite.config.ts` sets `base: './'`, so the same build also works from any sub-path or local web server.
+- **Manual run**: Actions, "Deploy to GitHub Pages", Run workflow (deploys the selected branch only if the environment allows it; by default only `main` can deploy).
+- **Keep the address stable**: the app's settings, events and (later) the Google token live in the browser's local storage, which belongs to the address `https://sniedzwiedzki.github.io`. Another host or domain starts with empty settings.
+- **Public site**: anyone with the address can open it; it contains no secrets (nothing personal is in the bundle).
+- **Offline start**: after a restart without internet the tablet cannot load the page; a service worker cache would fix that and is not built yet.
+
 ## Development
 
 ```bash
