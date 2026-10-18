@@ -1,29 +1,46 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
+import type { CalendarPort } from './calendar/types'
+import type { DiscoveredCalendar } from './google/calendarList'
 import type { DayForecast, Forecast } from './weather/types'
 import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEY } from './settings/settings'
 
 const forecast: Forecast = { days: [{ day: '2026-10-17', code: 0, tempMax: 20, tempMin: 10 }], hours: [] }
 const useForecast = vi.hoisted(() => vi.fn())
+const captured = vi.hoisted(() => ({ port: null as unknown, checkGoogle: null as unknown }))
 
 vi.mock('./weather/useForecast', () => ({ useForecast }))
 vi.mock('./calendar/CalendarView', () => ({
-  CalendarView: ({ members, forecasts }: { members: { name: string }[]; forecasts: ReadonlyMap<string, DayForecast> }) => (
-    <main data-testid='calendar'>{`${members.map((m) => m.name).join(',')}|${[...forecasts.keys()].join(',')}`}</main>
-  ),
+  CalendarView: ({ port, members, forecasts }: { port: unknown; members: { name: string }[]; forecasts: ReadonlyMap<string, DayForecast> }) => {
+    captured.port = port
+    return <main data-testid='calendar'>{`${members.map((m) => m.name).join(',')}|${[...forecasts.keys()].join(',')}`}</main>
+  },
 }))
 vi.mock('./settings/SettingsDialog', () => ({
-  SettingsDialog: ({ onChange, onClose }: { onChange: (s: object) => void; onClose: () => void }) => (
+  SettingsDialog: ({ onChange, onClose, checkGoogle }: { onChange: (s: object) => void; onClose: () => void; checkGoogle: unknown }) => {
+    captured.checkGoogle = checkGoogle
+    return (
     <div role='dialog'>
       <button onClick={() => onChange({ ...DEFAULT_SETTINGS, pin: '5555' })}>zapisz-test</button>
       <button onClick={onClose}>zamknij-test</button>
     </div>
-  ),
+    )
+  },
 }))
 vi.mock('./shell/BottomBar', () => ({
   BottomBar: ({ forecast }: { forecast: Forecast | null }) => <footer data-testid='bottom'>{forecast === null ? 'none' : 'forecast'}</footer>,
 }))
+
+const range = { from: new Date(2026, 9, 1), to: new Date(2026, 10, 1) }
+const googleSettings = {
+  ...DEFAULT_SETTINGS,
+  google: { clientId: 'fake-client', clientSecret: 'fake-secret', refreshToken: 'fake-refresh' },
+  calendars: { readIds: ['family@x'], writeId: 'family@x', known: [{ id: 'family@x', name: 'Rodzina', canWrite: true }] },
+}
+const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200 })
+
+afterEach(() => vi.unstubAllGlobals())
 
 beforeEach(() => {
   window.localStorage.clear()
@@ -69,5 +86,48 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ustawienia' }))
     fireEvent.click(screen.getByRole('button', { name: 'zapisz-test' }))
     expect(JSON.parse(window.localStorage.getItem(SETTINGS_STORAGE_KEY)!).pin).toBe('5555')
+  })
+
+  describe('where the calendar gets its events', () => {
+    it('keeps events in local storage until Google is configured', async () => {
+      render(<App />)
+      const port = captured.port as CalendarPort
+      const created = await port.createEvent({ title: 'Lokalne', allDay: true, start: new Date(2026, 9, 5), end: new Date(2026, 9, 6) })
+      expect(JSON.parse(window.localStorage.getItem('fhc.events.v1')!)[0].id).toBe(created.id)
+      expect((await port.listEvents(range)).map((event) => event.title)).toEqual(['Lokalne'])
+    })
+
+    it('reads from Google once credentials are saved, signing in with the stored refresh token', async () => {
+      window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(googleSettings))
+      const fetchStub = vi.fn(async (input: RequestInfo | URL) =>
+        String(input).includes('/token')
+          ? json({ access_token: 'access', expires_in: 3600 })
+          : json({ items: [{ id: 'g1', summary: 'Z Google', start: { date: '2026-10-05' }, end: { date: '2026-10-06' } }] }),
+      )
+      vi.stubGlobal('fetch', fetchStub)
+      render(<App />)
+      const events = await (captured.port as CalendarPort).listEvents(range)
+      expect(events.map((event) => event.id)).toEqual(['family@x|g1'])
+      const urls = fetchStub.mock.calls.map(([input]) => String(input))
+      expect(urls[0]).toBe('https://oauth2.googleapis.com/token')
+      expect(urls[1]).toContain('https://www.googleapis.com/calendar/v3/calendars/family%40x/events?')
+      expect(window.localStorage.getItem('fhc.events.v1')).toBeNull()
+    })
+
+    it('hands the settings a connection check that talks to Google', async () => {
+      const found: DiscoveredCalendar[] = [{ id: 'me@x', name: 'Ja', canWrite: true, selected: true, primary: true }]
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (input: RequestInfo | URL) =>
+          String(input).includes('/token')
+            ? json({ access_token: 'access', expires_in: 3600 })
+            : json({ items: [{ id: 'me@x', summary: 'Ja', accessRole: 'owner', primary: true, selected: true }] }),
+        ),
+      )
+      render(<App />)
+      fireEvent.click(screen.getByRole('button', { name: 'Ustawienia' }))
+      const check = captured.checkGoogle as (credentials: object) => Promise<DiscoveredCalendar[]>
+      expect(await check({ clientId: 'a', clientSecret: 'b', refreshToken: 'c' })).toEqual(found)
+    })
   })
 })

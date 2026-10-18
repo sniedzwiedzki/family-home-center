@@ -12,8 +12,8 @@ A big calendar with events, actions, tasks and more. The first iteration covers 
 - Never-ending scroll page in both directions, starting at today; each date is a single row.
 - All-day and multi-day events appear in the row of every day they cover.
 - Application language: Polish (all UI text, dates and weather labels). The repository itself (code, docs, specs) stays in English.
-- Clicking an empty spot of a day in a person's column opens a dialog to add an event; that person is preselected, and more people can be added or changed. Clicking an existing event opens the same dialog to edit its date, time and content, or to remove it (with a second tap to confirm). For recurring Google events the user will choose: this occurrence, this and following, or the whole series.
-- Until the Google API key is available, events are stored only in the browser's local storage (key `fhc.events.v1`).
+- Clicking an empty spot of a day in a person's column opens a dialog to add an event; that person is preselected, and more people can be added or changed. Clicking an existing event opens the same dialog to edit its date, time and content, or to remove it (with a second tap to confirm). For recurring Google events an edit changes only that occurrence, and deleting asks whether to delete the occurrence or the whole series.
+- Events live in Google Calendar when Google is connected in the settings; otherwise they are kept only in the browser's local storage (key `fhc.events.v1`).
 - The settings button (in the top bar) opens the settings.
 
 - Each date row shows the weather forecast for that day (only for days where a forecast is available).
@@ -44,7 +44,7 @@ A big calendar with events, actions, tasks and more. The first iteration covers 
 
 ### Settings
 
-- Authorize with Google to grant access to the calendar (browser-only sign-in; the kiosk shows a sign-in screen when the session expires).
+- Connect Google Calendar with a client ID, client secret and refresh token (see Google Calendar integration); the app renews its access by itself.
 - Choose which calendars are shown and which one receives new events.
 - Weather location (city or coordinates); forecasts come from Open-Meteo.
 - Settings are protected by a PIN.
@@ -52,96 +52,82 @@ A big calendar with events, actions, tasks and more. The first iteration covers 
 
 ## Google Calendar integration
 
-The app reads and writes events through the Google Calendar API, signing in from the browser with Google Identity Services (token model). There is no backend and no client secret anywhere. Until this is built and configured the calendar works on events kept in the browser's local storage.
+When Google is connected, the calendar shows and changes events in your real Google calendars; without it, events are kept only in the tablet's browser (local storage).
 
-Checked against Google's documentation on 2026-10-18 (sources at the end of this section). The Cloud Console menus are not browsable without signing in, so their names come from those documents; if a screen looks different, trust the screen and fix this file.
+**How it works.** You authorize your own Google account once, on a computer, and paste three values into the app's settings on the tablet: a client ID, a client secret and a **refresh token**. From then on the app trades the refresh token for a one-hour access token by itself (`POST https://oauth2.googleapis.com/token`), keeps that token in memory and gets a new one a minute before it expires. There is no sign-in popup, no Google script, no redirect and no backend, so nothing ever has to be renewed by a person, and it does not matter where the app is hosted (GitHub Pages, a local file, ...): Google's token endpoint and Calendar API accept requests from any web page (checked with `Origin` set to `null`, `http://localhost:<port>` and `https://sniedzwiedzki.github.io`).
+
+**Security.** The client secret and the refresh token are stored in the browser's local storage on the tablet, in plain text. Anyone who can open that browser's developer tools can read them, and the refresh token gives access to the account's calendars (with the two scopes below, no other Google data). That is acceptable for a private kiosk. If the tablet is lost, revoke access at [myaccount.google.com/permissions](https://myaccount.google.com/permissions). Never commit these values.
 
 ### What you need
 
-| What | Where | Needed for |
-|---|---|---|
-| A Google account that owns or can edit the family calendars | Google Calendar | the data |
-| A Google Cloud project | [console.cloud.google.com](https://console.cloud.google.com) | the API and the sign-in |
-| The Google Calendar API enabled in that project | Menu, APIs & Services, Library | any API call; without it calls fail with `403 accessNotConfigured` |
-| A configured Google Auth platform (branding, audience, test users, data access with the scopes below) | Menu, Google Auth platform | the Google sign-in popup |
-| An OAuth client of type "Web application" with the kiosk's address as an authorized JavaScript origin | Menu, Google Auth platform, Clients | identifying the app to Google |
-| The client ID in the app's build environment | `.env.local` for development, the build environment for the kiosk | the app knowing which client to use |
-| A kiosk browser profile that is signed in to Google and allows the sign-in popup | the kiosk device | getting tokens |
+| What | Where |
+|---|---|
+| A Google account that owns or can edit the family calendars | Google Calendar |
+| A Google Cloud project with the **Google Calendar API** enabled | [console.cloud.google.com](https://console.cloud.google.com), APIs & Services, Library |
+| A configured **Google Auth platform** (app name, audience, your account as a test user, the two scopes) | Menu, Google Auth platform |
+| An **OAuth client** of type "Web application" whose redirect URI is the OAuth Playground | Menu, Google Auth platform, Clients |
+| The **refresh token** from the OAuth 2.0 Playground | [developers.google.com/oauthplayground](https://developers.google.com/oauthplayground/) |
+| The three values typed into the app | Ustawienia, Google Calendar |
 
 ### Step by step
 
-1. **Create a project.** In the Cloud Console open the project picker and choose New project (for example `family-home-center`).
+Menu names come from Google's documentation and pages checked on 2026-10-18; the Cloud Console itself needs a login and was not opened. If a screen looks different, trust the screen and fix this file.
+
+1. **Create a project.** Cloud Console, project picker, New project (for example `family-home-center`).
 2. **Enable the API.** Menu, APIs & Services, Library, search "Google Calendar API", Enable.
-3. **Set up the Google Auth platform.** Menu, Google Auth platform. If it says "Google Auth platform not configured yet", click **Get Started** and go through the wizard:
-   1. *App Information*: app name (for example "Family Home Center") and a user support email.
-   2. *Audience*: choose **External** for ordinary Gmail accounts. Internal only exists for Google Workspace organisations.
-   3. *Contact Information*: an email address for notices about the project.
-   4. *Finish*: agree to the Google API Services User Data Policy, click Continue, then Create.
+3. **Set up the Google Auth platform.** Menu, Google Auth platform. If it says "Google Auth platform not configured yet", click **Get Started** and go through the wizard: App Information (app name, user support email), Audience (choose **External** for ordinary Gmail accounts), Contact Information (an email), Finish (agree to the User Data Policy, Continue, Create). The wizard does not ask for scopes: they are a separate step (point 5).
+4. **Add yourself as a test user.** Menu, Google Auth platform, **Audience**, *Test users*, **Add users**, enter the Google account that owns the calendars, Save. Only listed accounts can authorize an app that is in Testing.
+5. **Add the scopes.** Menu, Google Auth platform, **Data Access**, **Add or Remove Scopes**, tick these two and Save:
+   - `https://www.googleapis.com/auth/calendar.events` (view and edit events on all your calendars);
+   - `https://www.googleapis.com/auth/calendar.calendarlist.readonly` (see the list of calendars you are subscribed to).
+6. **Publish the app, so the token does not expire after a week.** Menu, Google Auth platform, **Audience**, **Publish app**. Google's rule: while the publishing status is *Testing*, authorizations by test users, and refresh tokens, expire seven days after consent, so the kiosk would stop after a week. In production Google shows an "unverified app" warning during authorization (the Calendar scopes are expected to be marked sensitive on the Data Access page), which you click through once; for a private app no verification is needed and the cap is 100 users.
+7. **Create the OAuth client.** Menu, Google Auth platform, **Clients**, **Create Client**, Application type **Web application**, a name (for example `kiosk`). Under **Authorized redirect URIs** click Add URI and enter exactly `https://developers.google.com/oauthplayground` (the Playground needs it to receive the authorization). *Authorized JavaScript origins* can stay empty. Leave "Use this client for an AI-powered agent" off. Create, then copy the **Client ID** and the **Client secret** (the Console shows the secret for a Web application client; if yours shows none, the refresh in the app will answer `invalid_client`).
+8. **Get the refresh token from the OAuth 2.0 Playground** ([developers.google.com/oauthplayground](https://developers.google.com/oauthplayground/)), on a computer:
+   1. Click the gear icon (top right, "OAuth 2.0 configuration"). Tick **Use your own OAuth credentials** and paste the Client ID and the Client secret. Leave *Access type* on **Offline** and *Force prompt* on **Consent Screen** (the defaults). Close the panel.
+   2. **Step 1, Select & authorize APIs**: in the box "Input your own scopes" type the two scopes from point 5 separated by a space, then click **Authorize APIs**.
+   3. Choose the Google account, click through the "Google hasn't verified this app" screen if it appears (Advanced, then continue; wording may differ), tick both permissions and continue.
+   4. **Step 2, Exchange authorization code for tokens**: click the button. The right-hand panel shows the response: copy the value of **`refresh_token`**.
+9. **Enter it in the app** (on the tablet, or in any browser at the same address): Ustawienia (PIN), section **Google Calendar**, paste *Identyfikator klienta*, *Sekret klienta* and *Token odświeżania*, click **Sprawdź połączenie**. When it says "Połączono. Liczba kalendarzy: N." the calendars are listed: tick **Pokaż** for the ones to display and pick **Zapisuj tutaj** for the one that receives new events (only calendars you can edit can be picked). Click **Zapisz**.
+10. **Check it**: today's Google events appear in the columns of the people whose tag they carry (or in "Inne"); add an event from the app and look for it in Google Calendar.
 
-   The wizard does **not** ask for scopes. After it finishes, the left menu has **Overview, Branding, Audience, Clients, Data Access** (and a verification page); the next two points use them.
-4. **Add the family as test users.** Menu, Google Auth platform, **Audience**. The publishing status is **Testing**. Under *Test users* click **Add users** and enter every Google account that will sign in to the kiosk (up to 100). Accounts that are not listed cannot authorize the app. See "Testing versus production" below for what Testing means.
-5. **Add the scopes.** Menu, Google Auth platform, **Data Access**, **Add or Remove Scopes**, tick the scopes below and Save. Choose the narrowest ones that cover the features:
-   - `https://www.googleapis.com/auth/calendar.events`: view and edit events on all your calendars (read, create, change, delete; it also covers calendars shared with you, which `calendar.events.owned` would not);
-   - `https://www.googleapis.com/auth/calendar.calendarlist.readonly`: see the list of calendars you are subscribed to, to pick them in the app's settings.
+### How it behaves
 
-   The Console marks which scopes are sensitive; Calendar scopes are expected to show that mark, which is why Google shows the "unverified app" warning. For a family app you click through it.
-6. **Create the OAuth client.** Menu, Google Auth platform, **Clients**, **Create Client**, Application type **Web application**:
-   - *Name*: anything (only you see it), for example `kiosk`.
-   - *Authorized JavaScript origins*, Add URI: the exact origin (scheme, host and port, no path, no trailing slash) the app is served from. Typical values: `http://localhost:5173` (Vite dev server), `http://localhost:3000` (the preview command in `openmercato.toml`) and the kiosk's own origin. Sign-in needs HTTPS unless the host is `localhost`, so serve the kiosk build over HTTPS or from `http://localhost`.
-   - *Authorized redirect URIs*: leave empty. Google says to use them for server-side apps; the browser popup flow does not need them.
-   - Leave "Use this client for an AI-powered agent" off.
-   - Click Create and copy the **Client ID** (it ends with `.apps.googleusercontent.com`). Google's documentation: client secrets are not used for Web applications, so there is nothing else to copy and nothing to hide in the bundle.
-7. **Give the app the client ID.** Vite exposes variables that start with `VITE_` to the browser code and bakes them into the build:
-   ```bash
-   # .env.local (git-ignored through the *.local rule); for the kiosk set the same variable in the environment that runs `npm run build`
-   VITE_GOOGLE_CLIENT_ID=1234567890-abcdefg.apps.googleusercontent.com
-   ```
-   A client ID is a public identifier, not a secret; changing it needs a rebuild.
-8. **Sign in from the app** (the settings screen for this is not built yet): "Zaloguj z Google", then choose which calendars are shown and which one receives new events. The settings are protected by the PIN.
-9. **Prepare the kiosk browser**: sign in to the Google account once in the browser profile the kiosk uses, allow popups for the app's address, and keep that profile.
+- **Reading**: the visible range of days is read from every ticked calendar, expanded into single occurrences (`singleEvents=true`), and reloaded every 5 minutes and when the browser comes back online. A failure keeps the events on screen and shows "Nie udało się pobrać wydarzeń."
+- **Writing**: new events go to the "Zapisuj tutaj" calendar. Editing reads the event, changes only title, description, time and people, and writes it back whole, so attendees, reminders and other fields set in Google stay untouched.
+- **People**: stored in the event's private extended property `fhcTags` (comma separated tags); `#tag` in the title is read too.
+- **Recurring events**: editing one changes only that occurrence. Deleting asks "Usuń to wystąpienie" or "Usuń całą serię". Editing a whole series, or "this and following", is not built: do that in Google Calendar.
+- **Without Google** ("Odłącz Google", or empty fields): events live in the browser's local storage again. Events in Google and events in local storage are never mixed or copied.
+- **Time zone**: the device's.
 
-### Testing versus production
+### When it stops working
 
-Google's description of the publishing status:
+The refresh token stops working when you revoke the app in your Google account, when it is unused for six months (the app uses it every few minutes), when more than 100 tokens were issued for the same account and client (the oldest dies), or, in Testing, after seven days. Changing the Google password does not invalidate it (that happens only with Gmail scopes). The app then says "Token odświeżania wygasł lub został cofnięty." Repeat point 8 and paste the new token in the settings.
 
-- **Testing** (what you have after the wizard): at most 100 test users. **Authorizations by a test user expire seven days after the consent**, so the kiosk will ask for consent again about once a week. Google shows a warning before a test user can authorize the scopes.
-- **In production** (the *Publish app* button on the Audience page): any Google account can authorize; because Calendar scopes are sensitive, the "unverified app" warning stays until Google verifies the app, and an unverified app can have at most 100 new users over the lifetime of the project. For a private family app that is enough, and it removes the weekly expiry. Verification is only needed for a public app.
-- Accounts of a Google Workspace organisation may be blocked by the administrator's app-access policy (`admin_policy_enforced`), and accounts enrolled in Advanced Protection block most non-Google apps; use plain personal accounts for the kiosk if sign-in is refused.
-
-### How it behaves, and the open question for an unattended kiosk
-
-- The access token is short-lived (the response carries `expires_in`, about an hour). The app keeps it in memory only.
-- **Renewal is the weak spot.** Google's documentation for the token model says a new token "must be obtained by calling `requestAccessToken()` from a user-driven event" when the old one expires. The `prompt: 'none'` option skips all sign-in and consent screens and may return a token without a tap when the account is signed in and has already consented, but the popup can be blocked when no tap triggered it, and Google does not promise it works. Whether it works on the kiosk's browser has to be tried there.
-- If renewal fails, the kiosk shows a sign-in screen and someone has to tap it, possibly about every hour. If that is not acceptable, the alternative is a tiny backend that uses the authorization code flow (`initCodeClient`), keeps a refresh token and hands the browser fresh access tokens; it needs hosting and the app in production status (refresh tokens of test users expire after seven days too). This is an open decision recorded in `.ai/specs/2026-10-17-calendar-first-iteration.md`.
-- Events are read for the visible range of days from every calendar chosen in the settings; new and edited events go to the default calendar chosen there.
-- The person of an event is stored in the event's private extended property `fhcTags` (comma separated tags); `#tag` in the title is read too. Other private properties are left untouched.
-- Recurring events are expanded into single occurrences. Editing or deleting one asks whether it applies to this occurrence, this and the following, or the whole series.
-- The app refreshes events on a timer, not on every scroll; check the Calendar API quotas in the Console if you ever see `rateLimitExceeded`.
-
-### Troubleshooting
-
-| Symptom | Likely cause |
+| Message in the app | Cause |
 |---|---|
-| `Error 400: origin_mismatch` | the page's origin is not in the client's authorized JavaScript origins (check scheme, port, trailing slash) |
-| `Error 403: access_denied` ("has not completed the Google verification process") | the account is not a test user (Audience page) |
-| `403 accessNotConfigured` or "Calendar API has not been used in project" | the Calendar API is not enabled in the project that owns the client ID |
-| `admin_policy_enforced` | a Workspace administrator restricts the Calendar scopes; use another account |
-| The consent screen does not list the Calendar scopes | the scopes were not added under Data Access |
-| `popup_failed_to_open` or `popup_closed` | the browser blocked the popup, or it was closed; the sign-in has to start from a tap |
-| Sign-in works but the calendar is empty | no calendar is selected in the settings, or the visible range has no events |
-| The kiosk asks for consent again about once a week | the project is in Testing; see "Testing versus production" |
+| Token odświeżania wygasł lub został cofnięty. | revoked, expired (Testing: 7 days) or replaced token; or the client ID and secret differ from the ones used in the Playground |
+| Nieprawidłowy identyfikator lub sekret klienta Google. | typo, or the client was deleted |
+| Brak uprawnień (403). | the token was issued without the two scopes (redo point 8 with both), the Calendar API is not enabled, or the account cannot edit that calendar |
+| Nie znaleziono kalendarza lub wydarzenia (404). | the calendar was removed or the event was deleted elsewhere (reload) |
+| Brak połączenia z serwerami Google. | no internet, or a network filter blocks `googleapis.com` |
+| Wybierz kalendarz do zapisu w ustawieniach. | no writable calendar is picked under "Zapisuj tutaj" |
+| `access_denied` or "has not completed the Google verification process" in the Playground | the account is not a test user (point 4) |
+| `redirect_uri_mismatch` in the Playground | the redirect URI of the client is not exactly `https://developers.google.com/oauthplayground` (point 7) |
+| `Error 403: org_internal` or `admin_policy_enforced` | a Google Workspace administrator restricts the app; use a personal account |
 
-### Testing without Google
+### Tests
 
-The Google client is not written yet. When it is, unit tests will mock it and the integration tests will run against a fake Calendar API, so no Google account or network is needed for `npm test` or `npm run test:integration`.
+The automated tests never use a real Google account or key: unit tests mock `fetch` with fake credentials, and the integration tests run the real app against a local fake Google server (token endpoint and Calendar API). The real connection is tried by hand with the steps above.
 
 ### Sources
 
-- [Configure the OAuth consent screen and choose scopes](https://developers.google.com/workspace/guides/configure-oauth-consent): the wizard, Audience, test users, Data Access.
-- [Create access credentials](https://developers.google.com/workspace/guides/create-credentials): Clients, Web application, authorized JavaScript origins, no client secret for web apps.
-- [Choose Google Calendar API scopes](https://developers.google.com/workspace/calendar/api/auth) (last updated 2026-09-03 by Google): the scope list and meanings.
-- [Use the token model](https://developers.google.com/identity/oauth2/web/guides/use-token-model) and the [JavaScript reference](https://developers.google.com/identity/oauth2/web/reference/js-reference): `requestAccessToken()`, user gesture, `prompt`, popup errors.
-- [Publishing status and user cap](https://support.google.com/cloud/answer/15549945): Testing (100 users, 7-day expiry) versus In production, unverified apps.
+- [Configure the OAuth consent screen and choose scopes](https://developers.google.com/workspace/guides/configure-oauth-consent): Google Auth platform wizard, Audience, Data Access.
+- [Create access credentials](https://developers.google.com/workspace/guides/create-credentials): Clients, Web application.
+- [Choose Google Calendar API scopes](https://developers.google.com/workspace/calendar/api/auth) (last updated 2026-09-03 by Google).
+- [Publishing status and user cap](https://support.google.com/cloud/answer/15549945): Testing (100 test users, seven-day expiry) versus In production, unverified apps.
+- [OAuth 2.0 for web server applications](https://developers.google.com/identity/protocols/oauth2/web-server): refreshing an access token, `invalid_grant`, refresh token expiry rules.
+- Calendar API reference: [events.list](https://developers.google.com/workspace/calendar/api/v3/reference/events/list), [events.update](https://developers.google.com/workspace/calendar/api/v3/reference/events/update), [events.delete](https://developers.google.com/workspace/calendar/api/v3/reference/events/delete), [calendarList.list](https://developers.google.com/workspace/calendar/api/v3/reference/calendarList/list).
+- [OAuth 2.0 Playground](https://developers.google.com/oauthplayground/): step names, "Input your own scopes", "Use your own OAuth credentials", Offline access type and Consent Screen prompt (seen on the live page).
 
 ## Target display
 

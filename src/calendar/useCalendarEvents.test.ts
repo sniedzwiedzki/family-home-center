@@ -47,14 +47,14 @@ describe('useCalendarEvents', () => {
     expect(listEvents).toHaveBeenCalledTimes(3)
   })
 
-  it('does not refetch when only the port changes', async () => {
-    const first = portOf(vi.fn(async () => [event('a')]))
-    const second = portOf(vi.fn(async () => []))
+  it('loads everything again from a new source and drops what the old one had', async () => {
+    const first = portOf(vi.fn(async () => [event('old')]))
+    const second = portOf(vi.fn(async () => [event('new')]))
     const { result, rerender } = renderHook(({ p }) => useCalendarEvents(p, range(10, 20)), { initialProps: { p: first } })
-    await waitFor(() => expect(result.current.events).toHaveLength(1))
+    await waitFor(() => expect(result.current.events.map((e) => e.id)).toEqual(['old']))
     rerender({ p: second })
-    await waitFor(() => expect(second.listEvents).not.toHaveBeenCalled())
-    expect(result.current.events).toHaveLength(1)
+    await waitFor(() => expect(result.current.events.map((e) => e.id)).toEqual(['new']))
+    expect(second.listEvents).toHaveBeenCalledWith(range(10, 20))
   })
 
   it('merges events by id', async () => {
@@ -105,5 +105,40 @@ describe('useCalendarEvents', () => {
     act(() => result.current.reload())
     await waitFor(() => expect(result.current.events.map((e) => e.id)).toEqual(['new']))
     expect(listEvents).toHaveBeenLastCalledWith(range(10, 20))
+  })
+
+  describe('automatic refresh', () => {
+    afterEach(() => vi.useRealTimers())
+
+    it('reloads the visible range every five minutes and stops after unmount', async () => {
+      vi.useFakeTimers()
+      const listEvents = vi.fn(async () => [event('a')])
+      const port = portOf(listEvents)
+      const { unmount } = renderHook(() => useCalendarEvents(port, range(10, 20)))
+      await act(async () => {})
+      expect(listEvents).toHaveBeenCalledTimes(1)
+      await act(async () => vi.advanceTimersByTime(5 * 60 * 1000))
+      expect(listEvents).toHaveBeenCalledTimes(2)
+      await act(async () => vi.advanceTimersByTime(5 * 60 * 1000))
+      expect(listEvents).toHaveBeenCalledTimes(3)
+      unmount()
+      await act(async () => vi.advanceTimersByTime(10 * 60 * 1000))
+      expect(listEvents).toHaveBeenCalledTimes(3)
+    })
+
+    it('reloads when the browser comes back online, and no longer after unmount', async () => {
+      const listEvents = vi.fn(async () => [event('a')])
+      const port = portOf(listEvents)
+      const { unmount } = renderHook(() => useCalendarEvents(port, range(10, 20)))
+      await waitFor(() => expect(listEvents).toHaveBeenCalledTimes(1))
+      act(() => {
+        window.dispatchEvent(new Event('online'))
+      })
+      await waitFor(() => expect(listEvents).toHaveBeenCalledTimes(2))
+      unmount()
+      window.dispatchEvent(new Event('online'))
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(listEvents).toHaveBeenCalledTimes(2)
+    })
   })
 })

@@ -9,12 +9,23 @@ export const geoLocationSchema = z.object({
   longitude: z.number().min(-180).max(180),
 })
 
+export const knownCalendarSchema = z.object({ id: z.string(), name: z.string(), canWrite: z.boolean() })
+
+export const googleCredentialsSchema = z.object({
+  clientId: z.string().trim().min(1),
+  clientSecret: z.string().trim().min(1),
+  refreshToken: z.string().trim().min(1),
+})
+
 export const settingsSchema = z.object({
   familyMembers: familyMembersSchema,
   calendars: z.object({
     readIds: z.array(z.string()),
     writeId: z.string().nullable(),
+    // Added later: settings saved before it existed must still load.
+    known: z.array(knownCalendarSchema).default([]),
   }),
+  google: googleCredentialsSchema.nullable().default(null),
   weather: z.object({
     location: geoLocationSchema.nullable(),
   }),
@@ -25,7 +36,8 @@ export type Settings = z.infer<typeof settingsSchema>
 
 export const DEFAULT_SETTINGS: Settings = {
   familyMembers: [],
-  calendars: { readIds: [], writeId: null },
+  calendars: { readIds: [], writeId: null, known: [] },
+  google: null,
   weather: { location: null },
   pin: null,
 }

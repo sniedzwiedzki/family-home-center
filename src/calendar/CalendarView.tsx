@@ -9,7 +9,7 @@ import { draftFromEvent, newDraft } from './eventDraft'
 import { EventDialog } from './EventDialog'
 import { TODAY_PIN_LABEL, type TodayPosition } from './todayPin'
 import { MonthBlock } from './MonthBlock'
-import type { CalendarEvent, CalendarEventInput, CalendarPort } from './types'
+import type { CalendarEvent, CalendarEventInput, CalendarPort, RecurrenceScope } from './types'
 import { useCalendarEvents } from './useCalendarEvents'
 import { useDayWindow } from './useDayWindow'
 import { useToday } from './useToday'
@@ -105,8 +105,8 @@ export function CalendarView({ port, members, forecasts }: CalendarViewProps) {
     reload()
     closeEditor()
   }
-  const deleteEvent = async (event: CalendarEvent) => {
-    await port.deleteEvent(event.id)
+  const deleteEvent = async (event: CalendarEvent, scope: RecurrenceScope) => {
+    await port.deleteEvent(event, scope)
     reload()
     closeEditor()
   }
@@ -145,7 +145,7 @@ export function CalendarView({ port, members, forecasts }: CalendarViewProps) {
       members={members}
       existing={editor.kind === 'edit' ? editor.event : undefined}
       onSave={(input) => saveEvent(editor, input)}
-      onDelete={editor.kind === 'edit' ? () => deleteEvent(editor.event) : undefined}
+      onDelete={editor.kind === 'edit' ? (scope) => deleteEvent(editor.event, scope) : undefined}
       onClose={closeEditor}
     />
   )

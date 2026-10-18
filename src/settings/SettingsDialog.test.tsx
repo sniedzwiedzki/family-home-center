@@ -5,13 +5,14 @@ import { DEFAULT_SETTINGS, type Settings } from './settings'
 import { SettingsDialog } from './SettingsDialog'
 
 const geocoder: GeocodingPort = { search: vi.fn(async () => []) }
+const checkGoogle = vi.fn(async () => [])
 const withPin: Settings = { ...DEFAULT_SETTINGS, pin: '1234' }
 const enter = (pin: string) => {
   for (const digit of pin) fireEvent.click(screen.getByRole('button', { name: digit }))
   fireEvent.click(screen.getByRole('button', { name: 'OK' }))
 }
 const show = (settings: Settings, onChange = vi.fn(), onClose = vi.fn()) => {
-  render(<SettingsDialog settings={settings} geocoder={geocoder} onChange={onChange} onClose={onClose} />)
+  render(<SettingsDialog settings={settings} geocoder={geocoder} checkGoogle={checkGoogle} onChange={onChange} onClose={onClose} />)
   return { onChange, onClose }
 }
 

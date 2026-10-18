@@ -1,9 +1,10 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi, type Mock } from 'vitest'
 import type { FamilyMember } from '../family/familyMember'
+import { UserFacingError } from '../shared/userFacingError'
 import { EventDialog } from './EventDialog'
 import { newDraft, type EventDraft } from './eventDraft'
-import type { CalendarEvent, CalendarEventInput } from './types'
+import type { CalendarEvent, CalendarEventInput, RecurrenceScope } from './types'
 
 const members: FamilyMember[] = [
   { id: 'a', name: 'Anna', tag: 'anna', color: '#f4a3a8' },
@@ -13,7 +14,7 @@ const initial = (patch: Partial<EventDraft> = {}): EventDraft => ({ ...newDraft(
 
 interface Handlers {
   onSave: Mock<(input: CalendarEventInput) => Promise<void>>
-  onDelete?: Mock<() => Promise<void>>
+  onDelete?: Mock<(scope: RecurrenceScope) => Promise<void>>
   onClose: Mock<() => void>
 }
 const show = (draft: EventDraft = initial(), options: { canDelete?: boolean; members?: FamilyMember[]; existing?: CalendarEvent } = {}) => {
@@ -165,6 +166,7 @@ describe('EventDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Na pewno usunąć?' }))
     await flush()
     expect(onDelete).toHaveBeenCalledTimes(1)
+    expect(onDelete).toHaveBeenCalledWith('occurrence')
   })
 
   it('tells the user when deleting fails', async () => {
@@ -190,5 +192,58 @@ describe('EventDialog', () => {
     submit()
     await flush()
     expect(onSave.mock.calls[0][0].extendedProperties).toEqual({ private: { source: 'google' } })
+  })
+
+  it('shows the Polish reason when saving fails for a known cause', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const { onSave } = show(initial({ title: 'X' }))
+    onSave.mockRejectedValueOnce(new UserFacingError('Wybierz kalendarz do zapisu w ustawieniach.'))
+    submit()
+    await flush()
+    expect(screen.getByRole('alert').textContent).toBe('Wybierz kalendarz do zapisu w ustawieniach.')
+  })
+
+  it('shows the Polish reason when deleting fails for a known cause', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const { onDelete } = show(initial({ title: 'X' }), { canDelete: true })
+    onDelete!.mockRejectedValueOnce(new UserFacingError('Brak uprawnień (403).'))
+    fireEvent.click(screen.getByRole('button', { name: 'Usuń' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Na pewno usunąć?' }))
+    await flush()
+    expect(screen.getByRole('alert').textContent).toBe('Brak uprawnień (403).')
+  })
+
+  describe('a recurring event', () => {
+    const recurring: CalendarEvent = {
+      id: 'c|e_20261020',
+      recurringEventId: 'c|e',
+      title: 'Trening',
+      allDay: false,
+      start: new Date(2026, 9, 20, 17),
+      end: new Date(2026, 9, 20, 18),
+    }
+
+    it('explains that edits apply to this occurrence only', () => {
+      show(initial({ title: 'Trening' }), { canDelete: true, existing: recurring })
+      expect(screen.getByText('To wydarzenie cykliczne. Zmiany dotyczą tylko tego wystąpienia.')).toBeTruthy()
+    })
+
+    it('does not mention it for a normal event', () => {
+      show(initial({ title: 'Trening' }), { canDelete: true })
+      expect(screen.queryByText(/cykliczne/)).toBeNull()
+    })
+
+    it('offers to delete this occurrence or the whole series after the first tap', async () => {
+      const { onDelete } = show(initial({ title: 'Trening' }), { canDelete: true, existing: recurring })
+      expect(screen.queryByRole('button', { name: 'Usuń całą serię' })).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: 'Usuń' }))
+      expect(screen.queryByRole('button', { name: 'Na pewno usunąć?' })).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: 'Usuń to wystąpienie' }))
+      await flush()
+      expect(onDelete).toHaveBeenLastCalledWith('occurrence')
+      fireEvent.click(screen.getByRole('button', { name: 'Usuń całą serię' }))
+      await flush()
+      expect(onDelete).toHaveBeenLastCalledWith('series')
+    })
   })
 })

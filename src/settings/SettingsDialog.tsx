@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { DiscoveredCalendar } from '../google/calendarList'
 import type { GeocodingPort } from '../weather/types'
 import { PinCreate } from './PinCreate'
 import { PinEntry } from './PinEntry'
@@ -9,15 +10,16 @@ import './settings.css'
 interface SettingsDialogProps {
   settings: Settings
   geocoder: GeocodingPort
+  checkGoogle: (credentials: { clientId: string; clientSecret: string; refreshToken: string }) => Promise<DiscoveredCalendar[]>
   onChange: (settings: Settings) => void
   onClose: () => void
 }
 
-export function SettingsDialog({ settings, geocoder, onChange, onClose }: SettingsDialogProps) {
+export function SettingsDialog({ settings, geocoder, checkGoogle, onChange, onClose }: SettingsDialogProps) {
   const [isUnlocked, setIsUnlocked] = useState(false)
 
   const content = isUnlocked ? (
-    <SettingsForm settings={settings} geocoder={geocoder} onChange={onChange} onClose={onClose} />
+    <SettingsForm settings={settings} geocoder={geocoder} checkGoogle={checkGoogle} onChange={onChange} onClose={onClose} />
   ) : settings.pin === null ? (
     <PinCreate
       onCreate={(pin) => {

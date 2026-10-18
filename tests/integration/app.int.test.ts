@@ -3,6 +3,7 @@ import { mkdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { promisify } from 'node:util'
 import { afterAll, beforeEach, describe, expect, inject, it } from 'vitest'
+import { FAKE_GOOGLE } from './fake-google.ts'
 
 const run = promisify(execFile)
 const SESSION = `fhc-integration-${process.pid}`
@@ -30,6 +31,20 @@ const SETTINGS_WITH_FIVE_PEOPLE = {
   calendars: { readIds: [], writeId: null },
   weather: { location: { name: 'Warszawa', latitude: 52.23, longitude: 21.01 } },
   pin: null,
+}
+
+const GOOGLE_CREDENTIALS = { clientId: FAKE_GOOGLE.clientId, clientSecret: FAKE_GOOGLE.clientSecret, refreshToken: FAKE_GOOGLE.refreshToken }
+const SETTINGS_WITH_GOOGLE = {
+  ...SETTINGS_WITH_FIVE_PEOPLE,
+  google: GOOGLE_CREDENTIALS,
+  calendars: {
+    readIds: ['family@example.com'],
+    writeId: 'family@example.com',
+    known: [
+      { id: 'family@example.com', name: 'Rodzina', canWrite: true },
+      { id: 'holidays@example.com', name: 'Święta', canWrite: false },
+    ],
+  },
 }
 
 const pad = (value: number) => String(value).padStart(2, '0')
@@ -66,6 +81,7 @@ async function enterPin(pin: string) {
 
 describe('app on the kiosk display', () => {
   beforeEach(async () => {
+    await fetch(`${inject('googleUrl')}/__reset`, { method: 'POST' })
     await agentBrowser('set', 'viewport', KIOSK_WIDTH, KIOSK_HEIGHT)
     await agentBrowser('open', inject('appUrl'))
     await agentBrowser('wait', SETTLE_MS)
@@ -210,6 +226,90 @@ describe('app on the kiosk display', () => {
       await clickButton('Na pewno usunąć?')
       await agentBrowser('wait', SETTLE_MS)
       expect(await evaluate<string[]>(eventTitles)).toEqual([])
+    } finally {
+      await agentBrowser('eval', 'localStorage.clear()')
+    }
+  })
+
+  it('shows Google events and adds, edits and deletes them through the Google API', async () => {
+    const titlesIn = (column: string) =>
+      evaluate<string[]>(`[...document.querySelectorAll('.day-row[data-day="${TODAY_KEY}"] .day-cell[data-column="${column}"] .event-title')].map((e) => e.textContent)`)
+
+    await agentBrowser('eval', `localStorage.clear(); localStorage.setItem('fhc.settings.v1', ${JSON.stringify(JSON.stringify(SETTINGS_WITH_GOOGLE))})`)
+    await agentBrowser('open', inject('appUrl'))
+    await agentBrowser('wait', SETTLE_MS)
+    try {
+      expect(await titlesIn('m2')).toEqual(['Z Google'])
+
+      await agentBrowser('eval', `document.querySelector('.day-row[data-day="${TODAY_KEY}"] .day-cell[data-column="m3"]').click()`)
+      await fillField('Tytuł', 'Z tabletu')
+      await clickButton('Zapisz')
+      await agentBrowser('wait', SETTLE_MS)
+      expect(await titlesIn('m3')).toEqual(['Z tabletu'])
+      await screenshot('google-events')
+
+      await agentBrowser('open', inject('appUrl'))
+      await agentBrowser('wait', SETTLE_MS)
+      expect(await titlesIn('m3')).toEqual(['Z tabletu'])
+      expect(await evaluate<boolean>("localStorage.getItem('fhc.events.v1') === null")).toBe(true)
+
+      await agentBrowser('eval', `document.querySelector('.day-row[data-day="${TODAY_KEY}"] .day-cell[data-column="m3"] .event').click()`)
+      await fillField('Tytuł', 'Z tabletu (zmiana)')
+      await clickButton('Zapisz')
+      await agentBrowser('wait', SETTLE_MS)
+      expect(await titlesIn('m3')).toEqual(['Z tabletu (zmiana)'])
+
+      await agentBrowser('eval', `document.querySelector('.day-row[data-day="${TODAY_KEY}"] .day-cell[data-column="m2"] .event').click()`)
+      await clickButton('Usuń')
+      await clickButton('Na pewno usunąć?')
+      await agentBrowser('wait', SETTLE_MS)
+      expect(await titlesIn('m2')).toEqual([])
+    } finally {
+      await agentBrowser('eval', 'localStorage.clear()')
+    }
+  })
+
+  it('connects to Google from the settings, lists the calendars and starts using them', async () => {
+    const settings = { ...SETTINGS_WITH_FIVE_PEOPLE, pin: '1234' }
+    await agentBrowser('eval', `localStorage.clear(); localStorage.setItem('fhc.settings.v1', ${JSON.stringify(JSON.stringify(settings))})`)
+    await agentBrowser('open', inject('appUrl'))
+    await agentBrowser('wait', SETTLE_MS)
+    try {
+      await clickButton('Ustawienia')
+      await enterPin('1234')
+      await fillField('Identyfikator klienta', FAKE_GOOGLE.clientId)
+      await fillField('Sekret klienta', FAKE_GOOGLE.clientSecret)
+      await fillField('Token odświeżania', FAKE_GOOGLE.refreshToken)
+      await clickButton('Sprawdź połączenie')
+      await agentBrowser('wait', SETTLE_MS)
+      expect(await evaluate<boolean>("document.body.innerText.includes('Połączono. Liczba kalendarzy: 2.')")).toBe(true)
+      expect(await evaluate<string[]>("[...document.querySelectorAll('.calendar-choices input[type=checkbox]')].map((c) => c.checked ? 'on' : 'off')")).toEqual(['on', 'off'])
+      await screenshot('settings-google')
+      await clickButton('Zapisz')
+      await agentBrowser('wait', SETTLE_MS)
+      expect(await evaluate<string>("JSON.parse(localStorage.getItem('fhc.settings.v1')).calendars.writeId")).toBe('family@example.com')
+      expect(
+        await evaluate<string[]>(`[...document.querySelectorAll('.day-row[data-day="${TODAY_KEY}"] .event-title')].map((e) => e.textContent)`),
+      ).toEqual(['Z Google'])
+    } finally {
+      await agentBrowser('eval', 'localStorage.clear()')
+    }
+  })
+
+  it('explains in Polish when Google rejects the refresh token', async () => {
+    const settings = { ...SETTINGS_WITH_FIVE_PEOPLE, pin: '1234' }
+    await agentBrowser('eval', `localStorage.clear(); localStorage.setItem('fhc.settings.v1', ${JSON.stringify(JSON.stringify(settings))})`)
+    await agentBrowser('open', inject('appUrl'))
+    await agentBrowser('wait', SETTLE_MS)
+    try {
+      await clickButton('Ustawienia')
+      await enterPin('1234')
+      await fillField('Identyfikator klienta', FAKE_GOOGLE.clientId)
+      await fillField('Sekret klienta', FAKE_GOOGLE.clientSecret)
+      await fillField('Token odświeżania', 'revoked-token')
+      await clickButton('Sprawdź połączenie')
+      await agentBrowser('wait', SETTLE_MS)
+      expect(await evaluate<boolean>("document.body.innerText.includes('Token odświeżania wygasł lub został cofnięty')")).toBe(true)
     } finally {
       await agentBrowser('eval', 'localStorage.clear()')
     }
