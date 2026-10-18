@@ -31,7 +31,7 @@ Out (later iterations): AI voice assistant (kept in README as planned), tasks, a
 
 ## Assumptions (change on request)
 
-- Google OAuth client id comes from `VITE_GOOGLE_CLIENT_ID` (a public identifier, not a secret). Scope: `calendar.events` + `calendar.readonly` (calendar list).
+- Google OAuth client id comes from `VITE_GOOGLE_CLIENT_ID` (a public identifier, not a secret). Scopes: `calendar.events` (events) + `calendar.calendarlist.readonly` (calendar list), the narrowest that cover the features; setup is described in the README section "Google Calendar integration".
 - The first-run PIN is created on first opening settings; the PIN is a convenience lock against children, not a security boundary (stored in `localStorage`).
 - Event edit dialog: title, description, date, start/end time (all-day toggle) and delete. Time zone is the device's.
 - Bottom bar: 12 slots at 2h step starting at the current hour; the strip shifts left by one hour (half a slot) at every full hour, the current time stays at the left edge.
@@ -60,4 +60,4 @@ Each phase ships as its own PR with unit tests at 100% and an integration test (
 
 ## Open items
 
-- Google Cloud project, OAuth client id and consent screen are needed from the user before phase 4 can be verified against the real API.
+- Google Cloud project, OAuth client id and consent screen are needed from the user before phase 4 can be verified against the real API (steps in the README).
