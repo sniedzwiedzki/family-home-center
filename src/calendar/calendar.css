@@ -108,7 +108,7 @@
 }
 
 .day-row.is-today {
-  background: color-mix(in srgb, var(--primary) 9%, white);
+  background: color-mix(in srgb, var(--primary) 12%, var(--surface));
   box-shadow: inset 0 0 0 0.125rem var(--primary);
 }
 
@@ -235,7 +235,9 @@
   font-size: 1.375rem;
 }
 
+/* Spans the month strip too, so the button is centred over the whole area left of the person columns. */
 .home-slot {
+  margin-left: calc(-1 * var(--month-width));
   display: grid;
   place-items: center;
 }
