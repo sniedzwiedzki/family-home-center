@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { formatClock } from '../shared/format'
+import { RefreshIcon, SettingsIcon } from './icons'
 import { useNow } from './useNow'
 
 // Same length as the `refresh-spin` animation in App.css.
@@ -23,26 +24,23 @@ export function TopBar({ onOpenSettings, onRefresh }: TopBarProps) {
 
   return (
     <header className="top-bar">
-      <div />
+      <button
+        type="button"
+        className={isSpinning ? 'refresh-button is-spinning' : 'refresh-button'}
+        aria-label="Odśwież"
+        onClick={() => {
+          setIsSpinning(true)
+          onRefresh()
+        }}
+      >
+        <RefreshIcon />
+      </button>
       <time className="clock" dateTime={now.toISOString()}>
         {formatClock(now)}
       </time>
-      <div className="top-bar-actions">
-        <button
-          type="button"
-          className={isSpinning ? 'refresh-button is-spinning' : 'refresh-button'}
-          aria-label="Odśwież"
-          onClick={() => {
-            setIsSpinning(true)
-            onRefresh()
-          }}
-        >
-          ↻
-        </button>
-        <button type="button" className="settings-button" aria-label="Ustawienia" onClick={onOpenSettings}>
-          ⚙
-        </button>
-      </div>
+      <button type="button" className="settings-button" aria-label="Ustawienia" onClick={onOpenSettings}>
+        <SettingsIcon />
+      </button>
     </header>
   )
 }

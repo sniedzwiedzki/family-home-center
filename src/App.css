@@ -33,21 +33,27 @@
 }
 
 .clock {
-  font-size: 1.75rem;
+  font-size: 1.875rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
-.top-bar-actions {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
+.refresh-button {
+  justify-self: start;
+}
+
+.settings-button {
   justify-self: end;
 }
 
 .settings-button,
 .refresh-button {
-  font-size: 1.625rem;
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  font-size: 1.75rem;
   color: inherit;
   background: none;
   border: 0;
@@ -96,17 +102,13 @@
   padding: 0.25rem 0;
 }
 
-.forecast-slot:first-child {
-  color: var(--primary);
-}
-
 .slot-time {
-  font-size: 0.875rem;
+  font-size: 1rem;
   color: var(--soft);
 }
 
 .forecast-slot:first-child .slot-time {
-  color: var(--primary);
+  font-weight: 700;
 }
 
 .slot-weather {
@@ -116,9 +118,9 @@
 }
 
 .slot-icon {
-  font-size: 1.125rem;
+  font-size: 1.25rem;
 }
 
 .slot-temp {
-  font-size: 1.0625rem;
+  font-size: 1.1875rem;
 }

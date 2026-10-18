@@ -17,12 +17,12 @@ A big calendar with events, actions, tasks and more. The first iteration covers 
 - The settings button (in the top bar) opens the settings.
 
 - Each date row shows the weather forecast for that day (only for days where a forecast is available).
-- **Refresh**: events reload every 5 minutes and when the internet comes back, the forecast every 30 minutes (a minute after a failure); the ↻ button next to the settings does both on demand, and the screen keeps the old data until the new arrives.
+- **Refresh**: events reload every 5 minutes and when the internet comes back, the forecast every 30 minutes (a minute after a failure); the ↻ button on the left of the top bar does both on demand, and the screen keeps the old data until the new arrives.
 
 ### Top bar
 
 - Sticky at the top of the view.
-- Current time in the center (bold); on the right a refresh button (↻) and the settings button (⚙); the AI assistant button (planned) goes on the left.
+- Current time in the center (bold); the refresh button (↻) on the left and the settings button (⚙) on the right; the AI assistant button (planned) goes in the center.
 - The refresh button reloads the calendar events and the weather forecast right away; the icon spins briefly after a tap.
 
 ### AI voice assistant (planned, after the first iteration)
