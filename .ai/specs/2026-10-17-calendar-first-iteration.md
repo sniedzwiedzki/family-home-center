@@ -16,7 +16,7 @@ Out (later iterations): AI voice assistant (kept in README as planned), tasks, a
 
 | Topic | Decision |
 |---|---|
-| Google auth | Browser only (Google Identity Services token flow), no backend. The ~1h token is renewed silently while the Google session lasts; otherwise the kiosk shows a sign-in screen. |
+| Google auth | Browser only (Google Identity Services token flow), no backend. The ~1h token is renewed with `requestAccessToken({ prompt: 'none' })` when possible; otherwise the kiosk shows a sign-in screen. Silent renewal is not guaranteed by Google, so it is tried on the real kiosk browser first (see Open items). |
 | Calendars read | Chosen in settings (checkbox list of the account's calendars; all selected by default). |
 | Calendar written | One default calendar chosen in settings receives new events. |
 | Tag storage | Source of truth: event `extendedProperties.private` (`fhcTags`, comma-separated). `#tag` tokens in the title are also recognised so events can be tagged from a phone. |
@@ -31,7 +31,7 @@ Out (later iterations): AI voice assistant (kept in README as planned), tasks, a
 
 ## Assumptions (change on request)
 
-- Google OAuth client id comes from `VITE_GOOGLE_CLIENT_ID` (a public identifier, not a secret). Scope: `calendar.events` + `calendar.readonly` (calendar list).
+- Google OAuth client id comes from `VITE_GOOGLE_CLIENT_ID` (a public identifier, not a secret). Scopes: `calendar.events` (events) + `calendar.calendarlist.readonly` (calendar list), the narrowest that cover the features; setup is described in the README section "Google Calendar integration".
 - The first-run PIN is created on first opening settings; the PIN is a convenience lock against children, not a security boundary (stored in `localStorage`).
 - Event edit dialog: title, description, date, start/end time (all-day toggle) and delete. Time zone is the device's.
 - Bottom bar: 12 slots at 2h step starting at the current hour; the strip shifts left by one hour (half a slot) at every full hour, the current time stays at the left edge.
@@ -60,4 +60,5 @@ Each phase ships as its own PR with unit tests at 100% and an integration test (
 
 ## Open items
 
-- Google Cloud project, OAuth client id and consent screen are needed from the user before phase 4 can be verified against the real API.
+- Google Cloud project, OAuth client id and consent screen are needed from the user before phase 4 can be verified against the real API (steps in the README).
+- **Decision (made 2026-10-18): unattended token renewal starts with `prompt: 'none'`.** Phase 4 renews the token with `requestAccessToken({ prompt: 'none' })` before it expires and falls back to the sign-in screen when that fails. Google documents that renewal needs a user gesture and does not promise `prompt: 'none'` works without one, so the result must be tried on the kiosk's own browser: if the kiosk still needs a tap about every hour, revisit the alternative (authorization code flow with a small backend that keeps a refresh token; needs hosting and the app in production status, because test-user authorizations and refresh tokens expire after seven days).
