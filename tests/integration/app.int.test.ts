@@ -131,6 +131,28 @@ describe('app on the kiosk display', () => {
     await screenshot('today-after-return')
   })
 
+  it('expands one day at a time into hours, toggles it by its date and returns home', async () => {
+    const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
+    const TOMORROW_KEY = `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth() + 1)}-${pad(tomorrow.getDate())}`
+    const defaultKey = today.getHours() < 20 ? TODAY_KEY : TOMORROW_KEY
+    const expandedDays = () => evaluate<string[]>("[...document.querySelectorAll('.day-row.is-expanded')].map((row) => row.dataset.day)")
+    const clickDate = (key: string) => agentBrowser('eval', `document.querySelector('.day-row[data-day="${key}"] button.day-date').click()`)
+
+    expect(await expandedDays()).toEqual([defaultKey])
+    expect(await evaluate<string[]>("[...document.querySelectorAll('.day-row.is-expanded .hour-label')].slice(0, 1).map((l) => l.textContent)")).toEqual(['7:00'])
+    await clickDate(defaultKey)
+    expect(await expandedDays()).toEqual([])
+    const other = defaultKey === TODAY_KEY ? TOMORROW_KEY : TODAY_KEY
+    await clickDate(other)
+    expect(await expandedDays()).toEqual([other])
+    await screenshot('hour-view')
+    await agentBrowser('eval', "document.querySelector('main').scrollTop += 3000")
+    await clickButton('Wróć do widoku początkowego')
+    await agentBrowser('wait', '2500')
+    expect(await expandedDays()).toEqual([defaultKey])
+    expect(Math.abs(await evaluate<number>(`document.querySelector('.day-row[data-day="${defaultKey}"]').getBoundingClientRect().top - document.querySelector('.column-headers').getBoundingClientRect().bottom`))).toBeLessThan(4)
+  })
+
   it('loads more days when scrolling to the top', async () => {
     const countRows = "document.querySelectorAll('.day-row').length"
     const before = await evaluate<number>(countRows)

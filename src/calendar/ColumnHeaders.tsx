@@ -1,13 +1,25 @@
 import type { CSSProperties } from 'react'
 import type { CalendarColumn } from './columns'
 import { OTHER_COLUMN_ID } from './columns'
+import { HomeIcon } from '../shell/icons'
 
 const OTHER_INITIAL = '…'
 
-export function ColumnHeaders({ columns }: { columns: readonly CalendarColumn[] }) {
+export const HOME_LABEL = 'Wróć do widoku początkowego'
+
+interface ColumnHeadersProps {
+  columns: readonly CalendarColumn[]
+  onHome: () => void
+}
+
+export function ColumnHeaders({ columns, onHome }: ColumnHeadersProps) {
   return (
     <div className="column-headers day-grid">
-      <div />
+      <div className="home-slot">
+        <button type="button" className="home-button" aria-label={HOME_LABEL} onClick={onHome}>
+          <HomeIcon />
+        </button>
+      </div>
       {columns.map((column) => (
         <div
           key={column.id}

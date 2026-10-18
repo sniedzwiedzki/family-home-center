@@ -43,4 +43,15 @@ describe('EventItem', () => {
     expect(onEdit).toHaveBeenCalledWith(base)
     expect(outerClick).not.toHaveBeenCalled()
   })
+
+  it('is positioned on the hour grid when given a placement', () => {
+    const placement = { top: '10px', height: '20px', left: '50%', width: '50%' }
+    const placed = render(<EventItem onEdit={noop} entry={{ event: base, isContinuation: false }} color="#ff0000" placement={placement} />)
+    const button = placed.container.querySelector<HTMLElement>('.event')!
+    expect(button.classList.contains('is-timed')).toBe(true)
+    expect([button.style.top, button.style.height, button.style.left, button.style.width]).toEqual(['10px', '20px', '50%', '50%'])
+    expect(button.style.getPropertyValue('--event-color')).toBe('#ff0000')
+    const plain = render(<EventItem onEdit={noop} entry={{ event: base, isContinuation: false }} color={null} />)
+    expect(plain.container.querySelector('.event')?.classList.contains('is-timed')).toBe(false)
+  })
 })
