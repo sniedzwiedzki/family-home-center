@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 
-const CLOCK_STEP_MS = 5 * 60 * 1000
+const CLOCK_STEP_MS = 60 * 1000
 
 const floorToStep = (time: number): Date => new Date(time - (time % CLOCK_STEP_MS))
 
-/** The current time, moving in steps of five minutes: the now-line of the hour view. */
+/** The current time, moving in steps of one minute: the now-line of the hour view. */
 export function useClock(): Date {
   const [clock, setClock] = useState(() => floorToStep(Date.now()))
 

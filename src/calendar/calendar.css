@@ -310,21 +310,26 @@ button.day-date {
   transform: translateY(-50%);
 }
 
-/* Left of the hour label, centred on the hour line. */
+/* Left of the hour label, icon above temperature, centred on the hour line; the gap and the lighter, smaller text keep it apart from the hour. */
 .hour-weather {
   position: absolute;
-  left: 0.375rem;
+  left: 0.25rem;
   display: flex;
-  gap: 0.125rem;
+  flex-direction: column;
   align-items: center;
-  font-size: 0.9375rem;
-  line-height: 1;
+  width: 2.5rem;
+  font-size: 1rem;
+  line-height: 1.1;
   color: var(--headline);
   transform: translateY(-50%);
 }
 
 .hour-weather-icon {
-  font-size: 1.125rem;
+  font-size: 1.25rem;
+}
+
+.hour-label {
+  font-weight: 600;
 }
 
 .hour-labels .is-first {

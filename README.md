@@ -10,7 +10,7 @@ A big calendar with events, actions, tasks and more. The first iteration covers 
 
 - Content is fetched from the Google calendars chosen in settings; new events go to the default calendar chosen in settings.
 - Never-ending scroll page in both directions, starting at today; each date is a single row.
-- One day at a time is expanded into an hour view (7:00 to 20:00, more only when an event starts earlier or ends later), with events at their hours and a now-line that moves every 5 minutes. Today is expanded by default; once today is over (after 20:00 and its last event) the next day is. Tapping a date expands or collapses that day; the home button above the dates restores the default view and scrolls back to it.
+- One day at a time is expanded into an hour view (7:00 to 20:00, more only when an event starts earlier or ends later), with events at their hours and a now-line that moves every minute. Today is expanded by default; once today is over (after 20:00 and its last event) the next day is. Tapping a date expands or collapses that day; the home button above the dates restores the default view and scrolls back to it.
 - All-day and multi-day events appear in the row of every day they cover.
 - Application language: Polish (all UI text, dates and weather labels). The repository itself (code, docs, specs) stays in English.
 - Clicking an empty spot of a day in a person's column opens a dialog to add an event; that person is preselected, and more people can be added or changed. Clicking an existing event opens the same dialog to edit its date, time and content, or to remove it (with a second tap to confirm). For recurring Google events an edit changes only that occurrence, and deleting asks whether to delete the occurrence or the whole series.

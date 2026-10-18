@@ -500,7 +500,7 @@ describe('CalendarView', () => {
       toggle(container, addDays(today, 2))
       expect(expandedDays(container)).toEqual([dayKey(addDays(today, 2))])
       // Step by step, as in real time: each tick of the clock is rendered before the next one is scheduled.
-      for (let step = 0; step < 7; step++) await act(() => vi.advanceTimersByTimeAsync(5 * 60_000))
+      for (let step = 0; step < 35; step++) await act(() => vi.advanceTimersByTimeAsync(60_000))
       expect(expandedDays(container)).toEqual([dayKey(tomorrow)])
     })
 
