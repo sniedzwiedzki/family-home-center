@@ -123,7 +123,7 @@ export function CalendarView({ port, members, forecasts, hourForecasts, refreshS
   const toggleDay = (key: string) => setChoice({ day: expandedKey === key ? null : key, madeOn: todayKey })
   const goHome = () => {
     setChoice(null)
-    setHomeTarget({ day: defaultExpanded })
+    setHomeTarget({ day: todayKey })
   }
 
   const closeEditor = () => setEditor(null)

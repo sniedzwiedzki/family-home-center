@@ -547,13 +547,13 @@ describe('CalendarView', () => {
         expect(scrollIntoView).toHaveBeenCalledTimes(1)
       })
 
-      it('goes to the next day when that one is the default', async () => {
+      it('scrolls to today, which stays on top above the expanded next day, when that one is the default', async () => {
         const { container } = await renderAt(atTime(21))
         toggle(container, today)
         scrollIntoView.mockClear()
         fireEvent.click(home())
         expect(expandedDays(container)).toEqual([dayKey(tomorrow)])
-        expect(scrollIntoView.mock.contexts[0]).toBe(rowOf(container, tomorrow))
+        expect(scrollIntoView.mock.contexts[0]).toBe(rowOf(container, today))
       })
     })
   })
