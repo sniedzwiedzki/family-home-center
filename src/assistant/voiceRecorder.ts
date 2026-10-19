@@ -4,7 +4,8 @@ import { createSilenceDetector } from './silenceDetector'
 
 /** Loudness (RMS, 0 to 1) of ordinary speech at tablet distance is well above 0.05; a quiet kitchen stays below it. */
 const SPEECH_LEVEL = 0.05
-const SILENCE_MS = 1500
+/** Long enough for a pause to think in the middle of a sentence. */
+const SILENCE_MS = 3000
 const NO_SPEECH_MS = 8000
 /** A command is a sentence; the cap keeps a stuck recording (and its upload) small. */
 const MAX_RECORDING_MS = 30_000

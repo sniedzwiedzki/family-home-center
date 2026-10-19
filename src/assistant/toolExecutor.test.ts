@@ -105,6 +105,17 @@ describe('create_event', () => {
     expect(event.allDay).toBe(true)
   })
 
+  it('refuses to create the same event twice in one command, timed or all-day, and offers update_event', async () => {
+    const { port, executor } = setup()
+    const first = await executor.execute(call('create_event', { title: 'Basen', date: '2026-10-23', startTime: '17:00' }))
+    const id = ((output(first).created as { id: string }).id)
+    const again = await executor.execute(call('create_event', { title: 'basen', date: '2026-10-23' }))
+    expect(String(output(again).error)).toContain(`already created in this command (id ${id})`)
+    expect(await port.listEvents({ from: new Date(2026, 9, 23), to: new Date(2026, 9, 24) })).toHaveLength(1)
+    const other = await executor.execute(call('create_event', { title: 'Basen', date: '2026-10-24' }))
+    expect(other).toMatchObject({ kind: 'done', summary: expect.stringContaining('Dodano') })
+  })
+
   it('refuses unknown tags and says which ones are known', async () => {
     const { port, executor } = setup()
     const outcome = await executor.execute(call('create_event', { title: 'X', date: '2026-10-23', tags: ['babcia'] }))
