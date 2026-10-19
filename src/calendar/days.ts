@@ -46,9 +46,50 @@ export function groupEventsByDay(events: readonly CalendarEvent[]): Map<string, 
 
 export type DayKind = 'weekday' | 'saturday' | 'sunday'
 
+// Fixed-date public holidays in Poland as [month (1-12), day]; Christmas Eve is a holiday since 2025.
+const FIXED_HOLIDAYS: readonly (readonly [number, number])[] = [
+  [1, 1],
+  [1, 6],
+  [5, 1],
+  [5, 3],
+  [8, 15],
+  [11, 1],
+  [11, 11],
+  [12, 24],
+  [12, 25],
+  [12, 26],
+]
+
+// Holidays that move with Easter Sunday: Easter Monday, Pentecost and Corpus Christi.
+const EASTER_OFFSETS: readonly number[] = [1, 49, 60]
+
+/** Easter Sunday of the given year (Gregorian calendar, Meeus/Jones/Butcher algorithm). */
+function easterSunday(year: number): Date {
+  const a = year % 19
+  const b = Math.floor(year / 100)
+  const c = year % 100
+  const h = (b - Math.floor(b / 4) - Math.floor((b - Math.floor((b + 8) / 25) + 1) / 3) + 19 * a + 15) % 30
+  const l = (32 + 2 * (b % 4) + 2 * Math.floor(c / 4) - h - (c % 4)) % 7
+  const m = Math.floor((a + 11 * h + 22 * l) / 451)
+  const month = Math.floor((h + l - 7 * m + 114) / 31)
+  const day = ((h + l - 7 * m + 114) % 31) + 1
+  return new Date(year, month - 1, day)
+}
+
+export function isPolishHoliday(date: Date): boolean {
+  const month = date.getMonth() + 1
+  const day = date.getDate()
+  if (FIXED_HOLIDAYS.some(([m, d]) => m === month && d === day)) return true
+  const easter = easterSunday(date.getFullYear())
+  const key = dayKey(date)
+  return EASTER_OFFSETS.some((offset) => dayKey(addDays(easter, offset)) === key)
+}
+
+/** Public holidays look like Sundays. */
 export function dayKind(date: Date): DayKind {
   const weekday = date.getDay()
-  return weekday === 6 ? 'saturday' : weekday === 0 ? 'sunday' : 'weekday'
+  if (weekday === 0 || isPolishHoliday(date)) return 'sunday'
+  return weekday === 6 ? 'saturday' : 'weekday'
 }
 
 export interface MonthGroup {
