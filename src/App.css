@@ -8,6 +8,10 @@
   overscroll-behavior: none;
 }
 
+.bottom-area {
+  position: relative;
+}
+
 .top-bar,
 .bottom-bar {
   display: flex;

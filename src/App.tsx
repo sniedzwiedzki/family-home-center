@@ -77,8 +77,10 @@ function App() {
     <div className="kiosk">
       <TopBar onOpenSettings={() => setIsSettingsOpen(true)} onRefresh={refresh} />
       <CalendarView port={calendarPort} members={settings.familyMembers} forecasts={forecasts} hourForecasts={hourForecasts} refreshSignal={refreshSignal} />
-      <BottomBar forecast={forecast} />
-      <AssistantButton onOpen={() => setIsAssistantOpen(true)} />
+      <div className="bottom-area">
+        <AssistantButton onOpen={() => setIsAssistantOpen(true)} />
+        <BottomBar forecast={forecast} />
+      </div>
       {isAssistantOpen && (
         <AssistantDialog
           assistant={assistant}
