@@ -42,13 +42,10 @@
   justify-self: start;
 }
 
-.top-bar-actions {
-  display: flex;
-  gap: 0.5rem;
+.settings-button {
   justify-self: end;
 }
 
-.assistant-button,
 .settings-button,
 .refresh-button {
   display: grid;

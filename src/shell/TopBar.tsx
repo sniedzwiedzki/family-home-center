@@ -1,19 +1,18 @@
 import { useEffect, useState } from 'react'
 import { formatClock } from '../shared/format'
-import { MicIcon, RefreshIcon, SettingsIcon } from './icons'
+import { RefreshIcon, SettingsIcon } from './icons'
 import { useNow } from './useNow'
 
 // Same length as the `refresh-spin` animation in App.css.
 const SPIN_MS = 800
 
 interface TopBarProps {
-  onOpenAssistant: () => void
   onOpenSettings: () => void
   /** Reloads the calendar and the weather right away. */
   onRefresh: () => void
 }
 
-export function TopBar({ onOpenAssistant, onOpenSettings, onRefresh }: TopBarProps) {
+export function TopBar({ onOpenSettings, onRefresh }: TopBarProps) {
   const now = useNow()
   const [isSpinning, setIsSpinning] = useState(false)
 
@@ -39,14 +38,9 @@ export function TopBar({ onOpenAssistant, onOpenSettings, onRefresh }: TopBarPro
       <time className="clock" dateTime={now.toISOString()}>
         {formatClock(now)}
       </time>
-      <div className="top-bar-actions">
-        <button type="button" className="assistant-button" aria-label="Asystent AI" onClick={onOpenAssistant}>
-          <MicIcon />
-        </button>
-        <button type="button" className="settings-button" aria-label="Ustawienia" onClick={onOpenSettings}>
-          <SettingsIcon />
-        </button>
-      </div>
+      <button type="button" className="settings-button" aria-label="Ustawienia" onClick={onOpenSettings}>
+        <SettingsIcon />
+      </button>
     </header>
   )
 }

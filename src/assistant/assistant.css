@@ -89,3 +89,29 @@
 .assistant-confirm p {
   flex-basis: 100%;
 }
+
+.assistant-corner-button {
+  position: fixed;
+  right: 0;
+  /* Just above the weather bar (about 3.25rem tall). */
+  bottom: 3.5rem;
+  /* Above the calendar, below the settings (10), the event dialog (20) and the assistant dialog (30). */
+  z-index: 8;
+  display: grid;
+  place-items: end end;
+  width: 7.68rem;
+  height: 7.68rem;
+  padding: 0 1.45rem 1.45rem 0;
+  font-size: 2.9rem;
+  color: var(--primary);
+  background: rgba(255, 255, 255, 0.78);
+  border: 0;
+  /* A quarter circle centred on the corner; clip-path also limits the tappable area to it. */
+  clip-path: circle(100% at 100% 100%);
+  filter: drop-shadow(0 0 0.6rem rgba(38, 54, 70, 0.3));
+  user-select: none;
+}
+
+.assistant-corner-button:active {
+  background: rgba(255, 255, 255, 0.95);
+}
