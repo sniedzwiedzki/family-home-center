@@ -65,7 +65,7 @@ export function draftFromEvent(event: CalendarEvent, members: readonly FamilyMem
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/
 const TIME_PATTERN = /^(\d{2}):(\d{2})$/
 
-function parseDate(value: string): Date | null {
+export function parseDate(value: string): Date | null {
   const match = DATE_PATTERN.exec(value)
   if (match === null) return null
   const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))

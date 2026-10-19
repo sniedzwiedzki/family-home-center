@@ -4,7 +4,7 @@ Application for centralizing family events, calendar, tasks and home control.
 
 ## Main functionality
 
-A big calendar with events, actions, tasks and more. The first iteration covers the calendar, the top and bottom bars and the settings; the AI voice assistant, tasks, actions and home control come later. See `.ai/specs/2026-10-17-calendar-first-iteration.md`.
+A big calendar with events, actions, tasks and more. The first iteration covers the calendar, the top and bottom bars and the settings; the AI voice assistant is built too; tasks, actions and home control come later. See `.ai/specs/2026-10-17-calendar-first-iteration.md`.
 
 ### Calendar
 
@@ -23,14 +23,14 @@ A big calendar with events, actions, tasks and more. The first iteration covers 
 ### Top bar
 
 - Sticky at the top of the view.
-- Current time in the center (bold); the refresh button (↻) on the left and the settings button (⚙) on the right; the AI assistant button (planned) goes in the center.
+- Current time in the center (bold); the refresh button (↻) on the left; the AI assistant button (microphone) and the settings button (⚙) on the right.
 - The refresh button reloads the calendar events and the weather forecast right away; the icon spins briefly after a tap.
 
-### AI voice assistant (planned, after the first iteration)
+### AI voice assistant
 
-- A button in the center of the top bar; the user clicks it and talks to it.
-- Speech is transcribed and sent to a Google Gemini model through the Gemini API, using an API key configured in settings.
-- The user gives instructions in natural language, e.g. "Add an event on date X for user Y". The model returns structured tool calls (create, update, delete event, with the family member tag) which the app executes against Google Calendar.
+- The microphone button in the top bar opens a dialog that starts listening at once. Say a command in Polish, for example "Dodaj basen dla Oli w piątek o 17". Recording ends when you stop talking (or tap **Gotowe**).
+- The recording is sent to a Google Gemini model through the Gemini API, with the API key from the settings. The model answers in Polish and changes the calendar through typed tools: list, create and update events (with the family member tags). Deleting never happens by itself: the dialog asks "Usunąć wydarzenie…?" and deletes only after you tap **Usuń**.
+- See "Gemini voice assistant" below for what to configure.
 
 ### Bottom bar
 
@@ -52,6 +52,7 @@ A big calendar with events, actions, tasks and more. The first iteration covers 
 - Weather location (city or coordinates); forecasts come from Open-Meteo.
 - Settings are protected by a PIN.
 - Define family members (name, unique tag, color).
+- Gemini API key and model for the voice assistant.
 
 ## Google Calendar integration
 
@@ -143,6 +144,72 @@ The automated tests never use a real Google account or key: unit tests mock `fet
 - Calendar API reference: [events.list](https://developers.google.com/workspace/calendar/api/v3/reference/events/list), [events.update](https://developers.google.com/workspace/calendar/api/v3/reference/events/update), [events.delete](https://developers.google.com/workspace/calendar/api/v3/reference/events/delete), [calendarList.list](https://developers.google.com/workspace/calendar/api/v3/reference/calendarList/list).
 - [OAuth 2.0 Playground](https://developers.google.com/oauthplayground/): step names, "Input your own scopes", "Use your own OAuth credentials", Offline access type and Consent Screen prompt (seen on the live page).
 
+## Gemini voice assistant
+
+The assistant is a button in the top bar. It records a spoken command, sends the recording to Google Gemini, and applies what Gemini decides to your calendar.
+
+**How it works.** The tablet records the microphone (`getUserMedia` + `MediaRecorder`, WebM audio) and sends the recording, together with today's date, the family members' names and tags and a short job description, to the Gemini **Interactions API** (`POST https://generativelanguage.googleapis.com/v1beta/interactions`, key in the `x-goog-api-key` header). Speech recognition happens inside Gemini; Fully Kiosk Browser's Android WebView has no Web Speech API, which is why the browser's own recognizer is not used. Every request sets `store: false` and carries the whole conversation, so nothing is kept at Google by the app's choice (Google's own handling of API traffic is described in its terms for the Gemini API and depends on your plan).
+
+**How Gemini gets access to the calendar.** It does not get any access of its own. Gemini never sees your Google Calendar credentials. It can only ask the app to run four tools, and the app runs them against the same calendar the screen shows:
+
+| Tool | What it does |
+|---|---|
+| `list_events(from, to)` | reads the events of those days (the model needs it to find an event's id) |
+| `create_event(...)` | adds an event; `tags` must be tags of family members from the settings |
+| `update_event(eventId, ...)` | changes the given fields of an event it has listed |
+| `delete_event(eventId)` | only asks you to confirm; the app deletes after you tap **Usuń** |
+
+All arguments are validated before use; unknown tags and ids the model has not listed are refused and reported back to it. For a recurring event, voice deletes only the one occurrence. So the assistant can read and change exactly what the app itself can.
+
+### What you need
+
+| What | Where |
+|---|---|
+| Google Calendar connected (otherwise the assistant works on the events kept in the tablet's browser) | Ustawienia, Google Calendar (see Google Calendar integration; the two Calendar scopes there are all the assistant needs) |
+| A Gemini API key | [aistudio.google.com/apikey](https://aistudio.google.com/apikey), "Create API key" (a free tier exists; its limits and data-use terms differ from the paid one: read them on that page) |
+| Family members with tags | Ustawienia, family members (the assistant tags events with these) |
+| A microphone and its permission | Android: Fully Kiosk Browser, Settings, Web Content Settings, enable "Enable Webcam Access (Video and Audio)" / microphone access, and grant the microphone permission to the Fully app in Android's app settings |
+
+### Step by step
+
+1. Create the API key in Google AI Studio and copy it. Never commit it.
+2. On the tablet open Ustawienia (PIN), section **Asystent AI (Gemini)**, paste the key into *Klucz API Gemini*. *Model Gemini* is pre-filled with `gemini-3.8-flash`; change it if Google retires that name (the current list: [ai.google.dev/gemini-api/docs/models](https://ai.google.dev/gemini-api/docs/models)). Click **Zapisz**.
+3. Make sure Google Calendar is connected in the same settings if the events should go to your real calendar.
+4. Tap the microphone button. The first time Android may ask for the microphone: allow it. Say a command, for example:
+   - "Dodaj dentystę dla Ani jutro o 15:30"
+   - "Co mam w czwartek?"
+   - "Przenieś basen na piątek"
+   - "Usuń dentystę w środę" (the dialog asks before deleting)
+
+### How it behaves
+
+- **Listening** ends after 1.5 s of silence following speech, on **Gotowe**, or after 30 s. If nobody speaks for 8 s you get "Nie usłyszałem polecenia."
+- The audio is sent to Google. Use the assistant only where that is acceptable for your household.
+- **Failures** are shown in the dialog in Polish and the calendar is reloaded in case some changes were already made.
+
+| Message in the app | Cause |
+|---|---|
+| Asystent potrzebuje klucza API Gemini. | no key in the settings |
+| Nie udało się włączyć mikrofonu. | microphone permission denied or no microphone; in Fully, enable microphone access for web content; the page must be served over HTTPS or from localhost (GitHub Pages is HTTPS) |
+| Gemini odrzuciło żądanie (400). | wrong key or model name |
+| Gemini odmówiło dostępu (401/403). | key without access, or Gemini API not available for the account or region |
+| Nie znaleziono modelu Gemini (404). | the model name does not exist (any more) |
+| Przekroczono limit zapytań do Gemini (429). | free-tier limit reached; wait or use a paid key |
+| Brak połączenia z Gemini. | no internet, or a filter blocks `generativelanguage.googleapis.com` |
+| Asystent wykonał zbyt wiele kroków. | the model kept calling tools; try a simpler command |
+
+### Tests
+
+The automated tests never use a real key, microphone or Gemini: unit tests use fakes, and the integration test runs the real app in a browser with a scripted fake microphone against a local fake Gemini server (the recording arrives, a `create_event` call is applied to the fake Google Calendar, the answer is shown). **A real Gemini call and a real microphone on the tablet have not been tried yet**; the request shapes follow the Gemini API documentation read on 2026-10-19, so check the first real run and fix this file if Google's behaviour differs.
+
+### Sources
+
+- [Interactions API](https://ai.google.dev/gemini-api/docs/interactions) and its [reference](https://ai.google.dev/api/interactions-api): request body, `store`, `system_instruction`, steps (`user_input`, `function_call`, `function_result`, `model_output`).
+- [Function calling](https://ai.google.dev/gemini-api/docs/function-calling): function declarations and the stateless flow (send the model's steps back unchanged).
+- [Audio understanding](https://ai.google.dev/gemini-api/docs/audio): supported formats (WebM among them), inline data up to 20 MB per request.
+- [API keys](https://ai.google.dev/gemini-api/docs/api-key) and [models](https://ai.google.dev/gemini-api/docs/models).
+- [Fully Kiosk Browser](https://www.fully-kiosk.com/en/): the Web Speech API is not supported by Android WebView; microphone access for web content.
+
 ## Target display
 
 - 1600 px wide x 2400 px tall (portrait) tablet, no frames, Kiosk mode. Five family member columns plus the fixed "Other" column must fit comfortably.
@@ -169,6 +236,6 @@ npm test
 npm run test:integration
 ```
 
-Configuration lives in `.env.local` (git-ignored); see Google Calendar integration for `VITE_GOOGLE_CLIENT_ID`.
+Configuration lives in `.env.local` (git-ignored); see Google Calendar integration for `VITE_GOOGLE_CLIENT_ID`. The Gemini API key is entered in the app's settings, not in a file.
 
 Built with React + TypeScript + Vite.

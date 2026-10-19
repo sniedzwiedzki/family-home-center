@@ -4,6 +4,8 @@ import { hasErrors, memberErrors, type DraftMember } from '../family/memberError
 import type { DiscoveredCalendar } from '../google/calendarList'
 import type { GeocodingPort, GeoLocation } from '../weather/types'
 import { FamilyMembersEditor } from './FamilyMembersEditor'
+import { GeminiSettingsEditor } from './GeminiSettingsEditor'
+import { draftFromGemini, geminiFromDraft } from './geminiDraft'
 import { GoogleSettingsEditor } from './GoogleSettingsEditor'
 import { draftFromSettings, googleDraftError, googleSettingsFromDraft } from './googleDraft'
 import { PinCreate } from './PinCreate'
@@ -22,11 +24,12 @@ export function SettingsForm({ settings, geocoder, checkGoogle, onChange, onClos
   const [members, setMembers] = useState<DraftMember[]>(() => [...settings.familyMembers])
   const [location, setLocation] = useState<GeoLocation | null>(settings.weather.location)
   const [google, setGoogle] = useState(() => draftFromSettings(settings))
+  const [gemini, setGemini] = useState(() => draftFromGemini(settings.gemini))
   const [isChangingPin, setIsChangingPin] = useState(false)
   const errors = memberErrors(members)
 
   const save = () => {
-    onChange({ ...settings, familyMembers: familyMembersSchema.parse(members), weather: { location }, ...googleSettingsFromDraft(google) })
+    onChange({ ...settings, familyMembers: familyMembersSchema.parse(members), weather: { location }, gemini: geminiFromDraft(gemini), ...googleSettingsFromDraft(google) })
     onClose()
   }
 
@@ -46,6 +49,7 @@ export function SettingsForm({ settings, geocoder, checkGoogle, onChange, onClos
       <FamilyMembersEditor members={members} errors={errors} onChange={setMembers} />
       <WeatherLocationEditor value={location} geocoder={geocoder} onChange={setLocation} />
       <GoogleSettingsEditor draft={google} check={checkGoogle} onChange={setGoogle} />
+      <GeminiSettingsEditor draft={gemini} onChange={setGemini} />
       <section className="settings-section">
         <h3>Zabezpieczenie</h3>
         <button type="button" onClick={() => setIsChangingPin(true)}>

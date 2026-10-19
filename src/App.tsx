@@ -1,4 +1,8 @@
 import { useMemo, useState } from 'react'
+import { AssistantDialog } from './assistant/AssistantDialog'
+import { createGeminiAssistant } from './assistant/geminiClient'
+import { TOOL_DECLARATIONS } from './assistant/tools'
+import { createVoiceRecorder } from './assistant/voiceRecorder'
 import { CalendarView } from './calendar/CalendarView'
 import { createLocalCalendar } from './calendar/localCalendar'
 import { createConnectionCheck } from './google/calendarList'
@@ -20,6 +24,12 @@ const appFetch: typeof fetch = (input, init) => fetch(input, init)
 const localCalendar = createLocalCalendar(window.localStorage)
 const weatherPort = createOpenMeteoClient(appFetch, __WEATHER_BASE_URL__)
 const geocoder = createOpenMeteoGeocoder(appFetch, __GEOCODING_BASE_URL__)
+const voiceRecorder = createVoiceRecorder({
+  getUserMedia: (constraints) => navigator.mediaDevices.getUserMedia(constraints),
+  createRecorder: (stream) => new MediaRecorder(stream),
+  createAudioContext: () => new AudioContext(),
+  now: Date.now,
+})
 const checkGoogle = createConnectionCheck({
   fetchImpl: appFetch,
   tokenUrl: __GOOGLE_TOKEN_URL__,
@@ -30,6 +40,7 @@ const checkGoogle = createConnectionCheck({
 function App() {
   const { settings, updateSettings } = useSettings()
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isAssistantOpen, setIsAssistantOpen] = useState(false)
   const [refreshSignal, setRefreshSignal] = useState(0)
   const forecast = useForecast(weatherPort, settings.weather.location, refreshSignal)
   const hourForecasts = useMemo(() => new Map((forecast?.hours ?? []).map((hour) => [hour.time.getTime(), hour])), [forecast])
@@ -52,11 +63,30 @@ function App() {
     [getAccessToken, calendars.readIds, calendars.writeId],
   )
 
+  const assistant = useMemo(
+    () =>
+      settings.gemini === null
+        ? null
+        : createGeminiAssistant({ fetchImpl: appFetch, baseUrl: __GEMINI_BASE_URL__, apiKey: settings.gemini.apiKey, model: settings.gemini.model, tools: TOOL_DECLARATIONS }),
+    [settings.gemini],
+  )
+  const refresh = () => setRefreshSignal((signal) => signal + 1)
+
   return (
     <div className="kiosk">
-      <TopBar onOpenSettings={() => setIsSettingsOpen(true)} onRefresh={() => setRefreshSignal((signal) => signal + 1)} />
+      <TopBar onOpenAssistant={() => setIsAssistantOpen(true)} onOpenSettings={() => setIsSettingsOpen(true)} onRefresh={refresh} />
       <CalendarView port={calendarPort} members={settings.familyMembers} forecasts={forecasts} hourForecasts={hourForecasts} refreshSignal={refreshSignal} />
       <BottomBar forecast={forecast} />
+      {isAssistantOpen && (
+        <AssistantDialog
+          assistant={assistant}
+          recorder={voiceRecorder}
+          calendar={calendarPort}
+          members={settings.familyMembers}
+          onChanged={refresh}
+          onClose={() => setIsAssistantOpen(false)}
+        />
+      )}
       {isSettingsOpen && (
         <SettingsDialog
           settings={settings}

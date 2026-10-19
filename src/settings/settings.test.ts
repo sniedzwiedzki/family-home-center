@@ -5,6 +5,7 @@ const valid: Settings = {
   familyMembers: [{ id: 'a', name: 'Anna', tag: 'anna', color: '#ff0000' }],
   calendars: { readIds: ['primary'], writeId: 'primary', known: [{ id: 'primary', name: 'Ja', canWrite: true }] },
   google: { clientId: 'fake-client', clientSecret: 'fake-secret', refreshToken: 'fake-refresh' },
+  gemini: { apiKey: 'fake-key', model: 'gemini-3.8-flash' },
   weather: { location: { name: 'Warszawa', latitude: 52.23, longitude: 21.01 } },
   pin: '1234',
 }
@@ -23,13 +24,19 @@ describe('loadSettings', () => {
   })
 
   it('still loads settings saved before the Google fields existed', () => {
-    const { google: _google, calendars, ...older } = valid
+    const { google: _google, gemini: _gemini, calendars, ...older } = valid
     const stored = { ...older, calendars: { readIds: calendars.readIds, writeId: calendars.writeId } }
     expect(loadSettings(storageWith(JSON.stringify(stored)))).toEqual({
       ...older,
       google: null,
+      gemini: null,
       calendars: { readIds: ['primary'], writeId: 'primary', known: [] },
     })
+  })
+
+  it('rejects a Gemini key with an empty value', () => {
+    const broken = { ...valid, gemini: { apiKey: ' ', model: 'gemini-3.8-flash' } }
+    expect(loadSettings(storageWith(JSON.stringify(broken)))).toEqual(DEFAULT_SETTINGS)
   })
 
   it('rejects Google credentials with an empty value', () => {

@@ -70,6 +70,17 @@ describe('SettingsForm', () => {
     expect((screen.getByLabelText('Imię') as HTMLInputElement).value).toBe('Ania')
   })
 
+  it('saves the Gemini key and model, and clears them when the key is emptied', () => {
+    const onChange = vi.fn()
+    render(<SettingsForm settings={settings} geocoder={geocoder} checkGoogle={checkGoogle} onChange={onChange} onClose={vi.fn()} />)
+    fireEvent.change(screen.getByLabelText('Klucz API Gemini'), { target: { value: ' fake-key ' } })
+    fireEvent.click(save())
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ gemini: { apiKey: 'fake-key', model: 'gemini-3.8-flash' } }))
+    fireEvent.change(screen.getByLabelText('Klucz API Gemini'), { target: { value: '' } })
+    fireEvent.click(save())
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ gemini: null }))
+  })
+
   describe('Google section', () => {
     const type = (label: string, value: string) => fireEvent.change(screen.getByLabelText(label), { target: { value } })
     const fillGoogle = () => {
