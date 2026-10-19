@@ -91,11 +91,11 @@
 }
 
 .assistant-corner-button {
-  position: fixed;
+  position: absolute;
   right: 0;
-  /* Just above the weather bar (about 3.25rem tall). */
-  bottom: 3.5rem;
-  /* Above the calendar, below the settings (10), the event dialog (20) and the assistant dialog (30). */
+  /* Sits on the top edge of the weather bar, whatever its height (the bar is its positioned parent). */
+  bottom: 100%;
+  /* Above the calendar (the area has no z-index, so this competes with the dialogs): below the settings (10), the event dialog (20) and the assistant dialog (30). */
   z-index: 8;
   display: grid;
   place-items: end end;
