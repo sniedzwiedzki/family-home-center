@@ -183,7 +183,7 @@ All arguments are validated before use; unknown tags and ids the model has not l
 
 ### How it behaves
 
-- **Listening** ends after 1.5 s of silence following speech, on **Gotowe**, or after 30 s. If nobody speaks for 8 s you get "Nie usłyszałem polecenia."
+- **Listening** ends after 3 s of silence following speech, on **Gotowe**, or after 30 s. If nobody speaks for 8 s you get "Nie usłyszałem polecenia."
 - The audio is sent to Google. Use the assistant only where that is acceptable for your household.
 - **Failures** are shown in the dialog in Polish and the calendar is reloaded in case some changes were already made.
 

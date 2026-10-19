@@ -22,6 +22,10 @@ describe('buildSystemInstruction', () => {
     expect(buildSystemInstruction({ now, members: [] })).toContain('Family members: none configured.')
   })
 
+  it('tells the model to create an event once', () => {
+    expect(buildSystemInstruction({ now, members })).toContain('Create each event exactly once')
+  })
+
   it('names the tools and the confirmation rule for deleting', () => {
     const text = buildSystemInstruction({ now, members })
     for (const tool of ['list_events', 'create_event', 'update_event', 'delete_event']) expect(text).toContain(tool)

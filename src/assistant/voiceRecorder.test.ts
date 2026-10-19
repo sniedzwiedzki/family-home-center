@@ -87,7 +87,7 @@ describe('createVoiceRecorder', () => {
     level = 0.5
     await vi.advanceTimersByTimeAsync(500)
     level = 0
-    await vi.advanceTimersByTimeAsync(1400)
+    await vi.advanceTimersByTimeAsync(2900)
     expect(recorders[0].stop).not.toHaveBeenCalled()
     await vi.advanceTimersByTimeAsync(200)
     expect(recorders[0].stop).toHaveBeenCalledTimes(1)

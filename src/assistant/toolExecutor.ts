@@ -52,6 +52,8 @@ export function createToolExecutor({ port, members }: ToolExecutorOptions): Tool
   // Only events the model has seen in this session can be changed or deleted.
   const known = new Map<string, CalendarEvent>()
   const knownTags = members.map((member) => member.tag)
+  // Events created by this command, by title and first day: the model must not create the same one twice.
+  const created = new Map<string, string>()
 
   function view(event: CalendarEvent) {
     const draft = draftFromEvent(event, members)
@@ -106,9 +108,13 @@ export function createToolExecutor({ port, members }: ToolExecutorOptions): Tool
     }
     const result = draftToInput(draft, members)
     if (!result.ok) return failure(Object.values(result.errors).join('; '))
-    const created = await port.createEvent(result.input)
-    known.set(created.id, created)
-    return { kind: 'done', output: { created: view(created) }, summary: `Dodano wydarzenie „${created.title}” (${draft.startDate}).` }
+    const key = `${result.input.title.toLowerCase()}|${draft.startDate}`
+    const earlierId = created.get(key)
+    if (earlierId !== undefined) return failure(`This event was already created in this command (id ${earlierId}). Do not create it again; use update_event to change it.`)
+    const event = await port.createEvent(result.input)
+    known.set(event.id, event)
+    created.set(key, event.id)
+    return { kind: 'done', output: { created: view(event) }, summary: `Dodano wydarzenie „${event.title}” (${draft.startDate}).` }
   }
 
   async function updateEvent(args: unknown): Promise<ToolOutcome> {
