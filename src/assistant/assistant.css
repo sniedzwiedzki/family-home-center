@@ -108,7 +108,6 @@
   border: 0;
   /* A quarter circle centred on the corner; clip-path also limits the tappable area to it. */
   clip-path: circle(100% at 100% 100%);
-  filter: drop-shadow(0 0 0.6rem rgba(38, 54, 70, 0.3));
   user-select: none;
 }
 
