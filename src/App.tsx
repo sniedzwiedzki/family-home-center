@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { AssistantButton } from './assistant/AssistantButton'
 import { AssistantDialog } from './assistant/AssistantDialog'
 import { createGeminiAssistant } from './assistant/geminiClient'
 import { TOOL_DECLARATIONS } from './assistant/tools'
@@ -74,9 +75,10 @@ function App() {
 
   return (
     <div className="kiosk">
-      <TopBar onOpenAssistant={() => setIsAssistantOpen(true)} onOpenSettings={() => setIsSettingsOpen(true)} onRefresh={refresh} />
+      <TopBar onOpenSettings={() => setIsSettingsOpen(true)} onRefresh={refresh} />
       <CalendarView port={calendarPort} members={settings.familyMembers} forecasts={forecasts} hourForecasts={hourForecasts} refreshSignal={refreshSignal} />
       <BottomBar forecast={forecast} />
+      <AssistantButton onOpen={() => setIsAssistantOpen(true)} />
       {isAssistantOpen && (
         <AssistantDialog
           assistant={assistant}

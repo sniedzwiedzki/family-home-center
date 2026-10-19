@@ -23,12 +23,12 @@ A big calendar with events, actions, tasks and more. The first iteration covers 
 ### Top bar
 
 - Sticky at the top of the view.
-- Current time in the center (bold); the refresh button (↻) on the left; the AI assistant button (microphone) and the settings button (⚙) on the right.
+- Current time in the center (bold); the refresh button (↻) on the left and the settings button (⚙) on the right; the AI assistant button is a large quarter circle in the bottom-right corner of the screen.
 - The refresh button reloads the calendar events and the weather forecast right away; the icon spins briefly after a tap.
 
 ### AI voice assistant
 
-- The microphone button in the top bar opens a dialog that starts listening at once. Say a command in Polish, for example "Dodaj basen dla Oli w piątek o 17". Recording ends when you stop talking (or tap **Gotowe**).
+- The large quarter-circle microphone button in the bottom-right corner of the screen opens a dialog that starts listening at once. Say a command in Polish, for example "Dodaj basen dla Oli w piątek o 17". Recording ends when you stop talking (or tap **Gotowe**).
 - The recording is sent to a Google Gemini model through the Gemini API, with the API key from the settings. The model answers in Polish and changes the calendar through typed tools: list, create and update events (with the family member tags). Deleting never happens by itself: the dialog asks "Usunąć wydarzenie…?" and deletes only after you tap **Usuń**.
 - See "Gemini voice assistant" below for what to configure.
 
@@ -175,7 +175,7 @@ All arguments are validated before use; unknown tags and ids the model has not l
 1. Create the API key in Google AI Studio and copy it. Never commit it.
 2. On the tablet open Ustawienia (PIN), section **Asystent AI (Gemini)**, paste the key into *Klucz API Gemini*. *Model Gemini* is pre-filled with `gemini-3.8-flash`; change it if Google retires that name (the current list: [ai.google.dev/gemini-api/docs/models](https://ai.google.dev/gemini-api/docs/models)). Click **Zapisz**.
 3. Make sure Google Calendar is connected in the same settings if the events should go to your real calendar.
-4. Tap the microphone button. The first time Android may ask for the microphone: allow it. Say a command, for example:
+4. Tap the microphone button in the bottom-right corner. The first time Android may ask for the microphone: allow it. Say a command, for example:
    - "Dodaj dentystę dla Ani jutro o 15:30"
    - "Co mam w czwartek?"
    - "Przenieś basen na piątek"
