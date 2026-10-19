@@ -17,6 +17,13 @@ export const googleCredentialsSchema = z.object({
   refreshToken: z.string().trim().min(1),
 })
 
+export const DEFAULT_GEMINI_MODEL = 'gemini-3.8-flash'
+
+export const geminiSettingsSchema = z.object({
+  apiKey: z.string().trim().min(1),
+  model: z.string().trim().min(1),
+})
+
 export const settingsSchema = z.object({
   familyMembers: familyMembersSchema,
   calendars: z.object({
@@ -26,6 +33,8 @@ export const settingsSchema = z.object({
     known: z.array(knownCalendarSchema).default([]),
   }),
   google: googleCredentialsSchema.nullable().default(null),
+  // Added later: settings saved before it existed must still load.
+  gemini: geminiSettingsSchema.nullable().default(null),
   weather: z.object({
     location: geoLocationSchema.nullable(),
   }),
@@ -38,6 +47,7 @@ export const DEFAULT_SETTINGS: Settings = {
   familyMembers: [],
   calendars: { readIds: [], writeId: null, known: [] },
   google: null,
+  gemini: null,
   weather: { location: null },
   pin: null,
 }

@@ -3,6 +3,7 @@ import { mkdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { promisify } from 'node:util'
 import { afterAll, beforeEach, describe, expect, inject, it } from 'vitest'
+import { FAKE_GEMINI } from './fake-gemini.ts'
 import { FAKE_GOOGLE } from './fake-google.ts'
 
 const run = promisify(execFile)
@@ -397,5 +398,100 @@ describe('app on the kiosk display', () => {
     } finally {
       await agentBrowser('eval', 'localStorage.clear()')
     }
+  })
+
+  describe('AI assistant', () => {
+    const SETTINGS_WITH_GEMINI = { ...SETTINGS_WITH_GOOGLE, gemini: { apiKey: FAKE_GEMINI.apiKey, model: FAKE_GEMINI.model } }
+    const POLL_MS = 250
+    const POLL_ATTEMPTS = 40
+
+    // A microphone that "hears" speech for the first 600 ms and silence afterwards; the headless browser has no real one.
+    const FAKE_MICROPHONE = `(() => {
+      navigator.mediaDevices.getUserMedia = async () => ({ getTracks: () => [{ stop() {} }] })
+      window.MediaRecorder = class {
+        constructor() { this.mimeType = 'audio/webm' }
+        start() {}
+        stop() {
+          this.ondataavailable({ data: new Blob(['fake-audio'], { type: 'audio/webm' }) })
+          this.onstop()
+        }
+      }
+      window.AudioContext = class {
+        resume() { return Promise.resolve() }
+        close() { return Promise.resolve() }
+        createMediaStreamSource() { return { connect() {} } }
+        createAnalyser() {
+          const startedAt = Date.now()
+          return { fftSize: 0, getByteTimeDomainData: (samples) => samples.fill(Date.now() - startedAt < 600 ? 192 : 128) }
+        }
+      }
+    })()`
+
+    const dialogText = () => evaluate<string>("document.querySelector('.assistant-dialog')?.textContent ?? ''")
+
+    async function waitForDialog(text: string) {
+      for (let attempt = 0; attempt < POLL_ATTEMPTS; attempt++) {
+        if ((await dialogText()).includes(text)) return
+        await agentBrowser('wait', String(POLL_MS))
+      }
+      throw new Error(`The assistant dialog never showed "${text}": ${await dialogText()}`)
+    }
+
+    const geminiRequests = async () => (await (await fetch(`${inject('geminiUrl')}/__requests`)).json()) as { model: string; input: { type: string; content?: { type: string; data?: string }[] }[] }[]
+
+    const titlesIn = (column: string) =>
+      evaluate<string[]>(`[...document.querySelectorAll('.day-row[data-day="${TODAY_KEY}"] .day-cell[data-column="${column}"] .event-title')].map((e) => e.textContent)`)
+
+    beforeEach(async () => {
+      await fetch(`${inject('geminiUrl')}/__reset`, { method: 'POST' })
+    })
+
+    it('tells the user to add a Gemini key when there is none', async () => {
+      await clickButton('Asystent AI')
+      expect(await dialogText()).toContain('Asystent potrzebuje klucza API Gemini')
+      await screenshot('assistant-no-key')
+    })
+
+    it('listens, sends the recording to Gemini and applies the tool call it gets back to the calendar', async () => {
+      await agentBrowser('eval', `localStorage.clear(); localStorage.setItem('fhc.settings.v1', ${JSON.stringify(JSON.stringify(SETTINGS_WITH_GEMINI))})`)
+      await agentBrowser('open', inject('appUrl'))
+      await agentBrowser('wait', SETTLE_MS)
+      try {
+        await agentBrowser('eval', FAKE_MICROPHONE)
+        await clickButton('Asystent AI')
+        await waitForDialog('Słucham')
+        await screenshot('assistant-listening')
+
+        await waitForDialog(FAKE_GEMINI.answer)
+        expect(await dialogText()).toContain('Dodano wydarzenie „Basen z asystenta”')
+        await screenshot('assistant-answer')
+
+        const [first, second] = await geminiRequests()
+        expect(first.model).toBe(FAKE_GEMINI.model)
+        const audio = first.input[0].content?.find((part) => part.type === 'audio')
+        expect(Buffer.from(audio?.data ?? '', 'base64').toString()).toBe('fake-audio')
+        expect(second.input.map((step) => step.type)).toEqual(['user_input', 'thought', 'function_call', 'function_result'])
+
+        await clickButton('Zamknij')
+        await agentBrowser('wait', SETTLE_MS)
+        expect(await titlesIn('m3')).toEqual([FAKE_GEMINI.eventTitle])
+      } finally {
+        await agentBrowser('eval', 'localStorage.clear()')
+      }
+    })
+
+    it('explains in Polish when Gemini rejects the key', async () => {
+      const wrongKey = { ...SETTINGS_WITH_GEMINI, gemini: { apiKey: 'wrong-key', model: FAKE_GEMINI.model } }
+      await agentBrowser('eval', `localStorage.clear(); localStorage.setItem('fhc.settings.v1', ${JSON.stringify(JSON.stringify(wrongKey))})`)
+      await agentBrowser('open', inject('appUrl'))
+      await agentBrowser('wait', SETTLE_MS)
+      try {
+        await agentBrowser('eval', FAKE_MICROPHONE)
+        await clickButton('Asystent AI')
+        await waitForDialog('Sprawdź klucz API i model w ustawieniach')
+      } finally {
+        await agentBrowser('eval', 'localStorage.clear()')
+      }
+    })
   })
 })

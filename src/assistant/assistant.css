@@ -1,0 +1,91 @@
+.assistant-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  background: rgba(38, 54, 70, 0.35);
+}
+
+.assistant-dialog {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  width: min(100%, 44rem);
+  max-height: 100%;
+  padding: 2.5rem;
+  overflow-y: auto;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 1.75rem;
+  box-shadow: 0 1rem 3rem rgba(38, 54, 70, 0.35);
+}
+
+.assistant-dialog h2 {
+  margin: 0;
+  font-size: 1.75rem;
+}
+
+.assistant-dialog p {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.assistant-dialog .field-error {
+  font-size: 1.3125rem;
+  color: #b4533f;
+}
+
+.assistant-dialog button {
+  padding: 1.125rem 2rem;
+  font: inherit;
+  font-size: 1.375rem;
+  color: var(--headline);
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+}
+
+.assistant-mic {
+  display: grid;
+  place-items: center;
+  width: 7rem;
+  height: 7rem;
+  font-size: 3.5rem;
+  color: white;
+  background: var(--primary);
+  border-radius: 50%;
+}
+
+.assistant-mic.is-listening {
+  animation: assistant-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes assistant-pulse {
+  50% {
+    transform: scale(1.12);
+    box-shadow: 0 0 0 1.25rem rgba(224, 138, 120, 0.25);
+  }
+}
+
+.assistant-actions {
+  margin: 0;
+  padding: 0;
+  font-size: 1.375rem;
+  list-style: none;
+  color: var(--soft);
+}
+
+.assistant-confirm,
+.assistant-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.25rem;
+}
+
+.assistant-confirm p {
+  flex-basis: 100%;
+}
