@@ -1,9 +1,10 @@
 import type { FamilyMember } from '../family/familyMember'
 import { addDays, dayKey, startOfDay } from './days'
+import { NO_REPEAT, recurrenceFromFields, type RepeatFields } from './recurrence'
 import { EVENT_TAGS_PROPERTY, extractTags, stripTitleTags } from './tags'
 import type { CalendarEvent, CalendarEventInput } from './types'
 
-export interface EventDraft {
+export interface EventDraft extends RepeatFields {
   title: string
   description: string
   memberIds: string[]
@@ -20,6 +21,7 @@ export interface DraftErrors {
   title?: string
   date?: string
   time?: string
+  repeat?: string
 }
 
 export type DraftResult = { ok: true; input: CalendarEventInput } | { ok: false; errors: DraftErrors }
@@ -39,6 +41,7 @@ export function newDraft(day: Date, memberIds: string[], startHour?: number): Ev
     title: '',
     description: '',
     memberIds,
+    ...NO_REPEAT,
     allDay: false,
     startDate: dayKey(day),
     endDate: dayKey(day),
@@ -54,6 +57,7 @@ export function draftFromEvent(event: CalendarEvent, members: readonly FamilyMem
     title: stripTitleTags(event.title),
     description: event.description ?? '',
     memberIds: members.filter((member) => tags.has(member.tag)).map((member) => member.id),
+    ...NO_REPEAT,
     allDay: event.allDay,
     startDate: dayKey(event.start),
     endDate: dayKey(lastDay),
@@ -111,6 +115,13 @@ export function draftToInput(draft: EventDraft, members: readonly FamilyMember[]
     }
   }
 
+  if (draft.repeat === 'weekdays' && draft.repeatDays.length === 0) errors.repeat = 'Wybierz dni tygodnia'
+  else if (draft.repeat !== 'none' && draft.repeatUntil !== '') {
+    const until = parseDate(draft.repeatUntil)
+    if (until === null) errors.repeat = 'Podaj datę końca powtarzania'
+    else if (startDay !== null && until < startDay) errors.repeat = 'Koniec powtarzania nie może być przed początkiem'
+  }
+
   if (Object.keys(errors).length > 0 || start === null || end === null) return { ok: false, errors }
 
   const selected = members.filter((member) => draft.memberIds.includes(member.id)).map((member) => member.tag)
@@ -118,6 +129,7 @@ export function draftToInput(draft: EventDraft, members: readonly FamilyMember[]
   const { [EVENT_TAGS_PROPERTY]: _previous, ...otherProperties } = existing?.extendedProperties?.private ?? {}
   const privateProperties = tags.length > 0 ? { ...otherProperties, [EVENT_TAGS_PROPERTY]: tags.join(',') } : otherProperties
   const description = draft.description.trim()
+  const recurrence = recurrenceFromFields(draft)
 
   return {
     ok: true,
@@ -128,6 +140,7 @@ export function draftToInput(draft: EventDraft, members: readonly FamilyMember[]
       start,
       end,
       ...(Object.keys(privateProperties).length === 0 ? {} : { extendedProperties: { private: privateProperties } }),
+      ...(recurrence === null ? {} : { recurrence }),
     },
   }
 }

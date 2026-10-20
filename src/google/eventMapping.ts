@@ -1,7 +1,8 @@
 import { z } from 'zod'
 import { dayKey, startOfDay } from '../calendar/days'
 import { EVENT_TAGS_PROPERTY } from '../calendar/tags'
-import type { CalendarEvent, CalendarEventInput } from '../calendar/types'
+import type { CalendarEvent, CalendarEventInput, Recurrence } from '../calendar/types'
+import { isRuleLine, toRuleLine } from './recurrenceRule'
 
 const ID_SEPARATOR = '|'
 
@@ -17,6 +18,7 @@ export const googleEventSchema = z
     start: timeSchema,
     end: timeSchema,
     recurringEventId: z.string().optional(),
+    recurrence: z.array(z.string()).optional(),
     extendedProperties: z.object({ private: z.record(z.string(), z.string()).optional() }).loose().optional(),
   })
   .loose()
@@ -59,9 +61,24 @@ const timePart = (date: Date, allDay: boolean) =>
     ? { date: dayKey(startOfDay(date)) }
     : { dateTime: date.toISOString(), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }
 
+/** Replaces the `RRULE` line of the event, keeping lines such as `EXDATE`; no recurrence removes the rule (and with it those lines). */
+function applyRecurrence(body: Record<string, unknown>, existing: GoogleEvent | undefined, recurrence: Recurrence | undefined, allDay: boolean): void {
+  if (recurrence === undefined) {
+    delete body.recurrence
+    return
+  }
+  body.recurrence = [...(existing?.recurrence ?? []).filter((line) => !isRuleLine(line)), toRuleLine(recurrence, allDay)]
+}
+
 /** Builds the event resource to send: the existing resource (if any) with the fields the app owns replaced. */
-export function applyEventInput(existing: GoogleEvent | undefined, input: CalendarEventInput): Record<string, unknown> {
+export function applyEventInput(
+  existing: GoogleEvent | undefined,
+  input: CalendarEventInput,
+  /** `'keep'` leaves the repeat rule of `existing` as it is; otherwise `input.recurrence` decides (none removes it). */
+  rule?: 'keep',
+): Record<string, unknown> {
   const body: Record<string, unknown> = { ...existing, summary: input.title, start: timePart(input.start, input.allDay), end: timePart(input.end, input.allDay) }
+  if (rule !== 'keep') applyRecurrence(body, existing, input.recurrence, input.allDay)
   if (input.description === undefined) delete body.description
   else body.description = input.description
 

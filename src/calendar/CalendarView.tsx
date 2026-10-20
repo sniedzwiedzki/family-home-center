@@ -7,7 +7,7 @@ import { addDays, dayKey, groupDaysByMonth, groupEventsByDay, startOfDay } from 
 import { isDayOver } from './dayHours'
 import { DayRow } from './DayRow'
 import { draftFromEvent, newDraft } from './eventDraft'
-import { EventDialog } from './EventDialog'
+import { EventDialog, type SaveTarget } from './EventDialog'
 import { TODAY_PIN_LABEL, type TodayPosition } from './todayPin'
 import { MonthBlock } from './MonthBlock'
 import type { CalendarEvent, CalendarEventInput, CalendarPort, RecurrenceScope } from './types'
@@ -127,9 +127,11 @@ export function CalendarView({ port, members, forecasts, hourForecasts, refreshS
   }
 
   const closeEditor = () => setEditor(null)
-  const saveEvent = async (current: Editor, input: CalendarEventInput) => {
+  const saveEvent = async (current: Editor, input: CalendarEventInput, target: SaveTarget) => {
+    const { recurrence, ...fields } = input
     if (current.kind === 'new') await port.createEvent(input)
-    else await port.updateEvent({ ...input, id: current.event.id })
+    else if (target.kind === 'series') await port.series!.update(current.event, input, target.keepRule)
+    else await port.updateEvent({ ...fields, id: current.event.id }, recurrence)
     reload()
     closeEditor()
   }
@@ -173,7 +175,8 @@ export function CalendarView({ port, members, forecasts, hourForecasts, refreshS
       }
       members={members}
       existing={editor.kind === 'edit' ? editor.event : undefined}
-      onSave={(input) => saveEvent(editor, input)}
+      series={port.series}
+      onSave={(input, target) => saveEvent(editor, input, target)}
       onDelete={editor.kind === 'edit' ? (scope) => deleteEvent(editor.event, scope) : undefined}
       onClose={closeEditor}
     />

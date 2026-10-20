@@ -7,6 +7,7 @@ Each entry below is a one-line summary linking to a detailed file in `.ai/lesson
 ## Index
 
 <!-- Newest first. Format: - [YYYY-MM-DD slug](lessons/YYYY-MM-DD-slug.md) — one-line takeaway -->
+- [2026-10-20 recurrence-without-modelling-everything](lessons/2026-10-20-recurrence-without-modelling-everything.md) — parse only the rules the app writes, keep any other Google rule untouched; the rule lives on the master event
 - [2026-10-19 model-may-duplicate-tool-calls](lessons/2026-10-19-model-may-duplicate-tool-calls.md) — guard mutating tools against repeated calls in the executor, not only in the prompt; silence timeout 3 s
 - [2026-10-19 gemini-and-webview-voice](lessons/2026-10-19-gemini-and-webview-voice.md) — Fully's WebView has no Web Speech API: record with MediaRecorder and let Gemini (Interactions API) transcribe; lazy browser globals; fake mic in integration tests
 - [2026-10-18 lazy-fetch-and-resettable-fakes](lessons/2026-10-18-lazy-fetch-and-resettable-fakes.md) — look fetch up lazily so tests can stub it; give stateful fake servers a reset; update events with get-then-PUT

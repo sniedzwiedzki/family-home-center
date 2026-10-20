@@ -154,3 +154,84 @@ describe('deleteEvent', () => {
     await expect(createGoogleCalendar({ api: offline, readIds: [], writeId: null }).deleteEvent(event('c@x|e1'), 'occurrence')).rejects.toThrow('offline')
   })
 })
+
+describe('repeating events', () => {
+  const weekly = { frequency: 'weekly' as const, weekdays: [], until: null }
+
+  it('creates a repeating event with its rule', async () => {
+    const api = fakeApi()
+    api.sendJson.mockResolvedValue(item('created'))
+    await createGoogleCalendar({ api, readIds: [], writeId: 'w@x' }).createEvent({
+      title: 'Basen',
+      allDay: false,
+      start: new Date('2026-10-20T09:00:00Z'),
+      end: new Date('2026-10-20T10:00:00Z'),
+      recurrence: weekly,
+    })
+    expect(api.sendJson.mock.calls[0][2].recurrence).toEqual(['RRULE:FREQ=WEEKLY'])
+  })
+
+  it('makes a single event repeat when updated with a rule', async () => {
+    const api = fakeApi()
+    api.getJson.mockResolvedValue(item('e1'))
+    api.sendJson.mockResolvedValue(item('e1'))
+    await createGoogleCalendar({ api, readIds: [], writeId: null }).updateEvent(event('c@x|e1'), weekly)
+    expect(api.sendJson.mock.calls[0][2].recurrence).toEqual(['RRULE:FREQ=WEEKLY'])
+  })
+
+  it('offers series editing', () => {
+    expect(createGoogleCalendar({ api: fakeApi(), readIds: [], writeId: null }).series).toBeDefined()
+  })
+
+  describe('series', () => {
+    const occurrence = event('c@x|series_20261027T090000Z', { recurringEventId: 'c@x|series' })
+    const master = (extra: Record<string, unknown> = {}) =>
+      item('series', { start: { dateTime: '2026-10-06T09:00:00Z' }, end: { dateTime: '2026-10-06T10:00:00Z' }, recurrence: ['RRULE:FREQ=WEEKLY'], ...extra })
+
+    it('reads the rule from the series event, not from the occurrence', async () => {
+      const api = fakeApi()
+      api.getJson.mockResolvedValue(master())
+      const rule = await createGoogleCalendar({ api, readIds: [], writeId: null }).series!.loadRule(occurrence)
+      expect(api.getJson.mock.calls[0][0]).toBe('/calendars/c%40x/events/series')
+      expect(rule).toEqual(weekly)
+    })
+
+    it('calls a rule the app does not model custom, and a series without lines too', async () => {
+      const api = fakeApi()
+      const { series } = createGoogleCalendar({ api, readIds: [], writeId: null })
+      api.getJson.mockResolvedValueOnce(master({ recurrence: ['RRULE:FREQ=WEEKLY;INTERVAL=2'] }))
+      expect(await series!.loadRule(occurrence)).toBe('custom')
+      api.getJson.mockResolvedValueOnce(item('series'))
+      expect(await series!.loadRule(occurrence)).toBe('custom')
+    })
+
+    it('changes the series event: its first day stays, the times and the rule come from the edit', async () => {
+      const api = fakeApi()
+      api.getJson.mockResolvedValue(master({ attendees: [{ email: 'a@x' }] }))
+      api.sendJson.mockResolvedValue(master())
+      const input = { title: 'Nowy tytuł', allDay: false, start: new Date(2026, 9, 27, 18, 0), end: new Date(2026, 9, 27, 19, 30) }
+      await createGoogleCalendar({ api, readIds: [], writeId: null }).series!.update(occurrence, { ...input, recurrence: { ...weekly, frequency: 'monthly' } }, false)
+      const [method, path, body] = api.sendJson.mock.calls[0]
+      expect([method, path]).toEqual(['PUT', '/calendars/c%40x/events/series'])
+      expect(body.summary).toBe('Nowy tytuł')
+      expect(body.attendees).toEqual([{ email: 'a@x' }])
+      expect(body.recurrence).toEqual(['RRULE:FREQ=MONTHLY'])
+      const masterStart = new Date('2026-10-06T09:00:00Z')
+      expect(body.start.dateTime).toBe(new Date(masterStart.getFullYear(), masterStart.getMonth(), masterStart.getDate(), 18, 0).toISOString())
+      expect(body.end.dateTime).toBe(new Date(masterStart.getFullYear(), masterStart.getMonth(), masterStart.getDate(), 19, 30).toISOString())
+    })
+
+    it('removes the rule when the edit has none, and keeps it when asked to', async () => {
+      const api = fakeApi()
+      api.sendJson.mockResolvedValue(master())
+      const { series } = createGoogleCalendar({ api, readIds: [], writeId: null })
+      const input = { title: 'x', allDay: false, start: new Date(2026, 9, 27, 18), end: new Date(2026, 9, 27, 19) }
+      api.getJson.mockResolvedValueOnce(master())
+      await series!.update(occurrence, input, false)
+      expect('recurrence' in api.sendJson.mock.calls[0][2]).toBe(false)
+      api.getJson.mockResolvedValueOnce(master({ recurrence: ['RRULE:FREQ=WEEKLY;COUNT=3'] }))
+      await series!.update(occurrence, input, true)
+      expect(api.sendJson.mock.calls[1][2].recurrence).toEqual(['RRULE:FREQ=WEEKLY;COUNT=3'])
+    })
+  })
+})

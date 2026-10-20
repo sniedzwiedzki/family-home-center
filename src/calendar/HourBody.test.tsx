@@ -30,7 +30,7 @@ describe('HourBody', () => {
   it('labels the hours from 7 to 19 when nothing is earlier or later', () => {
     const { container } = renderBody([])
     expect(labels(container)).toEqual(Array.from({ length: 13 }, (_, i) => `${7 + i}:00`))
-    expect(container.querySelector<HTMLElement>('.hour-body')?.style.getPropertyValue('--hours')).toBe('13')
+    expect(container.querySelector<HTMLElement>('.hour-body')?.style.getPropertyValue('--hours')).toBe('13.5')
   })
 
   it('adds hours for an event before 7 and one after 20', () => {
@@ -47,7 +47,8 @@ describe('HourBody', () => {
   it('places an event at its hours in the column of its tag', () => {
     const { container } = renderBody([entry('1', 'Trening #anna', at(9, 30), at(11))])
     const item = eventIn(container, 'a')
-    expect(item.style.top).toBe('calc(var(--hour-height) * 2.5)')
+    // 9:30 is 2.5 hours after 7:00, and the grid starts half an hour before 7:00.
+    expect(item.style.top).toBe('calc(var(--hour-height) * 3)')
     expect(item.style.height).toBe('calc(var(--hour-height) * 1.5)')
     expect([item.style.left, item.style.width]).toEqual(['0%', '100%'])
     expect(container.querySelector('.hour-track[data-column="j"] .event')).toBeNull()
@@ -69,7 +70,7 @@ describe('HourBody', () => {
   it('draws the now-line at the current time with its label', () => {
     const { container } = renderBody([], at(9, 30))
     const line = container.querySelector<HTMLElement>('.now-line')!
-    expect(line.style.top).toBe('calc(var(--hour-height) * 2.5)')
+    expect(line.style.top).toBe('calc(var(--hour-height) * 3)')
     expect(line.textContent).toBe('09:30')
   })
 
@@ -98,12 +99,12 @@ describe('HourBody', () => {
   })
 
   describe('clicking a track', () => {
-    // A 1300 px tall track from y = 100: 13 hours of 100 px, 7:00 to 20:00.
+    // A 1350 px tall track from y = 100: half an hour of margin, then 13 hours of 100 px, 7:00 to 20:00 (the margin counts as 7:00).
     const clickAt = (clientY: number) => {
       const onAddEvent = vi.fn()
       const { container } = renderBody([], undefined, { onAddEvent })
       const track = container.querySelector<HTMLElement>('.hour-track[data-column="a"]')!
-      vi.spyOn(track, 'getBoundingClientRect').mockReturnValue({ top: 100, height: 1300 } as DOMRect)
+      vi.spyOn(track, 'getBoundingClientRect').mockReturnValue({ top: 100, height: 1350 } as DOMRect)
       fireEvent.click(track, { clientY })
       return onAddEvent
     }
@@ -111,12 +112,12 @@ describe('HourBody', () => {
     it('reports the hour under the click', () => {
       expect(clickAt(130)).toHaveBeenCalledWith(day, 'a', 7)
       expect(clickAt(100 + 3 * 100 + 50)).toHaveBeenCalledWith(day, 'a', 10)
-      expect(clickAt(1399)).toHaveBeenCalledWith(day, 'a', 19)
+      expect(clickAt(1449)).toHaveBeenCalledWith(day, 'a', 19)
     })
 
     it('stays inside the shown hours', () => {
       expect(clickAt(50)).toHaveBeenCalledWith(day, 'a', 7)
-      expect(clickAt(1400)).toHaveBeenCalledWith(day, 'a', 19)
+      expect(clickAt(1500)).toHaveBeenCalledWith(day, 'a', 19)
     })
   })
 
@@ -128,14 +129,15 @@ describe('HourBody', () => {
       hourForecasts = new Map([forecastAt(8, 0, 12.6), forecastAt(9, 3, 11), forecastAt(10, 3, -1.4)])
       const { container } = renderBody([])
       expect(shown(container)).toEqual([['☀️13°', 'Bezchmurnie'], ['☁️11°', 'Pochmurno'], ['☁️-1°', 'Pochmurno']])
-      expect(container.querySelector<HTMLElement>('.hour-weather')?.style.top).toBe('calc(var(--hour-height) * 1)')
+      expect(container.querySelector<HTMLElement>('.hour-weather')?.style.top).toBe('calc(var(--hour-height) * 1.5)')
     })
 
-    it('sets the forecast of the first hour apart like its label, which sits below the line', () => {
+    it('puts the first hour and its forecast half an hour below the top, like every other hour', () => {
       hourForecasts = new Map([forecastAt(7, 0, 5), forecastAt(8, 0, 6)])
       const { container } = renderBody([])
-      expect([...container.querySelectorAll('.hour-weather')].map((node) => node.classList.contains('is-first'))).toEqual([true, false])
-      expect([...container.querySelectorAll('.hour-label')].slice(0, 2).map((node) => node.classList.contains('is-first'))).toEqual([true, false])
+      const tops = (selector: string) => [...container.querySelectorAll<HTMLElement>(selector)].slice(0, 2).map((node) => node.style.top)
+      expect(tops('.hour-weather')).toEqual(['calc(var(--hour-height) * 0.5)', 'calc(var(--hour-height) * 1.5)'])
+      expect(tops('.hour-label')).toEqual(['calc(var(--hour-height) * 0.5)', 'calc(var(--hour-height) * 1.5)'])
     })
 
     it('shows nothing for hours without a forecast', () => {

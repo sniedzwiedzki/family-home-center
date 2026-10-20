@@ -3,6 +3,8 @@ import { addDays, type DayEntry } from './days'
 export const DEFAULT_START_HOUR = 7
 export const DEFAULT_END_HOUR = 20
 export const MINUTES_PER_HOUR = 60
+/** The hour grid starts this long before the first shown hour, so the first hour label is not cramped against the top edge. */
+export const LEADING_HOURS = 0.5
 const MINUTES_PER_DAY = 24 * MINUTES_PER_HOUR
 // A shorter event is drawn this tall so its title stays readable and clickable.
 const MIN_SPAN_MINUTES = 30

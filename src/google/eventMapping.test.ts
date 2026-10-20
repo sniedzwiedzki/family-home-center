@@ -113,3 +113,39 @@ describe('applyEventInput', () => {
     expect(applyEventInput(existing, timed).extendedProperties).toEqual({ private: {} })
   })
 })
+
+describe('repeat rules', () => {
+  const timed: CalendarEventInput = { title: 'Basen', allDay: false, start: new Date('2026-10-20T07:00:00Z'), end: new Date('2026-10-20T08:00:00Z') }
+  const weekly = { frequency: 'weekly' as const, weekdays: [1], until: null }
+
+  it('reads the recurrence lines of an event', () => {
+    expect(raw({ recurrence: ['RRULE:FREQ=WEEKLY'] }).recurrence).toEqual(['RRULE:FREQ=WEEKLY'])
+  })
+
+  it('writes the rule of a new repeating event', () => {
+    expect(applyEventInput(undefined, { ...timed, recurrence: weekly }).recurrence).toEqual(['RRULE:FREQ=WEEKLY;BYDAY=MO'])
+  })
+
+  it('writes an all-day end date as a date', () => {
+    const input = { title: 'x', allDay: true, start: new Date(2026, 9, 20), end: new Date(2026, 9, 21), recurrence: { ...weekly, weekdays: [], until: '2026-12-31' } }
+    expect(applyEventInput(undefined, input).recurrence).toEqual(['RRULE:FREQ=WEEKLY;UNTIL=20261231'])
+  })
+
+  it('replaces the rule of an existing series and keeps its other recurrence lines', () => {
+    const existing = raw({ recurrence: ['EXDATE:20261027T070000Z', 'RRULE:FREQ=WEEKLY'] })
+    expect(applyEventInput(existing, { ...timed, recurrence: { ...weekly, frequency: 'monthly', weekdays: [] } }).recurrence).toEqual([
+      'EXDATE:20261027T070000Z',
+      'RRULE:FREQ=MONTHLY',
+    ])
+  })
+
+  it('removes the recurrence when the input has none', () => {
+    const existing = raw({ recurrence: ['RRULE:FREQ=WEEKLY'] })
+    expect('recurrence' in applyEventInput(existing, timed)).toBe(false)
+  })
+
+  it('leaves the recurrence of the existing event alone when asked to keep it', () => {
+    const existing = raw({ recurrence: ['RRULE:FREQ=WEEKLY;INTERVAL=2'] })
+    expect(applyEventInput(existing, { ...timed, recurrence: weekly }, 'keep').recurrence).toEqual(['RRULE:FREQ=WEEKLY;INTERVAL=2'])
+  })
+})

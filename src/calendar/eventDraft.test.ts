@@ -16,6 +16,9 @@ const draft = (overrides: Partial<EventDraft> = {}): EventDraft => ({
   endDate: '2026-10-20',
   startTime: '09:00',
   endTime: '10:30',
+  repeat: 'none',
+  repeatDays: [],
+  repeatUntil: '',
   ...overrides,
 })
 const failure = (result: ReturnType<typeof draftToInput>) => {
@@ -38,6 +41,9 @@ describe('newDraft', () => {
       endDate: '2026-10-05',
       startTime: '09:00',
       endTime: '10:00',
+      repeat: 'none',
+      repeatDays: [],
+      repeatUntil: '',
     })
   })
 })
@@ -74,6 +80,9 @@ describe('draftFromEvent', () => {
       endDate: '2026-10-20',
       startTime: '07:05',
       endTime: '18:00',
+      repeat: 'none',
+      repeatDays: [],
+      repeatUntil: '',
     })
   })
 
@@ -197,3 +206,36 @@ describe('draftToInput', () => {
     expect(draftToInput(draft({ allDay: true, startTime: 'zzz', endTime: '' }), members).ok).toBe(true)
   })
 })
+
+describe('repeating', () => {
+  it('builds an event that repeats every week', () => {
+    expect(success(draftToInput(draft({ repeat: 'weekly' }), members)).recurrence).toEqual({ frequency: 'weekly', weekdays: [], until: null })
+  })
+
+  it('builds an event that repeats on chosen weekdays until a day', () => {
+    const input = success(draftToInput(draft({ repeat: 'weekdays', repeatDays: [3, 1], repeatUntil: '2026-12-31' }), members))
+    expect(input.recurrence).toEqual({ frequency: 'weekly', weekdays: [1, 3], until: '2026-12-31' })
+  })
+
+  it('leaves the recurrence out of an event that does not repeat', () => {
+    expect('recurrence' in success(draftToInput(draft(), members))).toBe(false)
+  })
+
+  it('asks for at least one weekday', () => {
+    expect(failure(draftToInput(draft({ repeat: 'weekdays' }), members)).repeat).toBe('Wybierz dni tygodnia')
+  })
+
+  it('does not accept an end of the repetition before the start, or one that is not a date', () => {
+    expect(failure(draftToInput(draft({ repeat: 'weekly', repeatUntil: '2026-10-19' }), members)).repeat).toBe('Koniec powtarzania nie może być przed początkiem')
+    expect(failure(draftToInput(draft({ repeat: 'weekly', repeatUntil: '2026-02-31' }), members)).repeat).toBe('Podaj datę końca powtarzania')
+  })
+
+  it('accepts the start day itself as the end', () => {
+    expect(success(draftToInput(draft({ repeat: 'monthly', repeatUntil: '2026-10-20' }), members)).recurrence?.until).toBe('2026-10-20')
+  })
+
+  it('ignores the end and the weekdays when the event does not repeat', () => {
+    expect('recurrence' in success(draftToInput(draft({ repeat: 'none', repeatUntil: '2020-01-01', repeatDays: [1] }), members))).toBe(false)
+  })
+})
+

@@ -1,8 +1,10 @@
 import { z } from 'zod'
-import type { CalendarEvent, CalendarEventInput, CalendarPort, DateRange, RecurrenceScope } from '../calendar/types'
+import { placeOnSeriesStart } from '../calendar/seriesShift'
+import type { CalendarEvent, CalendarEventInput, CalendarPort, DateRange, Recurrence, RecurrenceScope, SeriesPort } from '../calendar/types'
 import { UserFacingError } from '../shared/userFacingError'
 import { applyEventInput, googleEventSchema, splitId, toCalendarEvent } from './eventMapping'
 import { GoogleApiError, type GoogleApi } from './googleApi'
+import { parseRuleLines } from './recurrenceRule'
 
 const MAX_PAGE_SIZE = '2500'
 const GONE = 410
@@ -40,7 +42,28 @@ export function createGoogleCalendar({ api, readIds, writeId }: GoogleCalendarOp
     return events
   }
 
+  // The series is a separate "master" event; an occurrence only knows its id (`recurringEventId`). The editor offers the series
+  // only for occurrences, so it is always set.
+  const masterOf = (occurrence: CalendarEvent) => {
+    const { calendarId, eventId } = splitId(occurrence.recurringEventId!)
+    return { calendarId, path: eventPath(calendarId, eventId) }
+  }
+
+  const series: SeriesPort = {
+    loadRule: async (occurrence) => parseRuleLines((await api.getJson(masterOf(occurrence).path, googleEventSchema)).recurrence ?? []),
+
+    update: async (occurrence, input, keepRule) => {
+      const { calendarId, path } = masterOf(occurrence)
+      const master = await api.getJson(path, googleEventSchema)
+      const current = toCalendarEvent(calendarId, master)!
+      const placed = { ...input, ...placeOnSeriesStart(current.start, input) }
+      await api.sendJson('PUT', path, applyEventInput(master, placed, keepRule ? 'keep' : undefined), googleEventSchema)
+    },
+  }
+
   return {
+    series,
+
     listEvents: async (range) => (await Promise.all(readIds.map((calendarId) => listCalendar(calendarId, range)))).flat(),
 
     createEvent: async (input: CalendarEventInput) => {
@@ -49,11 +72,11 @@ export function createGoogleCalendar({ api, readIds, writeId }: GoogleCalendarOp
       return toCalendarEvent(writeId, created)!
     },
 
-    updateEvent: async (event: CalendarEvent) => {
+    updateEvent: async (event: CalendarEvent, recurrence?: Recurrence) => {
       const { calendarId, eventId } = splitId(event.id)
       const path = eventPath(calendarId, eventId)
       const current = await api.getJson(path, googleEventSchema)
-      await api.sendJson('PUT', path, applyEventInput(current, event), googleEventSchema)
+      await api.sendJson('PUT', path, applyEventInput(current, { ...event, recurrence }), googleEventSchema)
     },
 
     deleteEvent: async (event: CalendarEvent, scope: RecurrenceScope) => {

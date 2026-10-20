@@ -354,6 +354,42 @@ describe('CalendarView', () => {
       expect(calendar.createEvent).not.toHaveBeenCalled()
     })
 
+    describe('repeating', () => {
+      const withSeries = (): CalendarPort => ({ ...port(), series: { loadRule: vi.fn(), update: vi.fn() } })
+
+      it('offers no repeat controls without Google', async () => {
+        const { container } = await renderEditable()
+        fireEvent.click(cell(container, tomorrow, 'a'))
+        expect(screen.queryByLabelText('Powtarzaj')).toBeNull()
+      })
+
+      it('creates a repeating event with its rule', async () => {
+        const calendar = withSeries()
+        const { container } = render(<CalendarView port={calendar} members={members} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
+        await screen.findByText('Dzisiejsze')
+        fireEvent.click(cell(container, tomorrow, 'a'))
+        fireEvent.change(field('Tytuł'), { target: { value: 'Basen' } })
+        fireEvent.change(screen.getByLabelText('Powtarzaj'), { target: { value: 'weekly' } })
+        fireEvent.click(screen.getByRole('button', { name: 'Zapisz' }))
+        await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+        expect(vi.mocked(calendar.createEvent).mock.calls[0][0].recurrence).toEqual({ frequency: 'weekly', weekdays: [], until: null })
+      })
+
+      it('makes an existing single event repeat', async () => {
+        const calendar = withSeries()
+        const { container } = render(<CalendarView port={calendar} members={members} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
+        await screen.findByText('Dzisiejsze')
+        fireEvent.click(container.querySelector(`.day-row[data-day="${dayKey(today)}"] .event`)!)
+        fireEvent.change(screen.getByLabelText('Powtarzaj'), { target: { value: 'yearly' } })
+        fireEvent.click(screen.getByRole('button', { name: 'Zapisz' }))
+        await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+        const [event, recurrence] = vi.mocked(calendar.updateEvent).mock.calls[0]
+        expect(event).toMatchObject({ id: 'today' })
+        expect('recurrence' in event).toBe(false)
+        expect(recurrence).toEqual({ frequency: 'yearly', weekdays: [], until: null })
+      })
+    })
+
     it('deletes the edited event after confirmation, closes and reloads', async () => {
       const { calendar, container } = await renderEditable()
       fireEvent.click(container.querySelector(`.day-row[data-day="${dayKey(today)}"] .event`)!)
@@ -378,6 +414,46 @@ describe('CalendarView', () => {
       it('says that an edit changes only this occurrence', async () => {
         await open()
         expect(screen.getByText('To wydarzenie cykliczne. Zmiany dotyczą tylko tego wystąpienia.')).toBeTruthy()
+      })
+
+      describe('with Google (series editing)', () => {
+        const rule = { frequency: 'weekly' as const, weekdays: [], until: null }
+        const openWithSeries = async () => {
+          const calendar: CalendarPort = {
+            ...portOf(vi.fn(async () => [recurring])),
+            series: { loadRule: vi.fn(async () => rule), update: vi.fn(async () => undefined) },
+          }
+          const view = render(<CalendarView port={calendar} members={members} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
+          await screen.findByText('Dzisiejsze')
+          fireEvent.click(view.container.querySelector(`.day-row[data-day="${dayKey(today)}"] .event`)!)
+          return calendar
+        }
+
+        it('saves an edit of the occurrence alone, without touching the series', async () => {
+          const calendar = await openWithSeries()
+          fireEvent.change(screen.getByLabelText('Tytuł'), { target: { value: 'Tylko dziś' } })
+          fireEvent.click(screen.getByRole('button', { name: 'Zapisz' }))
+          await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+          expect(calendar.updateEvent).toHaveBeenCalledTimes(1)
+          expect(vi.mocked(calendar.updateEvent).mock.calls[0][0]).toMatchObject({ id: 'cal|series_20261018', title: 'Tylko dziś' })
+          expect(vi.mocked(calendar.updateEvent).mock.calls[0][1]).toBeUndefined()
+          expect(calendar.series!.update).not.toHaveBeenCalled()
+        })
+
+        it('saves an edit of the whole series with its rule, then closes and reloads', async () => {
+          const calendar = await openWithSeries()
+          fireEvent.click(screen.getByRole('button', { name: 'Cała seria' }))
+          fireEvent.change(await screen.findByLabelText('Powtarzaj'), { target: { value: 'monthly' } })
+          fireEvent.change(screen.getByLabelText('Tytuł'), { target: { value: 'Cała seria' } })
+          fireEvent.click(screen.getByRole('button', { name: 'Zapisz' }))
+          await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+          expect(calendar.updateEvent).not.toHaveBeenCalled()
+          const [occurrence, input, keepRule] = vi.mocked(calendar.series!.update).mock.calls[0]
+          expect(occurrence.id).toBe('cal|series_20261018')
+          expect(input).toMatchObject({ title: 'Cała seria', recurrence: { frequency: 'monthly', weekdays: [], until: null } })
+          expect(keepRule).toBe(false)
+          await waitFor(() => expect(calendar.listEvents).toHaveBeenCalledTimes(2))
+        })
       })
 
       it('deletes only this occurrence when asked to', async () => {
