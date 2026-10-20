@@ -10,10 +10,10 @@ A big calendar with events, actions, tasks and more. The first iteration covers 
 
 - Content is fetched from the Google calendars chosen in settings; new events go to the default calendar chosen in settings.
 - Never-ending scroll page in both directions, starting at today; each date is a single row.
-- One day at a time is expanded into an hour view (7:00 to 20:00, more only when an event starts earlier or ends later), with events at their hours and a now-line that moves every minute. Today is expanded by default; once today is over (after 20:00 and its last event) the next day is. Tapping a date expands or collapses that day; the home button above the dates restores the default view and scrolls back to it. Clicking the hour grid starts a new event at the clicked hour (one hour long). In the compact day rows a long event title is cut after two lines with an ellipsis.
+- One day at a time is expanded into an hour view (7:00 to 20:00, more only when an event starts earlier or ends later), with events at their hours and a now-line that moves every minute; the hour grid starts half an hour before the first hour (6:30 for the usual 7:00) so the first hour is not cramped against the top. Today is expanded by default; once today is over (after 20:00 and its last event) the next day is. Tapping a date expands or collapses that day; the home button above the dates restores the default view and scrolls back to it. Clicking the hour grid starts a new event at the clicked hour (one hour long). In the compact day rows a long event title is cut after two lines with an ellipsis.
 - All-day and multi-day events appear in the row of every day they cover.
 - Application language: Polish (all UI text, dates and weather labels). The repository itself (code, docs, specs) stays in English.
-- Clicking an empty spot of a day in a person's column opens a dialog to add an event; that person is preselected, and more people can be added or changed. Clicking an existing event opens the same dialog to edit its date, time and content, or to remove it (with a second tap to confirm). For recurring Google events an edit changes only that occurrence, and deleting asks whether to delete the occurrence or the whole series.
+- Clicking an empty spot of a day in a person's column opens a dialog to add an event; that person is preselected, and more people can be added or changed. Clicking an existing event opens the same dialog to edit its date, time and content, or to remove it (with a second tap to confirm). With Google connected the dialog also has **Powtarzaj** (see Repeating events below). For a recurring Google event a switch at the top chooses what an edit changes (**To wystąpienie** or **Cała seria**), and deleting asks whether to delete the occurrence or the whole series.
 - Events live in Google Calendar when Google is connected in the settings; otherwise they are kept only in the browser's local storage (key `fhc.events.v1`).
 - The settings button (in the top bar) opens the settings.
 
@@ -109,9 +109,18 @@ Menu names come from Google's documentation and pages checked on 2026-10-18; the
 - **Reading**: the visible range of days is read from every ticked calendar, expanded into single occurrences (`singleEvents=true`), and reloaded every 5 minutes, when the browser comes back online and when the ↻ button is pressed. A failure keeps the events on screen and shows "Nie udało się pobrać wydarzeń."
 - **Writing**: new events go to the "Zapisuj tutaj" calendar. Editing reads the event, changes only title, description, time and people, and writes it back whole, so attendees, reminders and other fields set in Google stay untouched.
 - **People**: stored in the event's private extended property `fhcTags` (comma separated tags); `#tag` in the title is read too.
-- **Recurring events**: editing one changes only that occurrence. Deleting asks "Usuń to wystąpienie" or "Usuń całą serię". Editing a whole series, or "this and following", is not built: do that in Google Calendar.
+- **Recurring events**: see Repeating events below. Deleting asks "Usuń to wystąpienie" or "Usuń całą serię". "This and following" is not built: do that in Google Calendar.
 - **Without Google** ("Odłącz Google", or empty fields): events live in the browser's local storage again. Events in Google and events in local storage are never mixed or copied.
 - **Time zone**: the device's.
+
+### Repeating events
+
+Available only with Google Calendar connected (events in the tablet's local storage cannot repeat, so the controls are hidden there).
+
+- **Powtarzaj** in the event dialog (new or existing single event): *Nie powtarzaj*, *Co tydzień*, *Co tydzień w wybrane dni* (buttons Pn to Nd), *Co miesiąc tego dnia*, *Co rok tego dnia*, and an optional *Powtarzaj do dnia* (no end by default). The rule is saved as a Google `RRULE`; for a monthly event on the 29th to 31st, months without that day are skipped, as in Google Calendar.
+- **Editing a repeating event**: the switch at the top of the dialog. *To wystąpienie* (default) changes only that day. *Cała seria* loads the rule, hides the date fields (the series keeps its first day) and applies title, description, people, times and rule to the whole series; switching *Nie powtarzaj* on removes the rule, so it becomes a single event. A series with a rule the app does not model (every 2 weeks, a count, several rules) says so and keeps its rule; other changes are still saved. Lines such as `EXDATE` (deleted occurrences) are kept.
+- **Voice**: "Dodaj basen dla Oli w poniedziałki i środy o 17 do końca czerwca" creates a repeating event (`create_event` with `repeat`, `repeatDays`, `repeatUntil`). Without Google the assistant answers that repeating needs Google Calendar. Changing the repeat rule by voice is not built.
+- **Not built**: intervals ("every 2 weeks"), counts, "this and following", moving the first day of a series.
 
 ### When it stops working
 

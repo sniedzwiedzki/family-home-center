@@ -1,6 +1,7 @@
 import type { ZodError } from 'zod'
 import { addDays } from '../calendar/days'
 import { draftFromEvent, draftToInput, parseDate, type EventDraft } from '../calendar/eventDraft'
+import { NO_REPEAT, REPEAT_LABELS } from '../calendar/recurrence'
 import type { CalendarEvent, CalendarPort } from '../calendar/types'
 import { normalizeTag, type FamilyMember } from '../family/familyMember'
 import type { ToolCall } from './assistant.port'
@@ -13,6 +14,7 @@ import {
   listEventsArgsSchema,
   UPDATE_EVENT,
   updateEventArgsSchema,
+  WEEKDAY_NAMES,
 } from './tools'
 
 /** Keeps the answer to the model (and so its cost) bounded when a range is crowded. */
@@ -63,6 +65,7 @@ export function createToolExecutor({ port, members }: ToolExecutorOptions): Tool
       description: draft.description,
       tags: members.filter((member) => draft.memberIds.includes(member.id)).map((member) => member.tag),
       allDay: draft.allDay,
+      recurring: event.recurringEventId !== undefined,
       date: draft.startDate,
       endDate: draft.endDate,
       ...(draft.allDay ? {} : { startTime: draft.startTime, endTime: draft.endTime }),
@@ -96,7 +99,12 @@ export function createToolExecutor({ port, members }: ToolExecutorOptions): Tool
     const memberIds = memberIdsFor(parsed.tags ?? [])
     if (typeof memberIds === 'string') return failure(memberIds)
     const startTime = parsed.startTime ?? ''
+    if (parsed.repeat !== undefined && port.series === undefined) return failure('Repeating events need Google Calendar: it is not connected, so create a single event.')
     const draft: EventDraft = {
+      repeat: parsed.repeat ?? NO_REPEAT.repeat,
+      // Weekday names count from Monday as in the tool; the calendar counts from Sunday = 0.
+      repeatDays: (parsed.repeatDays ?? []).map((name) => (WEEKDAY_NAMES.indexOf(name) + 1) % WEEKDAY_NAMES.length),
+      repeatUntil: parsed.repeatUntil ?? NO_REPEAT.repeatUntil,
       title: parsed.title,
       description: parsed.description ?? '',
       memberIds,
@@ -114,7 +122,7 @@ export function createToolExecutor({ port, members }: ToolExecutorOptions): Tool
     const event = await port.createEvent(result.input)
     known.set(event.id, event)
     created.set(key, event.id)
-    return { kind: 'done', output: { created: view(event) }, summary: `Dodano wydarzenie „${event.title}” (${draft.startDate}).` }
+    return { kind: 'done', output: { created: view(event) }, summary: `Dodano wydarzenie „${event.title}” (${draft.startDate}${draft.repeat === 'none' ? '' : `, ${REPEAT_LABELS[draft.repeat].toLowerCase()}`}).` }
   }
 
   async function updateEvent(args: unknown): Promise<ToolOutcome> {
@@ -128,6 +136,7 @@ export function createToolExecutor({ port, members }: ToolExecutorOptions): Tool
     const current = draftFromEvent(existing, members)
     const startDate = parsed.date ?? current.startDate
     const draft: EventDraft = {
+      ...NO_REPEAT,
       title: parsed.title ?? current.title,
       description: parsed.description ?? current.description,
       memberIds: memberIds ?? current.memberIds,

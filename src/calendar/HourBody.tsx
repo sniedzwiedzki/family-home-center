@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react'
 import type { FamilyMember } from '../family/familyMember'
 import { formatClock } from '../shared/format'
 import { columnIdsForEvent, type CalendarColumn } from './columns'
-import { hourRange, MINUTES_PER_HOUR, placeSpans, timedSpans } from './dayHours'
+import { hourRange, LEADING_HOURS, MINUTES_PER_HOUR, placeSpans, timedSpans } from './dayHours'
 import type { DayEntry } from './days'
 import { EventItem } from './EventItem'
 import { describeWeather } from '../weather/weatherCodes'
@@ -23,7 +23,8 @@ interface HourBodyProps {
   onEditEvent: (event: CalendarEvent) => void
 }
 
-const hoursFrom = (startHour: number, minute: number): number => minute / MINUTES_PER_HOUR - startHour
+/** Position on the grid in hours from its top, which lies `LEADING_HOURS` before `startHour`. */
+const hoursFrom = (startHour: number, minute: number): number => minute / MINUTES_PER_HOUR - startHour + LEADING_HOURS
 const offset = (hours: number): string => `calc(var(--hour-height) * ${hours})`
 
 /** The hour grid of an expanded day: an hour axis and, per column, the events at the hours they take place. */
@@ -32,13 +33,13 @@ export function HourBody({ day, now, columns, members, entries, hourForecasts, o
   const { startHour, endHour } = hourRange(spans)
   const placed = spans.map((span) => ({ span, columnIds: columnIdsForEvent(span.entry.event, members) }))
   const nowHours = now === undefined ? null : hoursFrom(startHour, now.getHours() * MINUTES_PER_HOUR + now.getMinutes())
-  const showNow = nowHours !== null && nowHours >= 0 && nowHours <= endHour - startHour
+  const showNow = nowHours !== null && nowHours >= LEADING_HOURS && nowHours <= endHour - startHour + LEADING_HOURS
 
   return (
-    <div className="hour-body day-grid" style={{ '--hours': endHour - startHour } as CSSProperties}>
+    <div className="hour-body day-grid" style={{ '--hours': endHour - startHour + LEADING_HOURS } as CSSProperties}>
       <div className="hour-labels">
         {Array.from({ length: endHour - startHour }, (_, index) => (
-          <span key={index} className={index === 0 ? 'hour-label is-first' : 'hour-label'} style={{ top: offset(index) }}>
+          <span key={index} className="hour-label" style={{ top: offset(index + LEADING_HOURS) }}>
             {startHour + index}:00
           </span>
         ))}
@@ -46,7 +47,7 @@ export function HourBody({ day, now, columns, members, entries, hourForecasts, o
           .map((hour) => ({ hour, forecast: hourForecasts.get(new Date(day.getFullYear(), day.getMonth(), day.getDate(), hour).getTime()) }))
           .map(({ hour, forecast }) =>
             forecast === undefined ? null : (
-              <span key={hour} className={hour === startHour ? 'hour-weather is-first' : 'hour-weather'} style={{ top: offset(hour - startHour) }} title={describeWeather(forecast.code).label}>
+              <span key={hour} className="hour-weather" style={{ top: offset(hour - startHour + LEADING_HOURS) }} title={describeWeather(forecast.code).label}>
                 <span className="hour-weather-icon">{describeWeather(forecast.code).icon}</span>
                 {`${Math.round(forecast.temp)}°`}
               </span>
@@ -61,7 +62,7 @@ export function HourBody({ day, now, columns, members, entries, hourForecasts, o
           onClick={(click) => {
             click.stopPropagation()
             const { top, height } = click.currentTarget.getBoundingClientRect()
-            const hour = startHour + Math.floor(((click.clientY - top) / height) * (endHour - startHour))
+            const hour = startHour + Math.floor(((click.clientY - top) / height) * (endHour - startHour + LEADING_HOURS) - LEADING_HOURS)
             onAddEvent(day, column.id, Math.min(Math.max(hour, startHour), endHour - 1))
           }}
         >

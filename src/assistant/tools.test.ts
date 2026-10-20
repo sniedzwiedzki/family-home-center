@@ -18,6 +18,12 @@ describe('tool declarations', () => {
     }
   })
 
+  it('offer the repeat options for a new event only', () => {
+    const properties = (name: string) => Object.keys((TOOL_DECLARATIONS.find((tool) => tool.name === name)!.parameters as { properties: object }).properties)
+    expect(properties(CREATE_EVENT)).toEqual(expect.arrayContaining(['repeat', 'repeatDays', 'repeatUntil']))
+    expect(properties('update_event')).not.toContain('repeat')
+  })
+
   it('make only the title and the date mandatory for a new event', () => {
     const create = TOOL_DECLARATIONS.find((tool) => tool.name === CREATE_EVENT)!
     expect((create.parameters as { required: string[] }).required).toEqual(['title', 'date'])
@@ -39,6 +45,14 @@ describe('argument schemas', () => {
   it('require the event id for an update but make every other field optional', () => {
     expect(updateEventArgsSchema.safeParse({ eventId: 'a|b' }).success).toBe(true)
     expect(updateEventArgsSchema.safeParse({ title: 'Nowy' }).success).toBe(false)
+  })
+
+  it('accept the repeat options and reject unknown ones', () => {
+    const base = { title: 'X', date: '2026-10-21' }
+    expect(createEventArgsSchema.safeParse({ ...base, repeat: 'weekdays', repeatDays: ['mon', 'fri'], repeatUntil: '2027-01-01' }).success).toBe(true)
+    expect(createEventArgsSchema.safeParse({ ...base, repeat: 'daily' }).success).toBe(false)
+    expect(createEventArgsSchema.safeParse({ ...base, repeatDays: ['monday'] }).success).toBe(false)
+    expect(createEventArgsSchema.safeParse({ ...base, repeatUntil: 'later' }).success).toBe(false)
   })
 
   it('reject arguments of the wrong type', () => {

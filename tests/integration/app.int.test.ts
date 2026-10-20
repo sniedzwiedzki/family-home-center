@@ -11,6 +11,8 @@ const SESSION = `fhc-integration-${process.pid}`
 const KIOSK_WIDTH = '1600'
 const KIOSK_HEIGHT = '2400'
 const SETTLE_MS = '1000'
+// The hour grid starts this long before the first hour (see `LEADING_HOURS` in src/calendar/dayHours.ts); `--hours` includes it.
+const LEADING_HOURS = 0.5
 
 async function agentBrowser(...args: string[]): Promise<string> {
   const { stdout } = await run('npx', ['agent-browser', '--session', SESSION, ...args])
@@ -163,7 +165,7 @@ describe('app on the kiosk display', () => {
           const rect = track.getBoundingClientRect()
           const hours = Number(getComputedStyle(track.parentElement).getPropertyValue('--hours'))
           const first = Number(document.querySelector('.day-row.is-expanded .hour-label').textContent.split(':')[0])
-          track.dispatchEvent(new MouseEvent('click', { bubbles: true, clientY: rect.top + ((${hour} - first + 0.5) / hours) * rect.height }))
+          track.dispatchEvent(new MouseEvent('click', { bubbles: true, clientY: rect.top + ((${hour} - first + 0.5 + ${LEADING_HOURS}) / hours) * rect.height }))
         })()`,
       )
     const timeField = (label: string) =>
@@ -395,6 +397,48 @@ describe('app on the kiosk display', () => {
       await agentBrowser('wait', SETTLE_MS)
       expect(await titlesIn('m3')).toEqual(['Dodane gdzie indziej'])
       await screenshot('after-refresh')
+    } finally {
+      await agentBrowser('eval', 'localStorage.clear()')
+    }
+  })
+
+  it('repeats an event every week and changes the whole series', async () => {
+    const nextWeek = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 7)
+    const NEXT_WEEK_KEY = `${nextWeek.getFullYear()}-${pad(nextWeek.getMonth() + 1)}-${pad(nextWeek.getDate())}`
+    const titlesOn = (day: string) =>
+      evaluate<string[]>(`[...document.querySelectorAll('.day-row[data-day="${day}"] .day-cell[data-column="m3"] .event-title')].map((e) => e.textContent)`)
+    const choose = (label: string, value: string) =>
+      agentBrowser(
+        'eval',
+        `(() => {
+          const select = [...document.querySelectorAll('label')].find((l) => l.textContent.trim().startsWith(${JSON.stringify(label)})).querySelector('select')
+          Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(select, ${JSON.stringify(value)})
+          select.dispatchEvent(new Event('change', { bubbles: true }))
+        })()`,
+      )
+
+    await agentBrowser('eval', `localStorage.clear(); localStorage.setItem('fhc.settings.v1', ${JSON.stringify(JSON.stringify(SETTINGS_WITH_GOOGLE))})`)
+    await agentBrowser('open', inject('appUrl'))
+    await agentBrowser('wait', SETTLE_MS)
+    try {
+      await agentBrowser('eval', `document.querySelector('.day-row[data-day="${TODAY_KEY}"] .day-cell[data-column="m3"]').click()`)
+      await fillField('Tytuł', 'Basen co tydzień')
+      await choose('Powtarzaj', 'weekly')
+      await screenshot('repeat-dialog')
+      await clickButton('Zapisz')
+      await agentBrowser('wait', SETTLE_MS)
+      expect(await titlesOn(TODAY_KEY)).toEqual(['Basen co tydzień'])
+      expect(await titlesOn(NEXT_WEEK_KEY)).toEqual(['Basen co tydzień'])
+
+      await agentBrowser('eval', `document.querySelector('.day-row[data-day="${TODAY_KEY}"] .day-cell[data-column="m3"] .event').click()`)
+      await clickButton('Cała seria')
+      await agentBrowser('wait', SETTLE_MS)
+      await screenshot('repeat-series-dialog')
+      await fillField('Tytuł', 'Basen (cała seria)')
+      await clickButton('Zapisz')
+      await agentBrowser('wait', SETTLE_MS)
+      expect(await titlesOn(TODAY_KEY)).toEqual(['Basen (cała seria)'])
+      expect(await titlesOn(NEXT_WEEK_KEY)).toEqual(['Basen (cała seria)'])
     } finally {
       await agentBrowser('eval', 'localStorage.clear()')
     }

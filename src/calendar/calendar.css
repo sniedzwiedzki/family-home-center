@@ -341,15 +341,13 @@ button.day-date {
   font-weight: 600;
 }
 
-.hour-labels .is-first {
-  transform: none;
-}
-
 .hour-track {
   position: relative;
   display: block;
   padding: 0;
   background: repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--hour-height) - 1px), rgba(38, 54, 70, 0.1) calc(var(--hour-height) - 1px), rgba(38, 54, 70, 0.1) var(--hour-height));
+  /* The grid starts half an hour before the first hour, so the lines sit on the hour boundaries. */
+  background-position-y: calc(var(--hour-height) * 0.5);
 }
 
 .event.is-timed {

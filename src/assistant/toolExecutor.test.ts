@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createLocalCalendar } from '../calendar/localCalendar'
-import type { CalendarEvent, CalendarPort } from '../calendar/types'
+import type { CalendarEvent, CalendarPort, SeriesPort } from '../calendar/types'
 import type { FamilyMember } from '../family/familyMember'
 import { createToolExecutor } from './toolExecutor'
 
@@ -138,6 +138,70 @@ describe('create_event', () => {
       error: 'Koniec musi być po początku',
     })
     expect(String(output(await executor.execute(call('create_event', { date: '2026-10-23' }))).error)).toContain('Invalid arguments')
+  })
+})
+
+describe('repeating events', () => {
+  const googleLike = () => {
+    const createEvent = vi.fn(async (input) => ({ ...input, id: 'new' }))
+    const port: CalendarPort = {
+      listEvents: vi.fn(async () => []),
+      createEvent,
+      updateEvent: vi.fn(),
+      deleteEvent: vi.fn(),
+      series: { loadRule: vi.fn(), update: vi.fn() } as SeriesPort,
+    }
+    return { createEvent, executor: createToolExecutor({ port, members }) }
+  }
+
+  it('creates an event that repeats every week, and says so', async () => {
+    const { createEvent, executor } = googleLike()
+    const outcome = await executor.execute(call('create_event', { title: 'Basen', date: '2026-10-23', startTime: '17:00', repeat: 'weekly' }))
+    expect(createEvent.mock.calls[0][0].recurrence).toEqual({ frequency: 'weekly', weekdays: [], until: null })
+    expect(outcome).toMatchObject({ summary: 'Dodano wydarzenie „Basen” (2026-10-23, co tydzień).' })
+  })
+
+  it('maps weekday names (Monday first) to the numbers the calendar uses, and takes an end date', async () => {
+    const { createEvent, executor } = googleLike()
+    await executor.execute(
+      call('create_event', { title: 'Szkoła', date: '2026-10-23', startTime: '08:00', repeat: 'weekdays', repeatDays: ['mon', 'sat', 'sun'], repeatUntil: '2027-06-25' }),
+    )
+    expect(createEvent.mock.calls[0][0].recurrence).toEqual({ frequency: 'weekly', weekdays: [0, 1, 6], until: '2027-06-25' })
+  })
+
+  it('creates monthly and yearly events', async () => {
+    const { createEvent, executor } = googleLike()
+    await executor.execute(call('create_event', { title: 'Czynsz', date: '2026-10-05', repeat: 'monthly' }))
+    await executor.execute(call('create_event', { title: 'Urodziny', date: '2026-10-06', repeat: 'yearly' }))
+    expect(createEvent.mock.calls.map(([input]) => input.recurrence.frequency)).toEqual(['monthly', 'yearly'])
+  })
+
+  it('refuses to repeat without Google Calendar and creates nothing', async () => {
+    const { port, executor } = setup()
+    const outcome = await executor.execute(call('create_event', { title: 'Basen', date: '2026-10-23', repeat: 'weekly' }))
+    expect(String(output(outcome).error)).toContain('need Google Calendar')
+    expect(await port.listEvents({ from: new Date(2026, 9, 1), to: new Date(2026, 10, 1) })).toEqual([])
+  })
+
+  it('reports an invalid repeat back to the model', async () => {
+    const { executor } = googleLike()
+    expect(output(await executor.execute(call('create_event', { title: 'X', date: '2026-10-23', repeat: 'weekdays' })))).toEqual({ error: 'Wybierz dni tygodnia' })
+    expect(String(output(await executor.execute(call('create_event', { title: 'X', date: '2026-10-23', repeat: 'daily' }))).error)).toContain('Invalid arguments')
+    expect(String(output(await executor.execute(call('create_event', { title: 'X', date: '2026-10-23', repeat: 'weekdays', repeatDays: ['funday'] }))).error)).toContain('Invalid arguments')
+  })
+
+  it('tells the model which listed events belong to a series', async () => {
+    const port: CalendarPort = {
+      listEvents: vi.fn(async () => [
+        { id: 'a|s_1', recurringEventId: 'a|s', title: 'Basen', allDay: false, start: new Date(2026, 9, 21, 17), end: new Date(2026, 9, 21, 18) },
+        { id: 'a|one', title: 'Jednorazowe', allDay: false, start: new Date(2026, 9, 22, 17), end: new Date(2026, 9, 22, 18) },
+      ]),
+      createEvent: vi.fn(),
+      updateEvent: vi.fn(),
+      deleteEvent: vi.fn(),
+    }
+    const outcome = await createToolExecutor({ port, members }).execute(call('list_events', { from: '2026-10-21', to: '2026-10-22' }))
+    expect((output(outcome).events as { recurring: boolean }[]).map((event) => event.recurring)).toEqual([true, false])
   })
 })
 

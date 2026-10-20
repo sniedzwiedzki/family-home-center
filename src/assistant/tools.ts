@@ -25,6 +25,20 @@ const eventFields = {
   description: { type: 'string', description: 'Longer notes for the event.' },
 }
 
+export const REPEAT_KINDS = ['weekly', 'weekdays', 'monthly', 'yearly'] as const
+export const WEEKDAY_NAMES = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const
+
+const repeatFields = {
+  repeat: {
+    type: 'string',
+    enum: REPEAT_KINDS,
+    description:
+      'Makes the event repeat: weekly = every week on the weekday of the start, weekdays = every week on repeatDays, monthly = every month on that day of the month, yearly = every year on that day. Omit for a one-off event.',
+  },
+  repeatDays: { type: 'array', items: { type: 'string', enum: WEEKDAY_NAMES }, description: 'Weekdays for repeat = weekdays.' },
+  repeatUntil: { ...date, description: 'Last day of the repetition (inclusive); omit to repeat without end.' },
+}
+
 export const TOOL_DECLARATIONS: readonly ToolDeclaration[] = [
   {
     name: LIST_EVENTS,
@@ -34,7 +48,7 @@ export const TOOL_DECLARATIONS: readonly ToolDeclaration[] = [
   {
     name: CREATE_EVENT,
     description: 'Creates a calendar event.',
-    parameters: { type: 'object', properties: eventFields, required: ['title', 'date'] },
+    parameters: { type: 'object', properties: { ...eventFields, ...repeatFields }, required: ['title', 'date'] },
   },
   {
     name: UPDATE_EVENT,
@@ -62,7 +76,13 @@ const eventFieldsSchema = {
   description: z.string().optional(),
 }
 
+const repeatFieldsSchema = {
+  repeat: z.enum(REPEAT_KINDS).optional(),
+  repeatDays: z.array(z.enum(WEEKDAY_NAMES)).optional(),
+  repeatUntil: dateSchema.optional(),
+}
+
 export const listEventsArgsSchema = z.object({ from: dateSchema, to: dateSchema })
-export const createEventArgsSchema = z.object(eventFieldsSchema)
+export const createEventArgsSchema = z.object({ ...eventFieldsSchema, ...repeatFieldsSchema })
 export const updateEventArgsSchema = z.object({ eventId: z.string(), ...eventFieldsSchema }).partial().required({ eventId: true })
 export const deleteEventArgsSchema = z.object({ eventId: z.string() })

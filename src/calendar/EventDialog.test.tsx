@@ -2,9 +2,9 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi, type Mock } from 'vitest'
 import type { FamilyMember } from '../family/familyMember'
 import { UserFacingError } from '../shared/userFacingError'
-import { EventDialog } from './EventDialog'
+import { EventDialog, type SaveTarget } from './EventDialog'
 import { newDraft, type EventDraft } from './eventDraft'
-import type { CalendarEvent, CalendarEventInput, RecurrenceScope } from './types'
+import type { CalendarEvent, CalendarEventInput, RecurrenceScope, SeriesPort, SeriesRule } from './types'
 
 const members: FamilyMember[] = [
   { id: 'a', name: 'Anna', tag: 'anna', color: '#f4a3a8' },
@@ -13,11 +13,11 @@ const members: FamilyMember[] = [
 const initial = (patch: Partial<EventDraft> = {}): EventDraft => ({ ...newDraft(new Date(2026, 9, 20), ['a']), ...patch })
 
 interface Handlers {
-  onSave: Mock<(input: CalendarEventInput) => Promise<void>>
+  onSave: Mock<(input: CalendarEventInput, target: SaveTarget) => Promise<void>>
   onDelete?: Mock<(scope: RecurrenceScope) => Promise<void>>
   onClose: Mock<() => void>
 }
-const show = (draft: EventDraft = initial(), options: { canDelete?: boolean; members?: FamilyMember[]; existing?: CalendarEvent } = {}) => {
+const show = (draft: EventDraft = initial(), options: { canDelete?: boolean; members?: FamilyMember[]; existing?: CalendarEvent; series?: SeriesPort } = {}) => {
   const handlers: Handlers = { onSave: vi.fn(async () => undefined), onClose: vi.fn() }
   if (options.canDelete) handlers.onDelete = vi.fn(async () => undefined)
   render(
@@ -26,6 +26,7 @@ const show = (draft: EventDraft = initial(), options: { canDelete?: boolean; mem
       initial={draft}
       members={options.members ?? members}
       existing={options.existing}
+      series={options.series}
       onSave={handlers.onSave}
       onDelete={handlers.onDelete}
       onClose={handlers.onClose}
@@ -247,3 +248,218 @@ describe('EventDialog', () => {
     })
   })
 })
+
+describe('repeating', () => {
+  const seriesOf = (rule: SeriesRule | Error = { frequency: 'weekly', weekdays: [], until: null }): SeriesPort => ({
+    loadRule: vi.fn(async () => {
+      if (rule instanceof Error) throw rule
+      return rule
+    }),
+    update: vi.fn(),
+  })
+  const select = () => screen.getByLabelText('Powtarzaj') as HTMLSelectElement
+  const choose = (kind: string) => fireEvent.change(select(), { target: { value: kind } })
+  const occurrence: CalendarEvent = { id: 'c|s_20261020', recurringEventId: 'c|s', title: 'Basen', allDay: false, start: new Date(2026, 9, 20, 9), end: new Date(2026, 9, 20, 10) }
+  const openOccurrence = (series: SeriesPort) => show(initial({ title: 'Basen' }), { existing: occurrence, series })
+
+  describe('of a new event', () => {
+    it('has no repeat controls without Google', () => {
+      show()
+      expect(screen.queryByLabelText('Powtarzaj')).toBeNull()
+    })
+
+    it('offers the four kinds, starting with no repeating, and no end date until one is chosen', () => {
+      show(initial(), { series: seriesOf() })
+      expect([...select().options].map((option) => option.textContent)).toEqual([
+        'Nie powtarzaj',
+        'Co tydzień',
+        'Co tydzień w wybrane dni',
+        'Co miesiąc tego dnia',
+        'Co rok tego dnia',
+      ])
+      expect(select().value).toBe('none')
+      expect(screen.queryByLabelText('Powtarzaj do dnia (opcjonalnie)')).toBeNull()
+    })
+
+    it('saves a weekly event as an occurrence-level save with the rule', async () => {
+      const { onSave } = show(initial({ title: 'Basen' }), { series: seriesOf() })
+      choose('weekly')
+      submit()
+      await flush()
+      expect(onSave.mock.calls[0][0].recurrence).toEqual({ frequency: 'weekly', weekdays: [], until: null })
+      expect(onSave.mock.calls[0][1]).toEqual({ kind: 'occurrence' })
+    })
+
+    it('shows weekday toggles for "Co tydzień w wybrane dni" and saves the chosen days and the end', async () => {
+      const { onSave } = show(initial({ title: 'Basen' }), { series: seriesOf() })
+      choose('weekdays')
+      expect(screen.getAllByRole('button', { name: /^(Pn|Wt|Śr|Cz|Pt|So|Nd)$/ })).toHaveLength(7)
+      fireEvent.click(screen.getByRole('button', { name: 'Śr' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Pn' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Śr' }))
+      expect(screen.getByRole('button', { name: 'Pn' }).getAttribute('aria-pressed')).toBe('true')
+      expect(screen.getByRole('button', { name: 'Śr' }).getAttribute('aria-pressed')).toBe('false')
+      fireEvent.click(screen.getByRole('button', { name: 'Pt' }))
+      type('Powtarzaj do dnia (opcjonalnie)', '2026-12-31')
+      submit()
+      await flush()
+      expect(onSave.mock.calls[0][0].recurrence).toEqual({ frequency: 'weekly', weekdays: [1, 5], until: '2026-12-31' })
+    })
+
+    it('hides the weekday toggles for the other kinds', () => {
+      show(initial(), { series: seriesOf() })
+      choose('monthly')
+      expect(screen.queryByRole('group', { name: 'Dni tygodnia' })).toBeNull()
+      expect(screen.getByLabelText('Powtarzaj do dnia (opcjonalnie)')).toBeTruthy()
+    })
+
+    it('does not save without a weekday, nor with an end before the start, and says why', async () => {
+      const { onSave } = show(initial({ title: 'Basen' }), { series: seriesOf() })
+      choose('weekdays')
+      submit()
+      await flush()
+      expect(screen.getByRole('alert').textContent).toBe('Wybierz dni tygodnia')
+      fireEvent.click(screen.getByRole('button', { name: 'Pn' }))
+      type('Powtarzaj do dnia (opcjonalnie)', '2026-10-01')
+      submit()
+      await flush()
+      expect(screen.getByRole('alert').textContent).toBe('Koniec powtarzania nie może być przed początkiem')
+      expect(onSave).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('of an event that is not part of a series', () => {
+    it('offers repeating and saves the rule', async () => {
+      const single: CalendarEvent = { ...occurrence, id: 'c|plain', recurringEventId: undefined }
+      const { onSave } = show(initial({ title: 'Basen' }), { existing: single, series: seriesOf() })
+      expect(screen.queryByRole('group', { name: 'Zakres zmian' })).toBeNull()
+      choose('yearly')
+      submit()
+      await flush()
+      expect(onSave.mock.calls[0][0].recurrence).toEqual({ frequency: 'yearly', weekdays: [], until: null })
+      expect(onSave.mock.calls[0][1]).toEqual({ kind: 'occurrence' })
+    })
+  })
+
+  describe('of an occurrence of a series', () => {
+    it('changes only the occurrence by default, without the repeat controls', async () => {
+      const series = seriesOf()
+      const { onSave } = openOccurrence(series)
+      expect(screen.getByRole('button', { name: 'To wystąpienie' }).getAttribute('aria-pressed')).toBe('true')
+      expect(screen.getByText('To wydarzenie cykliczne. Zmiany dotyczą tylko tego wystąpienia.')).toBeTruthy()
+      expect(screen.queryByLabelText('Powtarzaj')).toBeNull()
+      submit()
+      await flush()
+      expect(onSave.mock.calls[0][1]).toEqual({ kind: 'occurrence' })
+      expect('recurrence' in onSave.mock.calls[0][0]).toBe(false)
+      expect(series.loadRule).not.toHaveBeenCalled()
+    })
+
+    it('loads the rule of the series when "Cała seria" is chosen, then shows it and hides the dates', async () => {
+      const series = seriesOf({ frequency: 'weekly', weekdays: [1, 3], until: '2026-12-31' })
+      openOccurrence(series)
+      fireEvent.click(screen.getByRole('button', { name: 'Cała seria' }))
+      expect(screen.getByText('Ładowanie…')).toBeTruthy()
+      expect((screen.getByRole('button', { name: 'Zapisz' }) as HTMLButtonElement).disabled).toBe(true)
+      expect(await screen.findByLabelText('Powtarzaj')).toBeTruthy()
+      expect(series.loadRule).toHaveBeenCalledWith(occurrence)
+      expect(select().value).toBe('weekdays')
+      expect(screen.getByRole('button', { name: 'Pn' }).getAttribute('aria-pressed')).toBe('true')
+      expect((screen.getByLabelText('Powtarzaj do dnia (opcjonalnie)') as HTMLInputElement).value).toBe('2026-12-31')
+      expect(screen.getByText('Zmiany dotyczą całej serii. Data początku serii się nie zmienia.')).toBeTruthy()
+      expect(screen.queryByLabelText('Data')).toBeNull()
+      expect((screen.getByRole('button', { name: 'Zapisz' }) as HTMLButtonElement).disabled).toBe(false)
+    })
+
+    it('saves the series with the edited rule', async () => {
+      const { onSave } = openOccurrence(seriesOf())
+      fireEvent.click(screen.getByRole('button', { name: 'Cała seria' }))
+      await screen.findByLabelText('Powtarzaj')
+      choose('monthly')
+      submit()
+      await flush()
+      expect(onSave.mock.calls[0][0].recurrence).toEqual({ frequency: 'monthly', weekdays: [], until: null })
+      expect(onSave.mock.calls[0][1]).toEqual({ kind: 'series', keepRule: false })
+    })
+
+    it('saves the series without a rule when repeating is switched off', async () => {
+      const { onSave } = openOccurrence(seriesOf())
+      fireEvent.click(screen.getByRole('button', { name: 'Cała seria' }))
+      await screen.findByLabelText('Powtarzaj')
+      choose('none')
+      submit()
+      await flush()
+      expect('recurrence' in onSave.mock.calls[0][0]).toBe(false)
+      expect(onSave.mock.calls[0][1]).toEqual({ kind: 'series', keepRule: false })
+    })
+
+    it('says so and keeps the rule when it is one the app cannot edit', async () => {
+      const { onSave } = openOccurrence(seriesOf('custom'))
+      fireEvent.click(screen.getByRole('button', { name: 'Cała seria' }))
+      expect(await screen.findByText(/własny wzór powtarzania/)).toBeTruthy()
+      expect(screen.queryByLabelText('Powtarzaj')).toBeNull()
+      submit()
+      await flush()
+      expect(onSave.mock.calls[0][1]).toEqual({ kind: 'series', keepRule: true })
+    })
+
+    it('goes back to the occurrence and forgets the loaded rule', async () => {
+      const { onSave } = openOccurrence(seriesOf())
+      fireEvent.click(screen.getByRole('button', { name: 'Cała seria' }))
+      await screen.findByLabelText('Powtarzaj')
+      fireEvent.click(screen.getByRole('button', { name: 'To wystąpienie' }))
+      expect(screen.queryByLabelText('Powtarzaj')).toBeNull()
+      expect(screen.getByLabelText('Data')).toBeTruthy()
+      submit()
+      await flush()
+      expect(onSave.mock.calls[0][1]).toEqual({ kind: 'occurrence' })
+      expect('recurrence' in onSave.mock.calls[0][0]).toBe(false)
+    })
+
+    it('stays on the occurrence and says so when the rule cannot be loaded', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => undefined)
+      openOccurrence(seriesOf(new UserFacingError('Brak połączenia z serwerami Google.')))
+      fireEvent.click(screen.getByRole('button', { name: 'Cała seria' }))
+      expect((await screen.findByRole('alert')).textContent).toBe('Brak połączenia z serwerami Google.')
+      expect(screen.getByRole('button', { name: 'To wystąpienie' }).getAttribute('aria-pressed')).toBe('true')
+    })
+
+    it('uses a generic message when loading the rule fails for an unknown reason', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => undefined)
+      openOccurrence(seriesOf(new Error('boom')))
+      fireEvent.click(screen.getByRole('button', { name: 'Cała seria' }))
+      expect((await screen.findByRole('alert')).textContent).toBe('Nie udało się wczytać powtarzania')
+    })
+
+    it('drops a rule that arrives after the user went back to the occurrence', async () => {
+      let release!: (rule: SeriesRule) => void
+      const series: SeriesPort = { loadRule: vi.fn(() => new Promise<SeriesRule>((resolve) => (release = resolve))), update: vi.fn() }
+      openOccurrence(series)
+      fireEvent.click(screen.getByRole('button', { name: 'Cała seria' }))
+      fireEvent.click(screen.getByRole('button', { name: 'To wystąpienie' }))
+      release({ frequency: 'monthly', weekdays: [], until: null })
+      await flush()
+      expect(screen.queryByLabelText('Powtarzaj')).toBeNull()
+    })
+
+    it('drops a failure that arrives after the user went back to the occurrence', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => undefined)
+      let fail!: (error: Error) => void
+      const series: SeriesPort = { loadRule: vi.fn(() => new Promise<SeriesRule>((_resolve, reject) => (fail = reject))), update: vi.fn() }
+      openOccurrence(series)
+      fireEvent.click(screen.getByRole('button', { name: 'Cała seria' }))
+      fireEvent.click(screen.getByRole('button', { name: 'To wystąpienie' }))
+      fail(new Error('late'))
+      await flush()
+      expect(screen.queryByRole('alert')).toBeNull()
+      expect(console.error).not.toHaveBeenCalled()
+    })
+  })
+
+  it('keeps the old hint for an occurrence when events cannot be repeated', () => {
+    show(initial(), { existing: occurrence })
+    expect(screen.queryByRole('group', { name: 'Zakres zmian' })).toBeNull()
+    expect(screen.getByText('To wydarzenie cykliczne. Zmiany dotyczą tylko tego wystąpienia.')).toBeTruthy()
+  })
+})
+

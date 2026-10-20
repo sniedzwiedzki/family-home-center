@@ -15,6 +15,7 @@ export function buildSystemInstruction({ now, members }: AssistantContext): stri
     `Change the calendar only through the tools. Call ${LIST_EVENTS} before ${UPDATE_EVENT} or ${DELETE_EVENT}, because they need an event id it returned.`,
     `${DELETE_EVENT} only asks the user to confirm; tell the user that you asked, do not claim the event is gone.`,
     `Create each event exactly once, in a single ${CREATE_EVENT} call: leave out startTime for an all-day event. Never create both an all-day and a timed copy of the same event.`,
+    `To make an event repeat, pass repeat to ${CREATE_EVENT} (weekly, weekdays with repeatDays, monthly or yearly) and repeatUntil for an end date; repeating needs Google Calendar. ${UPDATE_EVENT} cannot change repeating.`,
     `${CREATE_EVENT} takes local dates and 24-hour times. If the command is unclear or incomplete (no day, no title), ask a short question instead of guessing.`,
     'If the recording is silent or has nothing to do with the calendar, say so briefly.',
   ].join('\n')

@@ -26,6 +26,12 @@ describe('buildSystemInstruction', () => {
     expect(buildSystemInstruction({ now, members })).toContain('Create each event exactly once')
   })
 
+  it('explains how to repeat an event and that it needs Google', () => {
+    const text = buildSystemInstruction({ now, members })
+    expect(text).toContain('pass repeat to create_event')
+    expect(text).toContain('repeating needs Google Calendar')
+  })
+
   it('names the tools and the confirmation rule for deleting', () => {
     const text = buildSystemInstruction({ now, members })
     for (const tool of ['list_events', 'create_event', 'update_event', 'delete_event']) expect(text).toContain(tool)
