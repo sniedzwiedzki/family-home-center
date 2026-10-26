@@ -86,3 +86,9 @@ Follow-up: the gold star was too small; `.event-star` is now 1.7em of the title 
 ## Rework: shared chip in the row of the cells
 
 The first shared-event layout put bands in extra grid rows above the cells, so those rows had no cells (grid lines vanished) and every other person's events were pushed down. Now `layoutDayEntries` returns the items per column: one `shared` chip in the first cell of a run of neighbouring people (width = columns spanned via `--span`), an invisible `EventSpacer` of equal height in the other cells, one shared chip per column at most. `DayRow` no longer places grid rows; `calendar.css` has `.event.is-shared` and `.event-spacer` instead of `.day-band`. Spec, README and tests updated. Not verified locally (no tests or screenshots, on the user's request).
+
+## Bugs around shared chips (from a user screenshot)
+
+- A shared chip overlapped the chips under the invisible spacer ("Sensoryka Narutowicza" under "Logopeda", "Aparat" under a five-person all-day chip). Cause: every cell centres its own content vertically, so the chip (centred in its cell) and the spacer (in a taller group in the next cell) sat at different heights. Fix: `DayRow` adds `has-shared` to a row that has a shared chip, and `calendar.css` top-aligns the cells of such a row (`align-content: flex-start`), so the chip and the spacers start at the same height. Test in `DayRow.test.tsx`.
+- Seen in the same screenshot: the pinned copy of today let the days scrolling underneath show through (its tint is translucent). `.day-row.is-pinned` now paints the tint over white. Not asked for explicitly.
+- Not verified locally (no tests or screenshots, on the user's request);.

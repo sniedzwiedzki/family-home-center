@@ -48,6 +48,7 @@ export function DayRow({ day, isToday, pinned = false, columns, members, entries
   if (isToday) classes.push('is-today')
   if (pinned) classes.push('is-pinned')
   if (expanded) classes.push('is-expanded')
+  if ([...cellItems.values()].some((items) => items.some((item) => item.kind !== 'entry'))) classes.push('has-shared')
 
   const dateText = (
     <>

@@ -119,6 +119,8 @@
 }
 
 .day-row.is-pinned {
+  /* Opaque (the tint over white), so the days scrolling underneath do not show through the pinned copy. */
+  background: linear-gradient(var(--day-tint), var(--day-tint)), #ffffff;
   box-shadow: inset 0 0 0 0.125rem var(--primary), 0 0.5rem 1.5rem rgba(38, 54, 70, 0.22);
 }
 
@@ -207,6 +209,12 @@
   white-space: nowrap;
   text-overflow: ellipsis;
   max-width: 100%;
+}
+
+/* A row with a shared chip lines everything up at the top: cells otherwise centre their own content, which would put the chip and
+   the spacer of the other cells at different heights, and the chip would cover what lies below the spacer. */
+.day-row.has-shared .day-cell {
+  align-content: flex-start;
 }
 
 /* In the other cells of that event, the same height stays free. */

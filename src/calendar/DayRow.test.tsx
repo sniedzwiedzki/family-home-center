@@ -75,6 +75,14 @@ describe('DayRow', () => {
     expect([...container.querySelectorAll('.day-row > *')].map((child) => child.className)).toEqual(['day-label', 'day-cell', 'day-cell', 'day-cell'])
   })
 
+  it('lines the row up at the top only when it has a shared chip', () => {
+    const rowClasses = (entries: ReturnType<typeof entry>[]) =>
+      render(<DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday={false} columns={columns} members={members} entries={entries} />).container.querySelector('.day-row')!.classList
+    expect(rowClasses([entry('2', 'Kino #anna #jan')]).contains('has-shared')).toBe(true)
+    expect(rowClasses([entry('1', 'Trening #anna'), entry('3', 'Śmieci')]).contains('has-shared')).toBe(false)
+    expect(rowClasses([]).contains('has-shared')).toBe(false)
+  })
+
   it('keeps the spacer as tall as the chip: a time line only when the chip has one', () => {
     const timedEntry = { event: { id: '3', title: 'Kino #anna #jan', allDay: false, start: new Date(2026, 9, 17, 9), end: new Date(2026, 9, 17, 10) }, isContinuation: false }
     const withTime = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday={false} columns={columns} members={members} entries={[timedEntry]} />)
