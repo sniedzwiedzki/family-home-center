@@ -8,6 +8,8 @@ const valid: Settings = {
   gemini: { apiKey: 'fake-key', model: 'gemini-3.8-flash' },
   weather: { location: { name: 'Warszawa', latitude: 52.23, longitude: 21.01 } },
   pin: '1234',
+  fontSizes: { eventTitle: 24, eventTime: 12, dayNumber: 48 },
+  specialTag: 'gwiazda',
 }
 
 const storageWith = (value: string | null) => ({ getItem: () => value })
@@ -32,6 +34,26 @@ describe('loadSettings', () => {
       gemini: null,
       calendars: { readIds: ['primary'], writeId: 'primary', known: [] },
     })
+  })
+
+  it('still loads settings saved before the font size fields existed', () => {
+    const { fontSizes: _fontSizes, ...older } = valid
+    expect(loadSettings(storageWith(JSON.stringify(older)))).toEqual({ ...older, fontSizes: DEFAULT_SETTINGS.fontSizes })
+  })
+
+  it('still loads settings saved before the special tag existed', () => {
+    const { specialTag: _specialTag, ...older } = valid
+    expect(loadSettings(storageWith(JSON.stringify(older)))).toEqual({ ...older, specialTag: 'star' })
+  })
+
+  it('normalizes the special tag and rejects an invalid one', () => {
+    expect(loadSettings(storageWith(JSON.stringify({ ...valid, specialTag: ' Gwiazda ' }))).specialTag).toBe('gwiazda')
+    expect(loadSettings(storageWith(JSON.stringify({ ...valid, specialTag: 'two words' })))).toEqual(DEFAULT_SETTINGS)
+  })
+
+  it('rejects a font size outside the allowed range', () => {
+    const broken = { ...valid, fontSizes: { ...valid.fontSizes, eventTitle: 500 } }
+    expect(loadSettings(storageWith(JSON.stringify(broken)))).toEqual(DEFAULT_SETTINGS)
   })
 
   it('rejects a Gemini key with an empty value', () => {

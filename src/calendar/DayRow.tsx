@@ -1,6 +1,7 @@
 import type { FamilyMember } from '../family/familyMember'
 import { formatWeekday } from '../shared/format'
-import { columnIdsForEvent, type CalendarColumn } from './columns'
+import type { CalendarColumn } from './columns'
+import { layoutDayEntries } from './dayLayout'
 import { dayKey, dayKind, type DayEntry } from './days'
 import type { DayForecast, HourForecast } from '../weather/types'
 import { DayWeather } from '../weather/DayWeather'
@@ -35,7 +36,11 @@ interface DayRowProps {
 export function DayRow({ day, isToday, pinned = false, columns, members, entries, forecast, expansion, onAddEvent, onEditEvent }: DayRowProps) {
   const expanded = expansion?.expanded === true
   // An expanded day draws its timed events on the hour grid; the row above keeps the all-day ones.
-  const placed = entries.filter((entry) => !expanded || !isTimed(entry)).map((entry) => ({ entry, columnIds: columnIdsForEvent(entry.event, members) }))
+  const { bands, laneCount, cellEntries } = layoutDayEntries(
+    entries.filter((entry) => !expanded || !isTimed(entry)),
+    columns,
+    members,
+  )
 
   const kind = dayKind(day)
   const classes = ['day-row', 'day-grid']
@@ -53,7 +58,7 @@ export function DayRow({ day, isToday, pinned = false, columns, members, entries
 
   return (
     <div className={classes.join(' ')} data-day={pinned ? undefined : dayKey(day)}>
-      <div className="day-label">
+      <div className="day-label" style={{ gridRow: `1 / span ${laneCount + 1}` }}>
         {expansion === undefined ? (
           <div className="day-date">{dateText}</div>
         ) : (
@@ -66,21 +71,34 @@ export function DayRow({ day, isToday, pinned = false, columns, members, entries
         )}
         {forecast && <DayWeather forecast={forecast} />}
       </div>
+      {bands.map((band) => (
+        <div
+          key={`${band.entry.event.id}-${band.firstColumn}`}
+          className="day-band"
+          style={{ gridRow: band.lane + 1, gridColumn: `${band.firstColumn + 2} / span ${band.columnCount}` }}
+        >
+          <EventItem
+            entry={band.entry}
+            color={null}
+            sharedColors={columns.slice(band.firstColumn, band.firstColumn + band.columnCount).map((column) => column.color!)}
+            onEdit={onEditEvent}
+          />
+        </div>
+      ))}
       {columns.map((column) => (
         <div
           key={column.id}
           className="day-cell"
           data-column={column.id}
+          style={{ gridRow: laneCount + 1 }}
           onClick={(click) => {
             click.stopPropagation()
             onAddEvent(day, column.id)
           }}
         >
-          {placed
-            .filter(({ columnIds }) => columnIds.includes(column.id))
-            .map(({ entry }) => (
-              <EventItem key={entry.event.id} entry={entry} color={column.color} onEdit={onEditEvent} />
-            ))}
+          {cellEntries.get(column.id)!.map((entry) => (
+            <EventItem key={entry.event.id} entry={entry} color={column.color} onEdit={onEditEvent} />
+          ))}
         </div>
       ))}
       {expansion?.expanded && (

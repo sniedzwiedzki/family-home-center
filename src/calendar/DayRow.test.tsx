@@ -54,12 +54,35 @@ describe('DayRow', () => {
     expect([...container.querySelectorAll('.day-cell')].map((cell) => cell.getAttribute('data-column'))).toEqual(['a', 'j', 'other'])
   })
 
-  it('places events in the columns of their tags, multi-tag events in each, the rest in "Inne"', () => {
-    const entries = [entry('1', 'Trening #anna'), entry('2', 'Kino #anna #jan'), entry('3', 'Śmieci')]
+  it('places events in the column of their tag and the rest in "Inne"', () => {
+    const entries = [entry('1', 'Trening #anna'), entry('3', 'Śmieci')]
     const { container } = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday={false} columns={columns} members={members} entries={entries} />)
-    expect(cellTitles(container, 'a')).toEqual(['Trening', 'Kino'])
-    expect(cellTitles(container, 'j')).toEqual(['Kino'])
+    expect(cellTitles(container, 'a')).toEqual(['Trening'])
+    expect(cellTitles(container, 'j')).toEqual([])
     expect(cellTitles(container, 'other')).toEqual(['Śmieci'])
+    expect(container.querySelector('.day-band')).toBeNull()
+  })
+
+  it('draws an event of several people once, as a band across their columns above the cells', () => {
+    const entries = [entry('1', 'Trening #anna'), entry('2', 'Kino #anna #jan')]
+    const { container } = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday={false} columns={columns} members={members} entries={entries} />)
+    const bands = [...container.querySelectorAll<HTMLElement>('.day-band')]
+    expect(bands.map((band) => band.querySelector('.event-title')?.textContent)).toEqual(['Kino'])
+    expect([bands[0].style.gridRow, bands[0].style.gridColumn]).toEqual(['1', '2 / span 2'])
+    expect(bands[0].querySelector('.event')?.classList.contains('is-shared')).toBe(true)
+    expect(cellTitles(container, 'a')).toEqual(['Trening'])
+    expect(cellTitles(container, 'j')).toEqual([])
+    expect(container.querySelector<HTMLElement>('.day-cell')?.style.gridRow).toBe('2')
+    expect(container.querySelector<HTMLElement>('.day-label')?.style.gridRow).toBe('1 / span 2')
+  })
+
+  it('opens the shared event for editing when its band is clicked', () => {
+    const onEditEvent = vi.fn()
+    const { container } = render(
+      <DayRow day={day} isToday={false} columns={columns} members={members} entries={[entry('2', 'Kino #anna #jan')]} onAddEvent={noop} onEditEvent={onEditEvent} />,
+    )
+    fireEvent.click(container.querySelector('.day-band .event')!)
+    expect(onEditEvent.mock.calls[0][0].id).toBe('2')
   })
 
   it('shows the forecast under the day label when there is one', () => {

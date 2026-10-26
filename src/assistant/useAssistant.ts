@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { SpecialTagContext } from '../calendar/specialTag'
 import type { CalendarEvent, CalendarPort } from '../calendar/types'
 import type { FamilyMember } from '../family/familyMember'
 import { describeFailure } from '../shared/userFacingError'
@@ -30,9 +31,11 @@ interface RunTracker {
   id: number
 }
 
+type RoundOptions = UseAssistantOptions & { specialTag: string }
+
 /** One round: record a command, send it, run what the model asks for, and report each step through `show`. */
 async function converse(
-  { assistant, recorder, calendar, members, onChanged }: UseAssistantOptions & { assistant: AssistantPort },
+  { assistant, recorder, calendar, members, specialTag, onChanged }: RoundOptions & { assistant: AssistantPort },
   tracker: RunTracker,
   show: (state: AssistantState) => void,
 ): Promise<void> {
@@ -54,7 +57,7 @@ async function converse(
       return
     }
     show({ phase: 'thinking' })
-    executor = createToolExecutor({ port: calendar, members })
+    executor = createToolExecutor({ port: calendar, members, specialTag })
     const run = await runAssistant(assistant.startSession({ now: new Date(), members }), executor, audio)
     if (!isCurrent()) return
     if (run.actions.length > 0) onChanged()
@@ -71,11 +74,12 @@ async function converse(
 /** Listens as soon as it is mounted; closing (unmounting) releases the microphone and drops any answer still on its way. */
 export function useAssistant(options: UseAssistantOptions) {
   const [state, setState] = useState<AssistantState>(options.assistant === null ? { phase: 'unconfigured' } : { phase: 'listening' })
-  const latest = useRef(options)
+  const specialTag = useContext(SpecialTagContext)
+  const latest = useRef<RoundOptions>({ ...options, specialTag })
   const tracker = useRef<RunTracker>({ recording: null, id: 0 })
 
   useEffect(() => {
-    latest.current = options
+    latest.current = { ...options, specialTag }
   })
 
   const start = useCallback(() => {

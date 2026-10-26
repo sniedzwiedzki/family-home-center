@@ -520,16 +520,29 @@ describe('CalendarView', () => {
       return view
     }
 
-    it('expands today by default and draws its event on the hour grid with the now-line', async () => {
+    it('expands no day by default', async () => {
       const { container } = await renderAt(atTime(12))
+      expect(expandedDays(container)).toEqual([])
+      expect(rowOf(container, today).querySelector('.day-cell[data-column="a"] .event-title')?.textContent).toBe('Dzisiejsze')
+    })
+
+    it('expands a day on demand and draws its event on the hour grid with the now-line', async () => {
+      const { container } = await renderAt(atTime(12))
+      toggle(container, today)
       expect(expandedDays(container)).toEqual([dayKey(today)])
       expect(rowOf(container, today).querySelector('.hour-track[data-column="a"] .event.is-timed .event-title')?.textContent).toBe('Dzisiejsze')
       expect(rowOf(container, today).querySelector('.now-line')).toBeTruthy()
       expect(rowOf(container, tomorrow).querySelector('.hour-body')).toBeNull()
     })
 
+    it('stays collapsed after 20:00, with no automatic switch to the next day', async () => {
+      const { container } = await renderAt(atTime(20, 5))
+      expect(expandedDays(container)).toEqual([])
+    })
+
     it('opens the new-event dialog at the hour that was clicked in the hour view', async () => {
       const { container } = await renderAt(atTime(12))
+      toggle(container, today)
       const track = rowOf(container, today).querySelector<HTMLElement>('.hour-track[data-column="a"]')!
       vi.spyOn(track, 'getBoundingClientRect').mockReturnValue({ top: 0, height: 1300 } as DOMRect)
       fireEvent.click(track, { clientY: 750 })
@@ -543,19 +556,8 @@ describe('CalendarView', () => {
       vi.setSystemTime(atTime(12))
       const { container } = render(<CalendarView port={port()} members={members} refreshSignal={0} forecasts={noForecasts} hourForecasts={hours} />)
       await screen.findByText('Dzisiejsze')
+      toggle(container, today)
       expect([...container.querySelectorAll('.hour-weather')].map((node) => node.textContent)).toEqual(['☀️8°', '☀️9°', '☀️10°'])
-    })
-
-    it('expands the next day once nothing is left of today after 20:00', async () => {
-      const { container } = await renderAt(atTime(20, 5))
-      expect(expandedDays(container)).toEqual([dayKey(tomorrow)])
-    })
-
-    it('keeps today expanded after 20:00 while an evening event is still going on', async () => {
-      const evening: CalendarEvent = { ...todayEvent, id: 'evening', title: 'Wieczorem #anna', start: atTime(21), end: atTime(22) }
-      const { container } = await renderAt(atTime(20, 30), [evening])
-      expect(expandedDays(container)).toEqual([dayKey(today)])
-      expect(rowOf(container, today).querySelectorAll('.hour-label')).toHaveLength(15)
     })
 
     it('expands the clicked day, collapsing the one that was open', async () => {
@@ -569,11 +571,12 @@ describe('CalendarView', () => {
     it('collapses the open day when its date is clicked, and expands it again on the next click', async () => {
       const { container } = await renderAt(atTime(12))
       toggle(container, today)
+      expect(expandedDays(container)).toEqual([dayKey(today)])
+      expect(rowOf(container, today).querySelector('.day-date')?.getAttribute('aria-expanded')).toBe('true')
+      toggle(container, today)
       expect(expandedDays(container)).toEqual([])
       expect(rowOf(container, today).querySelector('.day-date')?.getAttribute('aria-expanded')).toBe('false')
       expect(rowOf(container, today).querySelector('.day-cell[data-column="a"] .event-title')?.textContent).toBe('Dzisiejsze')
-      toggle(container, today)
-      expect(expandedDays(container)).toEqual([dayKey(today)])
     })
 
     it('forgets the choice when the next day begins', async () => {
@@ -586,7 +589,7 @@ describe('CalendarView', () => {
       expect(expandedDays(container)).toEqual([dayKey(addDays(today, 2))])
       // Step by step, as in real time: each tick of the clock is rendered before the next one is scheduled.
       for (let step = 0; step < 35; step++) await act(() => vi.advanceTimersByTimeAsync(60_000))
-      expect(expandedDays(container)).toEqual([dayKey(tomorrow)])
+      expect(expandedDays(container)).toEqual([])
     })
 
     it('does not offer expanding on the pinned copy of today', async () => {
@@ -603,33 +606,23 @@ describe('CalendarView', () => {
     describe('the home button', () => {
       const home = () => screen.getByRole('button', { name: 'Wróć do widoku początkowego' })
 
-      it('restores today as the only expanded day and scrolls to it', async () => {
+      it('collapses the expanded day and scrolls to today', async () => {
         const { container } = await renderAt(atTime(12))
         toggle(container, dayAfter)
         scrollIntoView.mockClear()
         fireEvent.click(home())
-        expect(expandedDays(container)).toEqual([dayKey(today)])
+        expect(expandedDays(container)).toEqual([])
         expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start', behavior: 'smooth' })
         expect(scrollIntoView.mock.contexts[0]).toBe(rowOf(container, today))
       })
 
-      it('also restores the default after today was collapsed, and scrolls again on a second press', async () => {
+      it('scrolls again on a second press when nothing was expanded', async () => {
         const { container } = await renderAt(atTime(12))
-        toggle(container, today)
         fireEvent.click(home())
-        expect(expandedDays(container)).toEqual([dayKey(today)])
+        expect(expandedDays(container)).toEqual([])
         scrollIntoView.mockClear()
         fireEvent.click(home())
         expect(scrollIntoView).toHaveBeenCalledTimes(1)
-      })
-
-      it('scrolls to today, which stays on top above the expanded next day, when that one is the default', async () => {
-        const { container } = await renderAt(atTime(21))
-        toggle(container, today)
-        scrollIntoView.mockClear()
-        fireEvent.click(home())
-        expect(expandedDays(container)).toEqual([dayKey(tomorrow)])
-        expect(scrollIntoView.mock.contexts[0]).toBe(rowOf(container, today))
       })
     })
   })

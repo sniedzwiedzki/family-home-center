@@ -81,6 +81,40 @@ describe('SettingsForm', () => {
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ gemini: null }))
   })
 
+  it('saves the typed font sizes as numbers', () => {
+    const onChange = vi.fn()
+    render(<SettingsForm settings={settings} geocoder={geocoder} checkGoogle={checkGoogle} onChange={onChange} onClose={vi.fn()} />)
+    fireEvent.change(screen.getByLabelText('Numer dnia miesiąca (px)'), { target: { value: '50' } })
+    fireEvent.click(save())
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ fontSizes: { ...settings.fontSizes, dayNumber: 50 } }))
+  })
+
+  it('cannot be saved while a font size is not a valid number', () => {
+    render(<SettingsForm settings={settings} geocoder={geocoder} checkGoogle={checkGoogle} onChange={vi.fn()} onClose={vi.fn()} />)
+    fireEvent.change(screen.getByLabelText('Tytuł wydarzenia (px)'), { target: { value: '' } })
+    expect(save().disabled).toBe(true)
+  })
+
+  it('saves the special tag, normalized', () => {
+    const onChange = vi.fn()
+    render(<SettingsForm settings={settings} geocoder={geocoder} checkGoogle={checkGoogle} onChange={onChange} onClose={vi.fn()} />)
+    expect((screen.getByLabelText('Tag wydarzenia specjalnego (bez #)') as HTMLInputElement).value).toBe('star')
+    fireEvent.change(screen.getByLabelText('Tag wydarzenia specjalnego (bez #)'), { target: { value: ' Gwiazda ' } })
+    fireEvent.click(save())
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ specialTag: 'gwiazda' }))
+  })
+
+  it('cannot be saved while the special tag is invalid or is the tag of a person', () => {
+    render(<SettingsForm settings={settings} geocoder={geocoder} checkGoogle={checkGoogle} onChange={vi.fn()} onClose={vi.fn()} />)
+    fireEvent.change(screen.getByLabelText('Tag wydarzenia specjalnego (bez #)'), { target: { value: 'two words' } })
+    expect(save().disabled).toBe(true)
+    fireEvent.change(screen.getByLabelText('Tag wydarzenia specjalnego (bez #)'), { target: { value: 'anna' } })
+    expect(save().disabled).toBe(true)
+    expect(screen.getByText('Tag nie może być taki sam jak tag osoby')).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Tag'), { target: { value: 'ania' } })
+    expect(save().disabled).toBe(false)
+  })
+
   describe('Google section', () => {
     const type = (label: string, value: string) => fireEvent.change(screen.getByLabelText(label), { target: { value } })
     const fillGoogle = () => {

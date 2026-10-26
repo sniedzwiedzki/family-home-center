@@ -1,7 +1,8 @@
-import { useEffect, useState, type CSSProperties, type FormEvent, type KeyboardEvent } from 'react'
+import { useContext, useEffect, useState, type CSSProperties, type FormEvent, type KeyboardEvent } from 'react'
 import type { FamilyMember } from '../family/familyMember'
 import { describeFailure } from '../shared/userFacingError'
 import { draftToInput, type DraftErrors, type EventDraft } from './eventDraft'
+import { SpecialTagContext } from './specialTag'
 import { fieldsFromRecurrence, NO_REPEAT, REPEAT_LABELS, WEEKDAYS, type RepeatKind } from './recurrence'
 import type { CalendarEvent, CalendarEventInput, RecurrenceScope, SeriesPort } from './types'
 import './eventDialog.css'
@@ -30,6 +31,7 @@ interface EventDialogProps {
 }
 
 export function EventDialog({ heading, initial, members, existing, series, onSave, onDelete, onClose }: EventDialogProps) {
+  const specialTag = useContext(SpecialTagContext)
   const [draft, setDraft] = useState(initial)
   const [errors, setErrors] = useState<DraftErrors>({})
   const [failure, setFailure] = useState<string | null>(null)
@@ -163,6 +165,11 @@ export function EventDialog({ heading, initial, members, existing, series, onSav
             ))
           )}
         </fieldset>
+
+        <label className="check">
+          <input type="checkbox" checked={draft.special !== null} onChange={(event) => change({ special: event.target.checked ? specialTag : null })} />
+          Wydarzenie specjalne ★
+        </label>
 
         <label className="check">
           <input type="checkbox" checked={draft.allDay} onChange={(event) => change({ allDay: event.target.checked })} />

@@ -14,7 +14,7 @@ export interface DraftMember {
 }
 
 const NAME_ERROR = 'Podaj imię (do 30 znaków)'
-const TAG_ERROR = 'Tag: litery, cyfry, _ lub - (do 20 znaków)'
+export const TAG_ERROR = 'Tag: litery, cyfry, _ lub - (do 20 znaków)'
 const TAG_DUPLICATE_ERROR = 'Tag musi być unikalny'
 const COLOR_ERROR = 'Wybierz kolor'
 

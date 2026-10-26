@@ -1,13 +1,13 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { FamilyMember } from '../family/familyMember'
 import type { DayForecast, HourForecast } from '../weather/types'
 import { buildColumns, OTHER_COLUMN_ID } from './columns'
 import { ColumnHeaders } from './ColumnHeaders'
-import { addDays, dayKey, groupDaysByMonth, groupEventsByDay, startOfDay } from './days'
-import { isDayOver } from './dayHours'
+import { dayKey, groupDaysByMonth, groupEventsByDay, startOfDay } from './days'
 import { DayRow } from './DayRow'
 import { draftFromEvent, newDraft } from './eventDraft'
 import { EventDialog, type SaveTarget } from './EventDialog'
+import { SpecialTagContext } from './specialTag'
 import { TODAY_PIN_LABEL, type TodayPosition } from './todayPin'
 import { MonthBlock } from './MonthBlock'
 import type { CalendarEvent, CalendarEventInput, CalendarPort, RecurrenceScope } from './types'
@@ -40,6 +40,7 @@ type Editor = { kind: 'new'; day: Date; columnId: string; hour?: number } | { ki
 export function CalendarView({ port, members, forecasts, hourForecasts, refreshSignal }: CalendarViewProps) {
   const [anchor] = useState(() => startOfDay(new Date()))
   const today = useToday()
+  const specialTag = useContext(SpecialTagContext)
   const now = useClock()
   const { range, days, before, extendBefore, extendAfter } = useDayWindow(anchor)
   const { events, hasError, reload } = useCalendarEvents(port, range, refreshSignal)
@@ -56,9 +57,8 @@ export function CalendarView({ port, members, forecasts, hourForecasts, refreshS
   const todayKey = dayKey(today)
   const [choice, setChoice] = useState<DayChoice | null>(null)
   const [homeTarget, setHomeTarget] = useState<{ day: string } | null>(null)
-  // Today stays expanded until its hours and events are over, then the next day takes over.
-  const defaultExpanded = isDayOver(now, entriesByDay.get(todayKey) ?? []) ? dayKey(addDays(today, 1)) : todayKey
-  const expandedKey = choice !== null && choice.madeOn === todayKey ? choice.day : defaultExpanded
+  // No day is expanded until the user taps one; the choice is forgotten once the next day begins.
+  const expandedKey = choice !== null && choice.madeOn === todayKey ? choice.day : null
 
   useLayoutEffect(() => {
     containerRef.current!.querySelector(`[data-day="${dayKey(anchor)}"]`)!.scrollIntoView({ block: 'start' })
@@ -171,7 +171,7 @@ export function CalendarView({ port, members, forecasts, hourForecasts, refreshS
       initial={
         editor.kind === 'new'
           ? newDraft(editor.day, editor.columnId === OTHER_COLUMN_ID ? [] : [editor.columnId], editor.hour)
-          : draftFromEvent(editor.event, members)
+          : draftFromEvent(editor.event, members, specialTag)
       }
       members={members}
       existing={editor.kind === 'edit' ? editor.event : undefined}

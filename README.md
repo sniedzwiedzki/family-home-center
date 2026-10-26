@@ -10,8 +10,11 @@ A big calendar with events, actions, tasks and more. The first iteration covers 
 
 - Content is fetched from the Google calendars chosen in settings; new events go to the default calendar chosen in settings.
 - Never-ending scroll page in both directions, starting at today; each date is a single row.
-- One day at a time is expanded into an hour view (7:00 to 20:00, more only when an event starts earlier or ends later), with events at their hours and a now-line that moves every minute; the hour grid starts half an hour before the first hour (6:30 for the usual 7:00) so the first hour is not cramped against the top. Today is expanded by default; once today is over (after 20:00 and its last event) the next day is. Tapping a date expands or collapses that day; the home button above the dates restores the default view and scrolls back to it. Clicking the hour grid starts a new event at the clicked hour (one hour long). In the compact day rows a long event title is cut after two lines with an ellipsis.
+- One day at a time can be expanded into an hour view (7:00 to 20:00, more only when an event starts earlier or ends later), with events at their hours and a now-line that moves every minute; the hour grid starts half an hour before the first hour (6:30 for the usual 7:00) so the first hour is not cramped against the top. No day expands by itself: tapping a date expands or collapses that day, and that choice is forgotten once the next day begins. The home button above the dates collapses the expanded day (if any) and scrolls back to today. Clicking the hour grid starts a new event at the clicked hour (one hour long). In the compact day rows a long event title is cut after two lines with an ellipsis.
 - All-day and multi-day events appear in the row of every day they cover.
+- A special event (the event dialog has **Wydarzenie specjalne ★**, or the special tag typed in the title, `#star` by default) is shown with a gold star before its title. The special tag is set in the settings and must differ from the people's tags; a special event without a person's tag sits in "Inne" like any untagged event.
+- An all-day event shows only its title (no "cały dzień" line); the following days of a multi-day event say "ciąg dalszy".
+- An event with the tags of several people is drawn once, as one wide bar across their columns above the cells, when those people are neighbours in the column order; people separated by someone who does not take part keep their own chips. In the hour view of an expanded day, timed events are still drawn per person.
 - Application language: Polish (all UI text, dates and weather labels). The repository itself (code, docs, specs) stays in English.
 - Clicking an empty spot of a day in a person's column opens a dialog to add an event; that person is preselected, and more people can be added or changed. Clicking an existing event opens the same dialog to edit its date, time and content, or to remove it (with a second tap to confirm). With Google connected the dialog also has **Powtarzaj** (see Repeating events below). For a recurring Google event a switch at the top chooses what an edit changes (**To wystąpienie** or **Cała seria**), and deleting asks whether to delete the occurrence or the whole series.
 - Events live in Google Calendar when Google is connected in the settings; otherwise they are kept only in the browser's local storage (key `fhc.events.v1`).
@@ -23,7 +26,7 @@ A big calendar with events, actions, tasks and more. The first iteration covers 
 ### Top bar
 
 - Sticky at the top of the view.
-- Current time in the center (bold); the refresh button (↻) on the left and the settings button (⚙) on the right; the AI assistant button is a large quarter circle in the bottom-right corner of the screen.
+- Current time in the center (bold); the refresh button (↻) on the left and the settings button (⚙) on the right; the AI assistant button is a large quarter circle in the bottom-right corner of the screen, overlapping the bottom bar's weather forecast.
 - The refresh button reloads the calendar events and the weather forecast right away; the icon spins briefly after a tap.
 
 ### AI voice assistant
@@ -53,6 +56,8 @@ A big calendar with events, actions, tasks and more. The first iteration covers 
 - Settings are protected by a PIN.
 - Define family members (name, unique tag, color).
 - Gemini API key and model for the voice assistant.
+- The special tag that marks an event with a gold star (default `star`; letters, digits, `_` or `-`, not the tag of a person).
+- Font size for the event title, the event time and the day-of-month number, each typed separately as a number of pixels of the 1600 px kiosk display (8 to 120; defaults 20, 16 and 41).
 
 ## Google Calendar integration
 

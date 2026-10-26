@@ -1,5 +1,7 @@
 import { z } from 'zod'
-import { familyMembersSchema } from '../family/familyMember'
+import { DEFAULT_SPECIAL_TAG } from '../calendar/specialTag'
+import { familyMembersSchema, tagSchema } from '../family/familyMember'
+import { DEFAULT_FONT_SIZES, fontSizesSchema } from './fontSizes'
 
 export const SETTINGS_STORAGE_KEY = 'fhc.settings.v1'
 
@@ -39,6 +41,10 @@ export const settingsSchema = z.object({
     location: geoLocationSchema.nullable(),
   }),
   pin: z.string().regex(/^\d{4,8}$/).nullable(),
+  // Added later: settings saved before it existed must still load.
+  fontSizes: fontSizesSchema.default(DEFAULT_FONT_SIZES),
+  // Added later: settings saved before it existed must still load.
+  specialTag: tagSchema.default(DEFAULT_SPECIAL_TAG),
 })
 
 export type Settings = z.infer<typeof settingsSchema>
@@ -50,6 +56,8 @@ export const DEFAULT_SETTINGS: Settings = {
   gemini: null,
   weather: { location: null },
   pin: null,
+  fontSizes: DEFAULT_FONT_SIZES,
+  specialTag: DEFAULT_SPECIAL_TAG,
 }
 
 export function loadSettings(storage: Pick<Storage, 'getItem'>): Settings {

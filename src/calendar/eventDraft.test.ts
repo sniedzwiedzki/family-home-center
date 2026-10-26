@@ -11,6 +11,7 @@ const draft = (overrides: Partial<EventDraft> = {}): EventDraft => ({
   title: 'Dentysta',
   description: '',
   memberIds: [],
+  special: null,
   allDay: false,
   startDate: '2026-10-20',
   endDate: '2026-10-20',
@@ -36,6 +37,7 @@ describe('newDraft', () => {
       title: '',
       description: '',
       memberIds: ['a'],
+      special: null,
       allDay: false,
       startDate: '2026-10-05',
       endDate: '2026-10-05',
@@ -70,11 +72,19 @@ describe('draftFromEvent', () => {
     extendedProperties: { private: { fhcTags: 'jan' } },
   }
 
+  it('marks an event as special when it carries the special tag, and only then', () => {
+    const star: CalendarEvent = { ...timed, title: 'Urodziny #star' }
+    expect(draftFromEvent(star, members, 'star').special).toBe('star')
+    expect(draftFromEvent(star, members, 'gwiazda').special).toBeNull()
+    expect(draftFromEvent(timed, members, 'star').special).toBeNull()
+  })
+
   it('turns a timed event into form values, with people from tags and a title without #tags', () => {
-    expect(draftFromEvent(timed, members)).toEqual({
+    expect(draftFromEvent(timed, members, 'star')).toEqual({
       title: 'Trening',
       description: 'Hala',
       memberIds: ['a', 'j'],
+      special: null,
       allDay: false,
       startDate: '2026-10-20',
       endDate: '2026-10-20',
@@ -88,7 +98,7 @@ describe('draftFromEvent', () => {
 
   it('shows the last covered day of an all-day event, with default times', () => {
     const allDay: CalendarEvent = { id: 'e', title: 'Wyjazd', allDay: true, start: new Date(2026, 9, 20), end: new Date(2026, 9, 23) }
-    expect(draftFromEvent(allDay, members)).toMatchObject({
+    expect(draftFromEvent(allDay, members, 'star')).toMatchObject({
       allDay: true,
       description: '',
       memberIds: [],
@@ -127,6 +137,12 @@ describe('draftToInput', () => {
     const input = success(draftToInput(draft({ title: 'Kino #jan #anna #goście', memberIds: ['a'] }), members))
     expect(input.title).toBe('Kino')
     expect(input.extendedProperties).toEqual({ private: { fhcTags: 'anna,jan,goście' } })
+  })
+
+  it('adds the special tag to the event tags, once, and leaves it out when the event is not special', () => {
+    expect(success(draftToInput(draft({ memberIds: ['a'], special: 'star' }), members)).extendedProperties).toEqual({ private: { fhcTags: 'anna,star' } })
+    expect(success(draftToInput(draft({ title: 'Urodziny #star', special: 'star' }), members)).extendedProperties).toEqual({ private: { fhcTags: 'star' } })
+    expect(success(draftToInput(draft({ memberIds: ['a'] }), members)).extendedProperties).toEqual({ private: { fhcTags: 'anna' } })
   })
 
   it('keeps other hidden properties of an existing event and replaces its tags', () => {

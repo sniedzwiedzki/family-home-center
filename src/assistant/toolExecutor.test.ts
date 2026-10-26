@@ -12,7 +12,7 @@ const members: FamilyMember[] = [
 function setup() {
   const store = new Map<string, string>()
   const port = createLocalCalendar({ getItem: (key) => store.get(key) ?? null, setItem: (key, value) => void store.set(key, value) })
-  return { port, executor: createToolExecutor({ port, members }) }
+  return { port, executor: createToolExecutor({ port, members, specialTag: 'star' }) }
 }
 
 const call = (name: string, args: unknown) => ({ id: 'c1', name, args })
@@ -125,7 +125,7 @@ describe('create_event', () => {
 
   it('says so when no family member is configured', async () => {
     const port = createLocalCalendar({ getItem: () => null, setItem: () => undefined })
-    const outcome = await createToolExecutor({ port, members: [] }).execute(call('create_event', { title: 'X', date: '2026-10-23', tags: ['anna'] }))
+    const outcome = await createToolExecutor({ port, members: [], specialTag: 'star' }).execute(call('create_event', { title: 'X', date: '2026-10-23', tags: ['anna'] }))
     expect(output(outcome)).toEqual({ error: 'Unknown tags: anna. Known tags: none.' })
   })
 
@@ -151,7 +151,7 @@ describe('repeating events', () => {
       deleteEvent: vi.fn(),
       series: { loadRule: vi.fn(), update: vi.fn() } as SeriesPort,
     }
-    return { createEvent, executor: createToolExecutor({ port, members }) }
+    return { createEvent, executor: createToolExecutor({ port, members, specialTag: 'star' }) }
   }
 
   it('creates an event that repeats every week, and says so', async () => {
@@ -200,7 +200,7 @@ describe('repeating events', () => {
       updateEvent: vi.fn(),
       deleteEvent: vi.fn(),
     }
-    const outcome = await createToolExecutor({ port, members }).execute(call('list_events', { from: '2026-10-21', to: '2026-10-22' }))
+    const outcome = await createToolExecutor({ port, members, specialTag: 'star' }).execute(call('list_events', { from: '2026-10-21', to: '2026-10-22' }))
     expect((output(outcome).events as { recurring: boolean }[]).map((event) => event.recurring)).toEqual([true, false])
   })
 })
@@ -225,6 +225,15 @@ describe('update_event', () => {
     const [stored] = await port.listEvents({ from: new Date(2026, 9, 21), to: new Date(2026, 9, 22) })
     expect(stored).toMatchObject({ title: 'Dentysta', description: 'Weź kartę', start: event.start, end: event.end })
     expect(stored.extendedProperties?.private?.fhcTags).toBe('anna')
+  })
+
+  it('keeps the special mark of an event when it changes the people', async () => {
+    const { port, executor } = setup()
+    const event = await seed(port, { extendedProperties: { private: { fhcTags: 'anna,star' } } })
+    await executor.execute(call('list_events', { from: '2026-10-21', to: '2026-10-21' }))
+    await executor.execute(call('update_event', { eventId: event.id, tags: ['jan'] }))
+    const [stored] = await port.listEvents({ from: new Date(2026, 9, 21), to: new Date(2026, 9, 22) })
+    expect(stored.extendedProperties?.private?.fhcTags).toBe('jan,star')
   })
 
   it('moves a one-day event to another day', async () => {
@@ -294,7 +303,7 @@ describe('delete_event', () => {
     const deleteEvent = vi.fn(async () => undefined)
     const port: CalendarPort = { listEvents: async () => [], createEvent: vi.fn(), updateEvent: vi.fn(), deleteEvent }
     const event: CalendarEvent = { id: 'g|1_20261021', recurringEventId: 'g|1', title: 'Lekcja', allDay: false, start: new Date(2026, 9, 21, 9), end: new Date(2026, 9, 21, 10) }
-    await createToolExecutor({ port, members }).deleteConfirmed(event)
+    await createToolExecutor({ port, members, specialTag: 'star' }).deleteConfirmed(event)
     expect(deleteEvent).toHaveBeenCalledWith(event, 'occurrence')
   })
 

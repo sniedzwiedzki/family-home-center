@@ -1,5 +1,4 @@
 :root {
-  --background: #e9f0f7;
   --headline: #263646;
   --soft: #667b90;
   --primary: #e08a78;
@@ -9,6 +8,10 @@
   --glass: rgba(255, 255, 255, 0.8);
   --radius: 8px;
   --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  /* Overridden per the font sizes chosen in settings (see useFontSizeVariables). */
+  --font-event-title-size: 1.25rem;
+  --font-event-time-size: 1rem;
+  --font-day-number-size: 2.5625rem;
   color-scheme: light;
 }
 
@@ -30,9 +33,7 @@ body {
 body {
   min-height: 100vh;
   min-height: 100svh;
-  background:
-    linear-gradient(rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.3)),
-    var(--background) url('./assets/tatry.jpg') center / cover no-repeat fixed;
+  background: #ffffff;
   color: var(--headline);
   font-family: Inter, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;

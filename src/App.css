@@ -34,6 +34,8 @@
 
 .bottom-bar {
   border-top-width: 1px;
+  /* The assistant button overlaps this bar's bottom-right corner (7.68rem wide); keep the forecast clear of it. */
+  padding-right: 8.93rem;
 }
 
 .clock {
@@ -107,7 +109,7 @@
 }
 
 .slot-time {
-  font-size: 1rem;
+  font-size: 1.375rem;
   color: var(--soft);
 }
 
@@ -122,9 +124,9 @@
 }
 
 .slot-icon {
-  font-size: 1.25rem;
+  font-size: 1.875rem;
 }
 
 .slot-temp {
-  font-size: 1.1875rem;
+  font-size: 1.625rem;
 }

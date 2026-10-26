@@ -4,6 +4,7 @@ import type { FamilyMember } from '../family/familyMember'
 import { UserFacingError } from '../shared/userFacingError'
 import { EventDialog, type SaveTarget } from './EventDialog'
 import { newDraft, type EventDraft } from './eventDraft'
+import { SpecialTagContext } from './specialTag'
 import type { CalendarEvent, CalendarEventInput, RecurrenceScope, SeriesPort, SeriesRule } from './types'
 
 const members: FamilyMember[] = [
@@ -65,6 +66,35 @@ describe('EventDialog', () => {
     submit()
     await flush()
     expect(onSave.mock.calls[0][0].extendedProperties).toEqual({ private: { fhcTags: 'jan' } })
+  })
+
+  it('marks the event as special with the tag from the settings, and unmarks it again', async () => {
+    const { onSave } = show(initial({ title: 'Urodziny' }))
+    const special = screen.getByLabelText('Wydarzenie specjalne ★') as HTMLInputElement
+    expect(special.checked).toBe(false)
+    fireEvent.click(special)
+    expect(special.checked).toBe(true)
+    submit()
+    await flush()
+    expect(onSave.mock.calls[0][0].extendedProperties).toEqual({ private: { fhcTags: 'anna,star' } })
+    fireEvent.click(special)
+    expect(special.checked).toBe(false)
+    submit()
+    await flush()
+    expect(onSave.mock.calls[1][0].extendedProperties).toEqual({ private: { fhcTags: 'anna' } })
+  })
+
+  it('uses the special tag chosen in the settings', async () => {
+    const onSave = vi.fn<(input: CalendarEventInput, target: SaveTarget) => Promise<void>>(async () => undefined)
+    render(
+      <SpecialTagContext.Provider value="gwiazda">
+        <EventDialog heading="Nowe wydarzenie" initial={initial({ title: 'Urodziny' })} members={members} onSave={onSave} onClose={vi.fn()} />
+      </SpecialTagContext.Provider>,
+    )
+    fireEvent.click(screen.getByLabelText('Wydarzenie specjalne ★'))
+    submit()
+    await flush()
+    expect(onSave.mock.calls[0][0].extendedProperties).toEqual({ private: { fhcTags: 'anna,gwiazda' } })
   })
 
   it('points to the settings when there are no people', () => {
