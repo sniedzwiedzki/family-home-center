@@ -60,28 +60,36 @@ describe('DayRow', () => {
     expect(cellTitles(container, 'a')).toEqual(['Trening'])
     expect(cellTitles(container, 'j')).toEqual([])
     expect(cellTitles(container, 'other')).toEqual(['Śmieci'])
-    expect(container.querySelector('.day-band')).toBeNull()
+    expect(container.querySelector('.is-shared, .event-spacer')).toBeNull()
   })
 
-  it('draws an event of several people once, as a band across their columns above the cells', () => {
+  it('draws an event of neighbouring people once, as a chip over their columns in the same row as the cells', () => {
     const entries = [entry('1', 'Trening #anna'), entry('2', 'Kino #anna #jan')]
     const { container } = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday={false} columns={columns} members={members} entries={entries} />)
-    const bands = [...container.querySelectorAll<HTMLElement>('.day-band')]
-    expect(bands.map((band) => band.querySelector('.event-title')?.textContent)).toEqual(['Kino'])
-    expect([bands[0].style.gridRow, bands[0].style.gridColumn]).toEqual(['1', '2 / span 2'])
-    expect(bands[0].querySelector('.event')?.classList.contains('is-shared')).toBe(true)
-    expect(cellTitles(container, 'a')).toEqual(['Trening'])
+    expect(cellTitles(container, 'a')).toEqual(['Kino', 'Trening'])
     expect(cellTitles(container, 'j')).toEqual([])
-    expect(container.querySelector<HTMLElement>('.day-cell')?.style.gridRow).toBe('2')
-    expect(container.querySelector<HTMLElement>('.day-label')?.style.gridRow).toBe('1 / span 2')
+    const shared = container.querySelector<HTMLElement>('.day-cell[data-column="a"] .event.is-shared')!
+    expect(shared.style.getPropertyValue('--span')).toBe('2')
+    expect(container.querySelectorAll('.event.is-shared')).toHaveLength(1)
+    expect(container.querySelectorAll('.day-cell[data-column="j"] .event-spacer')).toHaveLength(1)
+    expect([...container.querySelectorAll('.day-row > *')].map((child) => child.className)).toEqual(['day-label', 'day-cell', 'day-cell', 'day-cell'])
   })
 
-  it('opens the shared event for editing when its band is clicked', () => {
+  it('keeps the spacer as tall as the chip: a time line only when the chip has one', () => {
+    const timedEntry = { event: { id: '3', title: 'Kino #anna #jan', allDay: false, start: new Date(2026, 9, 17, 9), end: new Date(2026, 9, 17, 10) }, isContinuation: false }
+    const withTime = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday={false} columns={columns} members={members} entries={[timedEntry]} />)
+    expect(withTime.container.querySelectorAll('.event-spacer .spacer-time')).toHaveLength(1)
+    const allDay = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday={false} columns={columns} members={members} entries={[entry('2', 'Kino #anna #jan')]} />)
+    expect(allDay.container.querySelectorAll('.event-spacer .spacer-time')).toHaveLength(0)
+    expect(allDay.container.querySelectorAll('.event-spacer .spacer-title')).toHaveLength(1)
+  })
+
+  it('opens the shared event for editing when its chip is clicked', () => {
     const onEditEvent = vi.fn()
     const { container } = render(
       <DayRow day={day} isToday={false} columns={columns} members={members} entries={[entry('2', 'Kino #anna #jan')]} onAddEvent={noop} onEditEvent={onEditEvent} />,
     )
-    fireEvent.click(container.querySelector('.day-band .event')!)
+    fireEvent.click(container.querySelector('.event.is-shared')!)
     expect(onEditEvent.mock.calls[0][0].id).toBe('2')
   })
 

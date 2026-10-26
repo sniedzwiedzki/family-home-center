@@ -188,18 +188,44 @@
   padding: 0.25rem 0.25rem;
 }
 
-/* An event of several neighbouring people: one wide bar across their columns, above the cells (see layoutDayEntries). */
-.day-band {
-  display: flex;
+/* An event of several neighbouring people: one chip in the first of their cells, as wide as all their columns (see layoutDayEntries).
+   0.5625rem is what lies between the content of two cells: the paddings and the cell border. */
+.event.is-shared {
+  --span: 1;
+  flex: none;
   align-items: center;
-  min-width: 0;
-  padding: 0.25rem 0.25rem 0;
+  width: calc(var(--span) * 100% + (var(--span) - 1) * 0.5625rem);
+  max-width: none;
+  text-align: center;
+  /* Above the cells after it, but below the sticky headers (z-index 1). */
+  position: relative;
 }
 
-.event.is-shared {
-  align-items: center;
-  width: 100%;
-  text-align: center;
+.event.is-shared .event-title {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* In the other cells of that event, the same height stays free. */
+.event-spacer {
+  display: flex;
+  flex: 0 0 100%;
+  flex-direction: column;
+  padding: 0.25rem 0.625rem;
+  border: 0.0625rem solid transparent;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.spacer-time {
+  font-size: var(--font-event-time-size);
+}
+
+.spacer-title {
+  font-size: var(--font-event-title-size);
 }
 
 /* A chip as wide as its text; chips sit side by side and wrap onto the next line only when the column is full. */

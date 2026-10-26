@@ -82,3 +82,7 @@ Follow-up: the gold star was too small; `.event-star` is now 1.7em of the title 
 ## Bug: the first day was lower than the top once events were loaded
 
 `CalendarView` scrolled to today only once, on mount, before any events had loaded; later the days above today grew with their events and pushed today down (browser scroll anchoring is off on purpose). Now the scroll to today is repeated whenever the loaded events change, until someone scrolls (the scroll position after our own scroll is remembered; a different position stops it). `useCalendarEvents` returns a memoized list so "events changed" is a real change. Test added in `CalendarView.test.tsx`. Not verified locally (no tests run, on the user's request).
+
+## Rework: shared chip in the row of the cells
+
+The first shared-event layout put bands in extra grid rows above the cells, so those rows had no cells (grid lines vanished) and every other person's events were pushed down. Now `layoutDayEntries` returns the items per column: one `shared` chip in the first cell of a run of neighbouring people (width = columns spanned via `--span`), an invisible `EventSpacer` of equal height in the other cells, one shared chip per column at most. `DayRow` no longer places grid rows; `calendar.css` has `.event.is-shared` and `.event-spacer` instead of `.day-band`. Spec, README and tests updated. Not verified locally (no tests or screenshots, on the user's request).
