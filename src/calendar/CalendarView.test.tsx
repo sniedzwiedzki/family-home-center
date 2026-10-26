@@ -115,7 +115,7 @@ describe('CalendarView', () => {
     expect(scrollIntoView.mock.contexts[0]).toBe(container.querySelector(`[data-day="${dayKey(today)}"]`))
   })
 
-  it('keeps today at the top when events load later, until the user touches the calendar', async () => {
+  it('keeps today at the top when events load later, until the calendar is scrolled', async () => {
     let resolveEvents: (events: CalendarEvent[]) => void = () => undefined
     const slow = portOf(vi.fn(() => new Promise<CalendarEvent[]>((resolve) => (resolveEvents = resolve))))
     const view = (refreshSignal: number) => <CalendarView port={slow} members={members} refreshSignal={refreshSignal} forecasts={noForecasts} hourForecasts={noHours} />
@@ -126,7 +126,8 @@ describe('CalendarView', () => {
     expect(scrollIntoView).toHaveBeenCalledTimes(2)
     expect(scrollIntoView.mock.contexts[1]).toBe(container.querySelector(`[data-day="${dayKey(today)}"]`))
 
-    fireEvent.pointerDown(container.querySelector('main')!)
+    // Someone scrolls: from now on the view stays where it is.
+    Object.defineProperty(container.querySelector('main')!, 'scrollTop', { value: 500, configurable: true })
     scrollIntoView.mockClear()
     rerender(view(1))
     resolveEvents([{ ...todayEvent, id: 'later', title: 'Później #anna' }])
