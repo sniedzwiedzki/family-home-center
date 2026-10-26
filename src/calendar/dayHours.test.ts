@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { hourRange, isDayOver, isTimed, placeSpans, timedSpans } from './dayHours'
+import { hourRange, isTimed, placeSpans, timedSpans } from './dayHours'
 import type { DayEntry } from './days'
 
 const day = new Date(2026, 9, 18)
@@ -49,21 +49,6 @@ describe('hourRange', () => {
   it('shows more hours only for an event before 7 or after 20', () => {
     expect(hourRange(timedSpans(day, [entry('a', at(5, 30), at(6, 30))]))).toEqual({ startHour: 5, endHour: 20 })
     expect(hourRange(timedSpans(day, [entry('a', at(21), at(22, 15))]))).toEqual({ startHour: 7, endHour: 23 })
-  })
-})
-
-describe('isDayOver', () => {
-  it('is false during the usual hours and true from 20:00 on', () => {
-    expect(isDayOver(at(7), [])).toBe(false)
-    expect(isDayOver(at(19, 59), [])).toBe(false)
-    expect(isDayOver(at(20), [])).toBe(true)
-  })
-
-  it('waits for the last event of the evening', () => {
-    const late = [entry('a', at(21), at(22, 30))]
-    expect(isDayOver(at(21, 30), late)).toBe(false)
-    expect(isDayOver(at(22, 59), late)).toBe(false)
-    expect(isDayOver(at(23), late)).toBe(true)
   })
 })
 

@@ -5,13 +5,15 @@ const MAX_TAG_LENGTH = 20
 
 export const normalizeTag = (tag: string): string => tag.trim().toLowerCase()
 
+export const tagSchema = z
+  .string()
+  .transform(normalizeTag)
+  .pipe(z.string().min(1).max(MAX_TAG_LENGTH).regex(/^[\p{L}\p{N}_-]+$/u))
+
 export const familyMemberSchema = z.object({
   id: z.string().min(1),
   name: z.string().trim().min(1).max(MAX_NAME_LENGTH),
-  tag: z
-    .string()
-    .transform(normalizeTag)
-    .pipe(z.string().min(1).max(MAX_TAG_LENGTH).regex(/^[\p{L}\p{N}_-]+$/u)),
+  tag: tagSchema,
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
 })
 

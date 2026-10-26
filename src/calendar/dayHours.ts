@@ -51,13 +51,6 @@ export function hourRange(spans: readonly TimedSpan[]): HourRange {
   return { startHour: Math.floor(earliest / MINUTES_PER_HOUR), endHour: Math.ceil(latest / MINUTES_PER_HOUR) }
 }
 
-/** True once the usual hours and every timed event of the day are behind `now`; `day` must be the day of `now`. */
-export function isDayOver(now: Date, entries: readonly DayEntry[]): boolean {
-  const day = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const lastMinute = hourRange(timedSpans(day, entries)).endHour * MINUTES_PER_HOUR
-  return now.getHours() * MINUTES_PER_HOUR + now.getMinutes() >= lastMinute
-}
-
 /** Side-by-side lanes for events that overlap in time; each group of overlapping events shares the width. */
 export function placeSpans(spans: readonly TimedSpan[]): PlacedSpan[] {
   const sorted = [...spans].sort((a, b) => a.startMinute - b.startMinute || b.endMinute - a.endMinute)

@@ -8,6 +8,8 @@ export interface EventDraft extends RepeatFields {
   title: string
   description: string
   memberIds: string[]
+  /** The special tag when the event is special (shown with a gold star), otherwise null. */
+  special: string | null
   allDay: boolean
   /** `YYYY-MM-DD`, as used by `<input type="date">`. */
   startDate: string
@@ -41,6 +43,7 @@ export function newDraft(day: Date, memberIds: string[], startHour?: number): Ev
     title: '',
     description: '',
     memberIds,
+    special: null,
     ...NO_REPEAT,
     allDay: false,
     startDate: dayKey(day),
@@ -50,13 +53,14 @@ export function newDraft(day: Date, memberIds: string[], startHour?: number): Ev
   }
 }
 
-export function draftFromEvent(event: CalendarEvent, members: readonly FamilyMember[]): EventDraft {
+export function draftFromEvent(event: CalendarEvent, members: readonly FamilyMember[], specialTag: string): EventDraft {
   const tags = new Set(extractTags(event))
   const lastDay = event.allDay ? addDays(startOfDay(event.end), -1) : event.end
   return {
     title: stripTitleTags(event.title),
     description: event.description ?? '',
     memberIds: members.filter((member) => tags.has(member.tag)).map((member) => member.id),
+    special: tags.has(specialTag) ? specialTag : null,
     ...NO_REPEAT,
     allDay: event.allDay,
     startDate: dayKey(event.start),
@@ -86,7 +90,7 @@ function parseTime(value: string): [number, number] | null {
 const atTime = (day: Date, [hours, minutes]: [number, number]) =>
   new Date(day.getFullYear(), day.getMonth(), day.getDate(), hours, minutes)
 
-/** Validates the form and turns it into an event. People become tags in a hidden property; `#tags` typed in the title count too. */
+/** Validates the form and turns it into an event. People and the special mark become tags in a hidden property; `#tags` typed in the title count too. */
 export function draftToInput(draft: EventDraft, members: readonly FamilyMember[], existing?: CalendarEvent): DraftResult {
   const errors: DraftErrors = {}
   const title = stripTitleTags(draft.title)
@@ -125,7 +129,7 @@ export function draftToInput(draft: EventDraft, members: readonly FamilyMember[]
   if (Object.keys(errors).length > 0 || start === null || end === null) return { ok: false, errors }
 
   const selected = members.filter((member) => draft.memberIds.includes(member.id)).map((member) => member.tag)
-  const tags = [...new Set([...selected, ...typedTags])]
+  const tags = [...new Set([...selected, ...typedTags, ...(draft.special === null ? [] : [draft.special])])]
   const { [EVENT_TAGS_PROPERTY]: _previous, ...otherProperties } = existing?.extendedProperties?.private ?? {}
   const privateProperties = tags.length > 0 ? { ...otherProperties, [EVENT_TAGS_PROPERTY]: tags.join(',') } : otherProperties
   const description = draft.description.trim()

@@ -6,11 +6,13 @@ import { TOOL_DECLARATIONS } from './assistant/tools'
 import { createVoiceRecorder } from './assistant/voiceRecorder'
 import { CalendarView } from './calendar/CalendarView'
 import { createLocalCalendar } from './calendar/localCalendar'
+import { SpecialTagContext } from './calendar/specialTag'
 import { createConnectionCheck } from './google/calendarList'
 import { createGoogleApi } from './google/googleApi'
 import { createGoogleCalendar } from './google/googleCalendar'
 import { createTokenProvider } from './google/tokenProvider'
 import { SettingsDialog } from './settings/SettingsDialog'
+import { useFontSizeVariables } from './settings/useFontSizeVariables'
 import { useSettings } from './settings/useSettings'
 import { BottomBar } from './shell/BottomBar'
 import { TopBar } from './shell/TopBar'
@@ -40,6 +42,7 @@ const checkGoogle = createConnectionCheck({
 
 function App() {
   const { settings, updateSettings } = useSettings()
+  useFontSizeVariables(settings.fontSizes)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isAssistantOpen, setIsAssistantOpen] = useState(false)
   const [refreshSignal, setRefreshSignal] = useState(0)
@@ -74,33 +77,35 @@ function App() {
   const refresh = () => setRefreshSignal((signal) => signal + 1)
 
   return (
-    <div className="kiosk">
-      <TopBar onOpenSettings={() => setIsSettingsOpen(true)} onRefresh={refresh} />
-      <CalendarView port={calendarPort} members={settings.familyMembers} forecasts={forecasts} hourForecasts={hourForecasts} refreshSignal={refreshSignal} />
-      <div className="bottom-area">
-        <AssistantButton onOpen={() => setIsAssistantOpen(true)} />
-        <BottomBar forecast={forecast} />
+    <SpecialTagContext.Provider value={settings.specialTag}>
+      <div className="kiosk">
+        <TopBar onOpenSettings={() => setIsSettingsOpen(true)} onRefresh={refresh} />
+        <CalendarView port={calendarPort} members={settings.familyMembers} forecasts={forecasts} hourForecasts={hourForecasts} refreshSignal={refreshSignal} />
+        <div className="bottom-area">
+          <AssistantButton onOpen={() => setIsAssistantOpen(true)} />
+          <BottomBar forecast={forecast} />
+        </div>
+        {isAssistantOpen && (
+          <AssistantDialog
+            assistant={assistant}
+            recorder={voiceRecorder}
+            calendar={calendarPort}
+            members={settings.familyMembers}
+            onChanged={refresh}
+            onClose={() => setIsAssistantOpen(false)}
+          />
+        )}
+        {isSettingsOpen && (
+          <SettingsDialog
+            settings={settings}
+            geocoder={geocoder}
+            checkGoogle={checkGoogle}
+            onChange={updateSettings}
+            onClose={() => setIsSettingsOpen(false)}
+          />
+        )}
       </div>
-      {isAssistantOpen && (
-        <AssistantDialog
-          assistant={assistant}
-          recorder={voiceRecorder}
-          calendar={calendarPort}
-          members={settings.familyMembers}
-          onChanged={refresh}
-          onClose={() => setIsAssistantOpen(false)}
-        />
-      )}
-      {isSettingsOpen && (
-        <SettingsDialog
-          settings={settings}
-          geocoder={geocoder}
-          checkGoogle={checkGoogle}
-          onChange={updateSettings}
-          onClose={() => setIsSettingsOpen(false)}
-        />
-      )}
-    </div>
+    </SpecialTagContext.Provider>
   )
 }
 

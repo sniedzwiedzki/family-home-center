@@ -37,6 +37,8 @@ export interface ToolExecutor {
 interface ToolExecutorOptions {
   port: CalendarPort
   members: readonly FamilyMember[]
+  /** The tag that marks a special event; the assistant keeps it when it changes an event but never sets it. */
+  specialTag: string
 }
 
 const failure = (error: string): ToolOutcome => ({ kind: 'done', output: { error } })
@@ -50,7 +52,7 @@ function oneHourLater(startTime: string): string {
 }
 
 /** Runs the model's tool calls against the calendar port, treating every argument as untrusted. */
-export function createToolExecutor({ port, members }: ToolExecutorOptions): ToolExecutor {
+export function createToolExecutor({ port, members, specialTag }: ToolExecutorOptions): ToolExecutor {
   // Only events the model has seen in this session can be changed or deleted.
   const known = new Map<string, CalendarEvent>()
   const knownTags = members.map((member) => member.tag)
@@ -58,7 +60,7 @@ export function createToolExecutor({ port, members }: ToolExecutorOptions): Tool
   const created = new Map<string, string>()
 
   function view(event: CalendarEvent) {
-    const draft = draftFromEvent(event, members)
+    const draft = draftFromEvent(event, members, specialTag)
     return {
       id: event.id,
       title: draft.title,
@@ -108,6 +110,7 @@ export function createToolExecutor({ port, members }: ToolExecutorOptions): Tool
       title: parsed.title,
       description: parsed.description ?? '',
       memberIds,
+      special: null,
       allDay: parsed.allDay ?? parsed.startTime === undefined,
       startDate: parsed.date,
       endDate: parsed.endDate ?? parsed.date,
@@ -133,13 +136,14 @@ export function createToolExecutor({ port, members }: ToolExecutorOptions): Tool
     if (existing === undefined) return failure('Unknown eventId: call list_events first and use an id it returned.')
     const memberIds = parsed.tags === undefined ? undefined : memberIdsFor(parsed.tags)
     if (typeof memberIds === 'string') return failure(memberIds)
-    const current = draftFromEvent(existing, members)
+    const current = draftFromEvent(existing, members, specialTag)
     const startDate = parsed.date ?? current.startDate
     const draft: EventDraft = {
       ...NO_REPEAT,
       title: parsed.title ?? current.title,
       description: parsed.description ?? current.description,
       memberIds: memberIds ?? current.memberIds,
+      special: current.special,
       allDay: parsed.allDay ?? (parsed.startTime === undefined ? current.allDay : false),
       startDate,
       // A one-day event follows its date; a longer one needs an explicit end date.

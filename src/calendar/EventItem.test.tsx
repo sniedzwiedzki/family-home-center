@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { EventItem } from './EventItem'
+import { SpecialTagContext } from './specialTag'
 import type { CalendarEvent } from './types'
 
 const noop = () => undefined
@@ -14,9 +15,10 @@ describe('EventItem', () => {
     expect(text(container)).toEqual(['09:05–10:30', 'Dentysta'])
   })
 
-  it('labels all-day events', () => {
+  it('shows only the title of an all-day event, without a time line', () => {
     const { container } = render(<EventItem onEdit={noop} entry={{ event: { ...base, allDay: true }, isContinuation: false }} color={null} />)
-    expect(text(container)[0]).toBe('cały dzień')
+    expect(container.querySelector('.event-time')).toBeNull()
+    expect(text(container)).toEqual([undefined, 'Dentysta'])
   })
 
   it('labels continuation days', () => {
@@ -42,6 +44,35 @@ describe('EventItem', () => {
     fireEvent.click(screen.getByRole('button'))
     expect(onEdit).toHaveBeenCalledWith(base)
     expect(outerClick).not.toHaveBeenCalled()
+  })
+
+  it('is marked as shared when it is drawn across the columns of several people', () => {
+    const shared = render(<EventItem onEdit={noop} entry={{ event: base, isContinuation: false }} color={null} sharedColors={['#ff0000', '#00ff00']} />)
+    expect(shared.container.querySelector('.event')?.classList.contains('is-shared')).toBe(true)
+    const plain = render(<EventItem onEdit={noop} entry={{ event: base, isContinuation: false }} color={null} />)
+    expect(plain.container.querySelector('.event')?.classList.contains('is-shared')).toBe(false)
+  })
+
+  it('puts a gold star before the title of a special event only', () => {
+    const special = { ...base, title: 'Urodziny #star' }
+    const marked = render(<EventItem onEdit={noop} entry={{ event: special, isContinuation: false }} color={null} />)
+    const star = marked.container.querySelector('.event-star')!
+    expect([star.textContent, star.getAttribute('role'), star.getAttribute('aria-label')]).toEqual(['★', 'img', 'Wydarzenie specjalne'])
+    expect(marked.container.querySelector('.event-title')?.textContent).toBe('★Urodziny')
+    const plain = render(<EventItem onEdit={noop} entry={{ event: base, isContinuation: false }} color={null} />)
+    expect(plain.container.querySelector('.event-star')).toBeNull()
+  })
+
+  it('follows the special tag chosen in the settings', () => {
+    const entry = { event: { ...base, title: 'Urodziny #gwiazda' }, isContinuation: false }
+    const custom = render(
+      <SpecialTagContext.Provider value="gwiazda">
+        <EventItem onEdit={noop} entry={entry} color={null} />
+      </SpecialTagContext.Provider>,
+    )
+    expect(custom.container.querySelector('.event-star')).not.toBeNull()
+    const byDefault = render(<EventItem onEdit={noop} entry={entry} color={null} />)
+    expect(byDefault.container.querySelector('.event-star')).toBeNull()
   })
 
   it('is positioned on the hour grid when given a placement', () => {
