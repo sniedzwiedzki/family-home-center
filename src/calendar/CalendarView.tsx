@@ -60,9 +60,25 @@ export function CalendarView({ port, members, forecasts, hourForecasts, refreshS
   // No day is expanded until the user taps one; the choice is forgotten once the next day begins.
   const expandedKey = choice !== null && choice.madeOn === todayKey ? choice.day : null
 
+  // Until the user touches the calendar, today stays at the top: events that load later make the days above it taller.
+  const hasBeenTouched = useRef(false)
   useLayoutEffect(() => {
+    if (hasBeenTouched.current) return
     containerRef.current!.querySelector(`[data-day="${dayKey(anchor)}"]`)!.scrollIntoView({ block: 'start' })
-  }, [anchor])
+  }, [anchor, entriesByDay])
+
+  useEffect(() => {
+    const container = containerRef.current!
+    const markTouched = () => {
+      hasBeenTouched.current = true
+    }
+    // Not the scroll event: scrolling to today fires it too.
+    const touches = ['pointerdown', 'wheel', 'keydown'] as const
+    for (const type of touches) container.addEventListener(type, markTouched, { passive: true })
+    return () => {
+      for (const type of touches) container.removeEventListener(type, markTouched)
+    }
+  }, [])
 
   useLayoutEffect(() => {
     if (homeTarget === null) return

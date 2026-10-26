@@ -115,6 +115,25 @@ describe('CalendarView', () => {
     expect(scrollIntoView.mock.contexts[0]).toBe(container.querySelector(`[data-day="${dayKey(today)}"]`))
   })
 
+  it('keeps today at the top when events load later, until the user touches the calendar', async () => {
+    let resolveEvents: (events: CalendarEvent[]) => void = () => undefined
+    const slow = portOf(vi.fn(() => new Promise<CalendarEvent[]>((resolve) => (resolveEvents = resolve))))
+    const view = (refreshSignal: number) => <CalendarView port={slow} members={members} refreshSignal={refreshSignal} forecasts={noForecasts} hourForecasts={noHours} />
+    const { container, rerender } = render(view(0))
+    expect(scrollIntoView).toHaveBeenCalledTimes(1)
+    resolveEvents([todayEvent])
+    await screen.findByText('Dzisiejsze')
+    expect(scrollIntoView).toHaveBeenCalledTimes(2)
+    expect(scrollIntoView.mock.contexts[1]).toBe(container.querySelector(`[data-day="${dayKey(today)}"]`))
+
+    fireEvent.pointerDown(container.querySelector('main')!)
+    scrollIntoView.mockClear()
+    rerender(view(1))
+    resolveEvents([{ ...todayEvent, id: 'later', title: 'Później #anna' }])
+    await screen.findByText('Później')
+    expect(scrollIntoView).not.toHaveBeenCalled()
+  })
+
   it('shows an alert when events cannot be loaded', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined)
     const failing = portOf(vi.fn(async () => Promise.reject(new Error('offline'))))
