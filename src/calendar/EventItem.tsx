@@ -14,6 +14,16 @@ function timeLabel({ event, isContinuation }: DayEntry): string | null {
 
 const pastel = (color: string): string => `color-mix(in srgb, ${color} 28%, white)`
 
+/** An invisible stand-in for the chip of an event shown across several columns: it keeps the same height free in the other columns. */
+export function EventSpacer({ entry }: { entry: DayEntry }) {
+  return (
+    <div className="event-spacer" aria-hidden="true">
+      {timeLabel(entry) !== null && <span className="spacer-time">&nbsp;</span>}
+      <span className="spacer-title">&nbsp;</span>
+    </div>
+  )
+}
+
 /** One equal stripe per person, so the chip lines up with the columns it spans. */
 function stripes(colors: readonly string[]): string {
   const stops = colors.map((color, index) => `${pastel(color)} ${(index / colors.length) * 100}% ${((index + 1) / colors.length) * 100}%`)
@@ -48,7 +58,7 @@ export function EventItem({ entry, color, placement, sharedColors, onEdit }: Eve
     <button
       type="button"
       className={classes.join(' ')}
-      style={{ ...(color === null ? {} : { '--event-color': color }), ...(sharedColors === undefined ? {} : { background: stripes(sharedColors) }), ...placement } as CSSProperties}
+      style={{ ...(color === null ? {} : { '--event-color': color }), ...(sharedColors === undefined ? {} : { background: stripes(sharedColors), '--span': sharedColors.length }), ...placement } as CSSProperties}
       onClick={(click) => {
         click.stopPropagation()
         onEdit(entry.event)

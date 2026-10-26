@@ -60,9 +60,14 @@ export function CalendarView({ port, members, forecasts, hourForecasts, refreshS
   // No day is expanded until the user taps one; the choice is forgotten once the next day begins.
   const expandedKey = choice !== null && choice.madeOn === todayKey ? choice.day : null
 
+  // Until someone scrolls, today stays at the top: events that load later make the days above it taller.
+  const alignedAt = useRef<number | null>(null)
   useLayoutEffect(() => {
-    containerRef.current!.querySelector(`[data-day="${dayKey(anchor)}"]`)!.scrollIntoView({ block: 'start' })
-  }, [anchor])
+    const container = containerRef.current!
+    if (alignedAt.current !== null && container.scrollTop !== alignedAt.current) return
+    container.querySelector(`[data-day="${dayKey(anchor)}"]`)!.scrollIntoView({ block: 'start' })
+    alignedAt.current = container.scrollTop
+  }, [anchor, entriesByDay])
 
   useLayoutEffect(() => {
     if (homeTarget === null) return

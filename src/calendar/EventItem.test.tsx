@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { EventItem } from './EventItem'
+import { EventItem, EventSpacer } from './EventItem'
 import { SpecialTagContext } from './specialTag'
 import type { CalendarEvent } from './types'
 
@@ -49,8 +49,18 @@ describe('EventItem', () => {
   it('is marked as shared when it is drawn across the columns of several people', () => {
     const shared = render(<EventItem onEdit={noop} entry={{ event: base, isContinuation: false }} color={null} sharedColors={['#ff0000', '#00ff00']} />)
     expect(shared.container.querySelector('.event')?.classList.contains('is-shared')).toBe(true)
+    expect(shared.container.querySelector<HTMLElement>('.event')?.style.getPropertyValue('--span')).toBe('2')
     const plain = render(<EventItem onEdit={noop} entry={{ event: base, isContinuation: false }} color={null} />)
     expect(plain.container.querySelector('.event')?.classList.contains('is-shared')).toBe(false)
+  })
+
+  it('has an invisible spacer that matches the lines of the chip and is hidden from assistive technology', () => {
+    const timed = render(<EventSpacer entry={{ event: base, isContinuation: false }} />)
+    expect(timed.container.querySelector('.event-spacer')?.getAttribute('aria-hidden')).toBe('true')
+    expect(timed.container.querySelectorAll('.spacer-time, .spacer-title')).toHaveLength(2)
+    const allDay = render(<EventSpacer entry={{ event: { ...base, allDay: true }, isContinuation: false }} />)
+    expect(allDay.container.querySelectorAll('.spacer-time')).toHaveLength(0)
+    expect(allDay.container.querySelectorAll('.spacer-title')).toHaveLength(1)
   })
 
   it('puts a gold star before the title of a special event only', () => {

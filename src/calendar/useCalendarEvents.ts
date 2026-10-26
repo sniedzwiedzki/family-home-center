@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CalendarEvent, CalendarPort, DateRange } from './types'
 
 const REFRESH_MS = 5 * 60 * 1000
@@ -71,5 +71,7 @@ export function useCalendarEvents(port: CalendarPort, range: DateRange, refreshS
     }
   }, [reload])
 
-  return { events: [...events.values()], hasError, reload }
+  const list = useMemo(() => [...events.values()], [events])
+
+  return { events: list, hasError, reload }
 }

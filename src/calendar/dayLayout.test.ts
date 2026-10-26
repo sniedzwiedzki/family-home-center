@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { FamilyMember } from '../family/familyMember'
 import { buildColumns } from './columns'
-import { layoutDayEntries } from './dayLayout'
+import { layoutDayEntries, type CellItem } from './dayLayout'
 import type { DayEntry } from './days'
 
 const members: FamilyMember[] = [
@@ -17,46 +17,50 @@ const entry = (id: string, title: string): DayEntry => ({
   isContinuation: false,
 })
 const layout = (...entries: DayEntry[]) => layoutDayEntries(entries, columns, members)
-const ids = (entries: DayEntry[]) => entries.map(({ event }) => event.id)
+const summary = (items: CellItem[] | undefined) => items!.map((item) => `${item.kind}:${item.entry.event.id}`)
 
 describe('layoutDayEntries', () => {
-  it('keeps events of one person in that person\'s cell and the rest in "Inne"', () => {
-    const { bands, laneCount, cellEntries } = layout(entry('1', 'Trening #anna'), entry('2', 'Śmieci'))
-    expect(bands).toEqual([])
-    expect(laneCount).toBe(0)
-    expect(ids(cellEntries.get('a')!)).toEqual(['1'])
-    expect(ids(cellEntries.get('other')!)).toEqual(['2'])
-    expect(cellEntries.get('j')).toEqual([])
+  it('has a cell for every column, with events of one person in that person\'s cell and the rest in "Inne"', () => {
+    const cells = layout(entry('1', 'Trening #anna'), entry('2', 'Śmieci'))
+    expect([...cells.keys()]).toEqual(['a', 'j', 't', 'o', 'other'])
+    expect(summary(cells.get('a'))).toEqual(['entry:1'])
+    expect(summary(cells.get('other'))).toEqual(['entry:2'])
+    expect(cells.get('j')).toEqual([])
   })
 
-  it('draws an event of neighbouring people once, across their columns', () => {
-    const { bands, laneCount, cellEntries } = layout(entry('1', 'Kino #jan #anna #tomek'))
-    expect(bands).toEqual([{ entry: entry('1', 'Kino #jan #anna #tomek'), firstColumn: 0, columnCount: 3, lane: 0 }])
-    expect(laneCount).toBe(1)
-    expect([...cellEntries.values()].flat()).toEqual([])
+  it('shows an event of neighbouring people as one chip in the first cell and a spacer in the others', () => {
+    const cells = layout(entry('1', 'Kino #jan #anna #tomek'))
+    expect(summary(cells.get('a'))).toEqual(['shared:1'])
+    expect(summary(cells.get('j'))).toEqual(['spacer:1'])
+    expect(summary(cells.get('t'))).toEqual(['spacer:1'])
+    expect(cells.get('o')).toEqual([])
+    expect(cells.get('a')![0]).toMatchObject({ colors: ['#ff0000', '#00ff00', '#0000ff'] })
   })
 
-  it('does not cover a person who is not taking part: people with a gap keep their own chips', () => {
-    const { bands, cellEntries } = layout(entry('1', 'Kino #anna #tomek'))
-    expect(bands).toEqual([])
-    expect(ids(cellEntries.get('a')!)).toEqual(['1'])
-    expect(ids(cellEntries.get('t')!)).toEqual(['1'])
-    expect(cellEntries.get('j')).toEqual([])
+  it('puts the shared chip before the own events of a person', () => {
+    const cells = layout(entry('1', 'Trening #anna'), entry('2', 'Kino #anna #jan'), entry('3', 'Basen #jan'))
+    expect(summary(cells.get('a'))).toEqual(['shared:2', 'entry:1'])
+    expect(summary(cells.get('j'))).toEqual(['spacer:2', 'entry:3'])
   })
 
-  it('makes a band of the neighbours and a chip of the person left over', () => {
-    const { bands, cellEntries } = layout(entry('1', 'Kino #anna #jan #ola'))
-    expect(bands.map(({ firstColumn, columnCount }) => [firstColumn, columnCount])).toEqual([[0, 2]])
-    expect(ids(cellEntries.get('o')!)).toEqual(['1'])
+  it('does not join people who are not neighbours: each keeps a chip and nobody in between is covered', () => {
+    const cells = layout(entry('1', 'Kino #anna #tomek'))
+    expect(summary(cells.get('a'))).toEqual(['entry:1'])
+    expect(summary(cells.get('t'))).toEqual(['entry:1'])
+    expect(cells.get('j')).toEqual([])
   })
 
-  it('puts bands that share a column one above the other, and bands that do not on the same lane', () => {
-    const { bands, laneCount } = layout(entry('1', 'A #anna #jan'), entry('2', 'B #jan #tomek'), entry('3', 'C #tomek #ola'))
-    expect(bands.map(({ entry: { event }, lane }) => [event.id, lane])).toEqual([
-      ['1', 0],
-      ['3', 0],
-      ['2', 1],
-    ])
-    expect(laneCount).toBe(2)
+  it('joins the neighbours and leaves the person apart as a chip of their own', () => {
+    const cells = layout(entry('1', 'Kino #anna #jan #ola'))
+    expect(summary(cells.get('a'))).toEqual(['shared:1'])
+    expect(summary(cells.get('j'))).toEqual(['spacer:1'])
+    expect(summary(cells.get('o'))).toEqual(['entry:1'])
+  })
+
+  it('keeps a later event per person when it would overlap an earlier shared one in a column', () => {
+    const cells = layout(entry('1', 'A #anna #jan'), entry('2', 'B #jan #tomek'))
+    expect(summary(cells.get('a'))).toEqual(['shared:1'])
+    expect(summary(cells.get('j'))).toEqual(['spacer:1', 'entry:2'])
+    expect(summary(cells.get('t'))).toEqual(['entry:2'])
   })
 })
