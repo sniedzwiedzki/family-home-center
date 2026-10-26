@@ -85,7 +85,7 @@ describe('EventDialog', () => {
   })
 
   it('uses the special tag chosen in the settings', async () => {
-    const onSave = vi.fn(async () => undefined)
+    const onSave = vi.fn<(input: CalendarEventInput, target: SaveTarget) => Promise<void>>(async () => undefined)
     render(
       <SpecialTagContext.Provider value="gwiazda">
         <EventDialog heading="Nowe wydarzenie" initial={initial({ title: 'Urodziny' })} members={members} onSave={onSave} onClose={vi.fn()} />

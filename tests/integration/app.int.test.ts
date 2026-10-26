@@ -54,6 +54,10 @@ const pad = (value: number) => String(value).padStart(2, '0')
 const today = new Date()
 const TODAY_KEY = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`
 
+// Today stops this far (0.25rem on the 1600 px display) below the sticky column headers, so its frame is not cut.
+const FRAME_GAP_PX = 4
+const isUnderHeaders = (gap: number) => Math.abs(gap - FRAME_GAP_PX) < 2
+
 const SCREENSHOT_DIR = resolve('tests/integration/screenshots')
 
 async function screenshot(name: string) {
@@ -106,7 +110,7 @@ describe('app on the kiosk display', () => {
     const gap = await evaluate<number>(
       "document.querySelector('.is-today').getBoundingClientRect().top - document.querySelector('.column-headers').getBoundingClientRect().bottom",
     )
-    expect(Math.abs(gap)).toBeLessThan(4)
+    expect(isUnderHeaders(gap)).toBe(true)
   })
 
   it('keeps today pinned to the top or bottom edge and returns to it on click', async () => {
@@ -130,30 +134,30 @@ describe('app on the kiosk display', () => {
     await agentBrowser('eval', "document.querySelector('.pin-inner').click()")
     await agentBrowser('wait', '2500')
     expect(await isPinned('bottom')).toBe(false)
-    expect(Math.abs(await evaluate<number>(gapToHeader))).toBeLessThan(4)
+    expect(isUnderHeaders(await evaluate<number>(gapToHeader))).toBe(true)
     await screenshot('today-after-return')
   })
 
-  it('expands one day at a time into hours, toggles it by its date and returns home', async () => {
+  it('expands no day by itself, then one day at a time into hours, toggled by its date, and returns home', async () => {
     const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
     const TOMORROW_KEY = `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth() + 1)}-${pad(tomorrow.getDate())}`
-    const defaultKey = today.getHours() < 20 ? TODAY_KEY : TOMORROW_KEY
     const expandedDays = () => evaluate<string[]>("[...document.querySelectorAll('.day-row.is-expanded')].map((row) => row.dataset.day)")
     const clickDate = (key: string) => agentBrowser('eval', `document.querySelector('.day-row[data-day="${key}"] button.day-date').click()`)
 
-    expect(await expandedDays()).toEqual([defaultKey])
-    expect(await evaluate<string[]>("[...document.querySelectorAll('.day-row.is-expanded .hour-label')].slice(0, 1).map((l) => l.textContent)")).toEqual(['7:00'])
-    await clickDate(defaultKey)
     expect(await expandedDays()).toEqual([])
-    const other = defaultKey === TODAY_KEY ? TOMORROW_KEY : TODAY_KEY
-    await clickDate(other)
-    expect(await expandedDays()).toEqual([other])
+    await clickDate(TODAY_KEY)
+    expect(await expandedDays()).toEqual([TODAY_KEY])
+    expect(await evaluate<string[]>("[...document.querySelectorAll('.day-row.is-expanded .hour-label')].slice(0, 1).map((l) => l.textContent)")).toEqual(['7:00'])
+    await clickDate(TODAY_KEY)
+    expect(await expandedDays()).toEqual([])
+    await clickDate(TOMORROW_KEY)
+    expect(await expandedDays()).toEqual([TOMORROW_KEY])
     await screenshot('hour-view')
     await agentBrowser('eval', "document.querySelector('main').scrollTop += 3000")
     await clickButton('Wróć do widoku początkowego')
     await agentBrowser('wait', '2500')
-    expect(await expandedDays()).toEqual([defaultKey])
-    expect(Math.abs(await evaluate<number>(`document.querySelector('.day-row[data-day="${defaultKey}"]').getBoundingClientRect().top - document.querySelector('.column-headers').getBoundingClientRect().bottom`))).toBeLessThan(4)
+    expect(await expandedDays()).toEqual([])
+    expect(isUnderHeaders(await evaluate<number>(`document.querySelector('.day-row[data-day="${TODAY_KEY}"]').getBoundingClientRect().top - document.querySelector('.column-headers').getBoundingClientRect().bottom`))).toBe(true)
   })
 
   it('starts a new event at the hour that was clicked in the hour view', async () => {
@@ -173,6 +177,7 @@ describe('app on the kiosk display', () => {
         `[...document.querySelectorAll('label')].find((l) => l.textContent.trim() === ${JSON.stringify(label)}).querySelector('input').value`,
       )
 
+    await agentBrowser('eval', `document.querySelector('.day-row[data-day="${TODAY_KEY}"] button.day-date').click()`)
     await clickHour(15)
     expect(await timeField('Od')).toBe('15:00')
     expect(await timeField('Do')).toBe('16:00')
@@ -253,12 +258,13 @@ describe('app on the kiosk display', () => {
       await clickButton('Zapisz')
       await agentBrowser('wait', SETTLE_MS)
       expect(await dialogOpen('Nowe wydarzenie')).toBe(false)
-      expect(await evaluate<string[]>(eventTitles)).toEqual(['Dentysta', 'Dentysta'])
+      // Jan and Ola are neighbours, so their shared event is one bar across both columns.
+      expect(await evaluate<string[]>(eventTitles)).toEqual(['Dentysta'])
       await screenshot('calendar-with-event')
 
       await agentBrowser('open', inject('appUrl'))
       await agentBrowser('wait', SETTLE_MS)
-      expect(await evaluate<string[]>(eventTitles)).toEqual(['Dentysta', 'Dentysta'])
+      expect(await evaluate<string[]>(eventTitles)).toEqual(['Dentysta'])
 
       await agentBrowser('eval', `document.querySelector('.day-row[data-day="${TODAY_KEY}"] .event').click()`)
       expect(await dialogOpen('Edytuj wydarzenie')).toBe(true)
@@ -266,7 +272,7 @@ describe('app on the kiosk display', () => {
       await fillField('Tytuł', 'Dentysta u Kowalskiego')
       await clickButton('Zapisz')
       await agentBrowser('wait', SETTLE_MS)
-      expect(await evaluate<string[]>(eventTitles)).toEqual(['Dentysta u Kowalskiego', 'Dentysta u Kowalskiego'])
+      expect(await evaluate<string[]>(eventTitles)).toEqual(['Dentysta u Kowalskiego'])
 
       await agentBrowser('eval', `document.querySelector('.day-row[data-day="${TODAY_KEY}"] .event').click()`)
       await clickButton('Usuń')
