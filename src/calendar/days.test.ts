@@ -84,6 +84,21 @@ describe("groupEventsByDay", () => {
     ).toEqual([false, true, true]);
   });
 
+  it("marks the day a multi-day event ends during, and no day it covers fully", () => {
+    const allDayTrip = groupEventsByDay([
+      allDay("trip", new Date(2026, 9, 17), new Date(2026, 9, 20)),
+    ]);
+    expect(
+      [...allDayTrip.values()].map((entries) => entries[0].endsThisDay),
+    ).toEqual([false, false, false]);
+    const overnight = groupEventsByDay([
+      timed("drive", new Date(2026, 9, 17, 20), new Date(2026, 9, 19, 10)),
+    ]);
+    expect(
+      [...overnight.values()].map((entries) => entries[0].endsThisDay),
+    ).toEqual([false, false, true]);
+  });
+
   it("keeps a timed event ending exactly at midnight on one day", () => {
     const groups = groupEventsByDay([
       timed("late", new Date(2026, 9, 17, 22), new Date(2026, 9, 18)),

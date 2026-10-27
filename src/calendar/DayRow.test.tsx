@@ -1,8 +1,9 @@
-import { fireEvent, render } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { act, fireEvent, render } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { FamilyMember } from '../family/familyMember'
 import { buildColumns } from './columns'
 import { DayRow } from './DayRow'
+import { FakeResizeObserver } from './fakeResizeObserver'
 import type { DayForecast, HourForecast } from '../weather/types'
 import type { CalendarEvent } from './types'
 
@@ -18,6 +19,13 @@ const entry = (id: string, title: string) => ({ event: event(id, title), isConti
 
 const cellTitles = (container: HTMLElement, columnId: string) =>
   [...container.querySelectorAll(`.day-cell[data-column="${columnId}"] .event-title`)].map((node) => node.textContent)
+
+
+// jsdom has no ResizeObserver.
+beforeEach(() => {
+  FakeResizeObserver.instances = []
+  vi.stubGlobal('ResizeObserver', FakeResizeObserver)
+})
 
 describe('DayRow', () => {
   it('shows the date number and the two-letter weekday, and the day key', () => {
@@ -68,28 +76,44 @@ describe('DayRow', () => {
     const { container } = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday={false} columns={columns} members={members} entries={entries} />)
     expect(cellTitles(container, 'a')).toEqual(['Kino', 'Trening'])
     expect(cellTitles(container, 'j')).toEqual([])
-    const shared = container.querySelector<HTMLElement>('.day-cell[data-column="a"] .event.is-shared')!
-    expect(shared.style.getPropertyValue('--span')).toBe('2')
+    const band = container.querySelector<HTMLElement>('.day-cell[data-column="a"] .event-band')!
+    expect(band.style.getPropertyValue('--span')).toBe('2')
+    expect(band.querySelector('.event.is-shared')).toBeTruthy()
     expect(container.querySelectorAll('.event.is-shared')).toHaveLength(1)
     expect(container.querySelectorAll('.day-cell[data-column="j"] .event-spacer')).toHaveLength(1)
-    expect([...container.querySelectorAll('.day-row > *')].map((child) => child.className)).toEqual(['day-label', 'day-cell', 'day-cell', 'day-cell'])
+    expect([...container.querySelectorAll('.day-row > *')].map((child) => child.className)).toEqual(['day-label', 'day-cell has-band', 'day-cell has-band', 'day-cell'])
+    expect(container.querySelector('.day-cell[data-column="j"] .event-spacer')?.classList.contains('is-end')).toBe(true)
   })
 
-  it('lines the row up at the top only when it has a shared chip', () => {
-    const rowClasses = (entries: ReturnType<typeof entry>[]) =>
-      render(<DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday={false} columns={columns} members={members} entries={entries} />).container.querySelector('.day-row')!.classList
-    expect(rowClasses([entry('2', 'Kino #anna #jan')]).contains('has-shared')).toBe(true)
-    expect(rowClasses([entry('1', 'Trening #anna'), entry('3', 'Śmieci')]).contains('has-shared')).toBe(false)
-    expect(rowClasses([]).contains('has-shared')).toBe(false)
+  it('sizes the band and the last spacer from the measured width of a two-person chip', () => {
+    const { container } = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday={false} columns={columns} members={members} entries={[entry('2', 'Kino #anna #jan')]} />)
+    const band = container.querySelector<HTMLElement>('.event-band')!
+    const spacer = container.querySelector<HTMLElement>('.day-cell[data-column="j"] .event-spacer')!
+    expect(band.className).toBe('event-band can-widen')
+    expect(band.style.getPropertyValue('--chip-width')).toBe('')
+    expect(spacer.style.getPropertyValue('--chip-width')).toBe('')
+    act(() => FakeResizeObserver.instances[0].resize(new Map([[band.querySelector('.event.is-shared')!, 150]])))
+    expect(band.style.getPropertyValue('--chip-width')).toBe('150px')
+    expect(spacer.style.getPropertyValue('--chip-width')).toBe('150px')
+  })
+
+  it('lets a chip of three or more people fill its band without measuring it', () => {
+    const three: FamilyMember[] = [...members, { id: 't', name: 'Tomek', tag: 'tomek', color: '#0000ff' }]
+    const { container } = render(
+      <DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday={false} columns={buildColumns(three)} members={three} entries={[entry('2', 'Kino #anna #jan #tomek')]} />,
+    )
+    expect(container.querySelector('.event-band')?.className).toBe('event-band is-wide')
+    expect(FakeResizeObserver.instances).toHaveLength(0)
   })
 
   it('keeps the spacer as tall as the chip: a time line only when the chip has one', () => {
     const timedEntry = { event: { id: '3', title: 'Kino #anna #jan', allDay: false, start: new Date(2026, 9, 17, 9), end: new Date(2026, 9, 17, 10) }, isContinuation: false }
     const withTime = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday={false} columns={columns} members={members} entries={[timedEntry]} />)
-    expect(withTime.container.querySelectorAll('.event-spacer .spacer-time')).toHaveLength(1)
+    const jan = '.day-cell[data-column="j"] .event-spacer'
+    expect(withTime.container.querySelectorAll(`${jan} .spacer-time`)).toHaveLength(1)
     const allDay = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday={false} columns={columns} members={members} entries={[entry('2', 'Kino #anna #jan')]} />)
-    expect(allDay.container.querySelectorAll('.event-spacer .spacer-time')).toHaveLength(0)
-    expect(allDay.container.querySelectorAll('.event-spacer .spacer-title')).toHaveLength(1)
+    expect(allDay.container.querySelectorAll(`${jan} .spacer-time`)).toHaveLength(0)
+    expect(allDay.container.querySelectorAll(`${jan} .spacer-title`)).toHaveLength(1)
   })
 
   it('opens the shared event for editing when its chip is clicked', () => {

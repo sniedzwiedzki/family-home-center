@@ -178,29 +178,73 @@
   opacity: 0.8;
 }
 
-/* Clicking an empty spot of a cell adds an event on that day for that person. */
+/* Clicking an empty spot of a cell adds an event on that day for that person. Chips start at the top left, never centred, so a
+   shared chip and the spacers in the other cells stay at the same height. */
 .day-cell {
   cursor: pointer;
   border-left: 0.0625rem solid rgba(38, 54, 70, 0.07);
   display: flex;
   flex-flow: row wrap;
-  align-content: center;
-  align-items: center;
+  align-content: flex-start;
+  align-items: flex-start;
   gap: 0.3125rem;
   padding: 0.25rem 0.25rem;
 }
 
-/* An event of several neighbouring people: one chip in the first of their cells, as wide as all their columns (see layoutDayEntries).
-   0.5625rem is what lies between the content of two cells: the paddings and the cell border. */
-.event.is-shared {
-  --span: 1;
-  flex: none;
-  align-items: center;
-  width: calc(var(--span) * 100% + (var(--span) - 1) * 0.5625rem);
-  max-width: none;
-  text-align: center;
+/* An event of several neighbouring people: an invisible band from the middle of the first person's column to the middle of the
+   last one's (see layoutDayEntries), so the edge people keep the outer halves for their own chips.
+   --cell is a cell's own content width (see .day-cell.has-band); 0.5625rem is what lies between the content of two cells:
+   the paddings and the cell border. */
+.event-band {
+  --span: 2;
+  --cell: calc(100% - 0.3125rem);
+  --band-width: calc((var(--span) - 1) * (var(--cell) + 0.5625rem));
+  /* The part of a measured two-person chip that lies in this cell, less the right half the band takes anyway (see
+     .event-spacer.is-end for the fallback): negative for a short chip, positive for one that grows into the left half. */
+  --shift: calc(((var(--chip-width, var(--cell) + 0.5625rem)) - 0.5625rem - var(--cell)) / 2);
+  float: right;
+  width: var(--band-width);
+  /* In its own cell the band takes the right half (the negative right margin lets it reach into the next cells), changed by
+     --shift on the left to what the chip really covers, so the person's own chips sit right beside it. */
+  margin: 0 calc(var(--cell) / 2 + 0.3125rem - var(--band-width)) 0.3125rem var(--shift);
   /* Above the cells after it, but below the sticky headers (z-index 1). */
   position: relative;
+}
+
+/* Where one band ends and the next starts, the end spacer's gap may overlap the next band, so both fit in the cell. */
+.event-spacer.is-end + .event-band {
+  margin-left: calc(var(--shift) - 0.3125rem);
+}
+
+/* The spacer inside gives the band the height of the chips beside it. */
+.event-band > .event-spacer {
+  float: none;
+  margin: 0;
+}
+
+/* The chip covers the band's height, centred across it, only as wide as its text (at most the band). Its text starts at the top.
+   It is centred in an area twice the band's width (the -50% sides), so a chip wider than the band stays centred too. */
+.event.is-shared {
+  position: absolute;
+  inset: 0 -50%;
+  width: fit-content;
+  /* A little short of the band, so two bands meeting in one column keep a gap between their chips. */
+  max-width: calc(100% - 0.3125rem);
+  margin: 0 auto;
+  align-items: center;
+  text-align: center;
+  /* The fill and the border are the two background layers set by EventItem. */
+  border-color: transparent;
+}
+
+/* A two-person chip alone in its columns may use the outer halves too: at most both columns' contents (the band is one cell and
+   one 0.5625rem gap wide, so that is 200% less one gap). */
+.event-band.can-widen > .event.is-shared {
+  max-width: calc(200% - 0.5625rem);
+}
+
+.event-band.is-wide > .event.is-shared {
+  width: calc(100% - 0.3125rem);
 }
 
 .event.is-shared .event-title {
@@ -211,21 +255,38 @@
   max-width: 100%;
 }
 
-/* A row with a shared chip lines everything up at the top: cells otherwise centre their own content, which would put the chip and
-   the spacer of the other cells at different heights, and the chip would cover what lies below the spacer. */
-.day-row.has-shared .day-cell {
-  align-content: flex-start;
+/* A cell with a shared chip or its spacer flows like text: the person's own chips sit beside the floated chip or spacer in the
+   half it leaves free, and wrap below it when they do not fit. The chips keep their gap as a right margin, so the cell reaches
+   that far into the next cell's padding: the last chip of a line needs no room for its gap. */
+.day-cell.has-band {
+  display: block;
+  margin-right: -0.3125rem;
 }
 
-/* In the other cells of that event, the same height stays free. */
+.day-cell.has-band > .event {
+  margin: 0 0.3125rem 0.3125rem 0;
+  vertical-align: top;
+}
+
+/* In the other cells of that event, the same height stays free: all of a column in between, half of the last column. */
 .event-spacer {
   display: flex;
-  flex: 0 0 100%;
+  float: left;
   flex-direction: column;
+  width: 100%;
+  margin-bottom: 0.3125rem;
   padding: 0.25rem 0.625rem;
   border: 0.0625rem solid transparent;
   visibility: hidden;
   pointer-events: none;
+}
+
+.event-spacer.is-end {
+  /* Half of a two-person chip lies in this column, less half of the 0.5625rem between the cells' contents. Before the chip
+     is measured (and for wider chips, which fill their band) the fallback is half of the cell (100% - 0.3125rem, see
+     .day-cell.has-band): (cell + 0.5625rem) / 2 - 0.28125rem. */
+  width: calc((var(--chip-width, 100% + 0.25rem)) / 2 - 0.28125rem);
+  margin-right: 0.3125rem;
 }
 
 .spacer-time {
