@@ -61,7 +61,7 @@ The user then said they want to choose the size by **typing a number**, and that
 
 ## Follow-up request: all-day label and shared events
 
-Spec: `.ai/specs/2026-10-26-all-day-title-and-shared-events.md`. Changed `EventItem.tsx` (no "cały dzień"; `sharedColors` stripes), new `dayLayout.ts` (bands across neighbouring columns, lanes), `DayRow.tsx` (bands above the cells, label spans the lanes), `calendar.css` (`.day-band`, `.event.is-shared`), tests (`dayLayout.test.ts`, `EventItem.test.tsx`, `DayRow.test.tsx`) and README. Not verified: no lint, tests, build or screenshots were run, on the user's request. Hour view is not merged.
+Spec: `.ai/specs/implemented/2026-10-26-all-day-title-and-shared-events.md`. Changed `EventItem.tsx` (no "cały dzień"; `sharedColors` stripes), new `dayLayout.ts` (bands across neighbouring columns, lanes), `DayRow.tsx` (bands above the cells, label spans the lanes), `calendar.css` (`.day-band`, `.event.is-shared`), tests (`dayLayout.test.ts`, `EventItem.test.tsx`, `DayRow.test.tsx`) and README. Not verified: no lint, tests, build or screenshots were run, on the user's request. Hour view is not merged.
 
 ## Follow-up: today's frame hidden under the header
 

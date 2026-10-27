@@ -18,6 +18,8 @@ export function daysInRange(from: Date, to: Date): Date[] {
 export interface DayEntry {
   event: CalendarEvent
   isContinuation: boolean
+  /** The event ends during this day, before the next midnight. Left out, it runs to the end of the day. */
+  endsThisDay?: boolean
 }
 
 function coveredDays(event: CalendarEvent): Date[] {
@@ -36,7 +38,7 @@ export function groupEventsByDay(events: readonly CalendarEvent[]): Map<string, 
     coveredDays(event).forEach((day, index) => {
       const key = dayKey(day)
       const entries = groups.get(key) ?? []
-      entries.push({ event, isContinuation: index > 0 })
+      entries.push({ event, isContinuation: index > 0, endsThisDay: event.end < addDays(day, 1) })
       groups.set(key, entries)
     })
   }

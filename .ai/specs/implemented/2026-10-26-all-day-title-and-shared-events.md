@@ -1,0 +1,41 @@
+# All-day events show only the title; shared events become one wide bar
+
+Date: 2026-10-26
+Status: implemented (2026-10-27; lint, unit tests with 100% coverage and build green; integration tests run in CI)
+
+## Requirement (from the user, translated from Polish)
+
+1. For all-day events do not show "cały dzień", only the title.
+2. When the same event belongs to several people, merge it into one big row to show that several people take part.
+3. (2026-10-27) Make the merged chip smaller than the full widths of its columns, so the edge people can use the space it leaves: their own chips sit beside it instead of below it.
+4. (2026-10-27) A merged chip is as tall as the timed chips beside it, like the other items of the row.
+5. (2026-10-27) A merged chip is only as wide as its text needs when there is room to spare.
+6. (2026-10-27) A merged chip has the same kind of border as the other chips.
+7. (2026-10-27) No "ciąg dalszy" on a following day that a multi-day event covers fully.
+8. (2026-10-27) An event can still be merged when one of its people already has a merged chip that ends in their column (e.g. "Basen" of Jan and Zosia next to "Ortopeda" of Anna and Jan).
+9. (2026-10-27) Events in a day row are never centred vertically: every cell starts at the top left.
+11. (2026-10-27) A two-person chip is not cut off while the outer halves of its columns are free: it may grow up to both columns' full width.
+10. (2026-10-27, reverted the same day at the user's request) A cell with only one event: that chip is at least as tall as the row. Chips keep their own height.
+
+## Decisions
+
+- `EventItem` has no time line for an all-day event that starts on that day. A continuation day shows "ciąg dalszy" only when the event ends during that day (the last day of a timed event that ends after midnight); a day it covers from midnight to midnight shows only the title (requirement 7). `groupEventsByDay` sets `endsThisDay` on each entry for this.
+- "The same event for several people" means one event whose tags match several members (it was drawn once per column before). Separate events that merely look alike are not merged.
+- `layoutDayEntries` (`src/calendar/dayLayout.ts`) splits an event's columns into runs of neighbouring columns. A run of two or more becomes one chip in the first cell of the run, as wide as all its columns (`--span`, with the 0.5625rem between cell contents added per gap), and an invisible `EventSpacer` of the same height in the other cells, so the other chips of those people sit below it. A run of one stays a normal chip. A band therefore never covers a person who is not involved (Anna and Tomek with Jan between them keep two chips).
+- The chip lives in the cells' own grid row: no extra rows, so the grid lines are untouched and the columns of other people are not displaced. (The first version used extra grid rows above the cells; that removed the lines and pushed everyone else down.)
+- A column carries shared chips by halves: a band takes the right half of its first column, all of the columns in between and the left half of its last column. A later event is merged only when the halves it needs are free, so the last column of one band can be the first column of the next (requirement 8); otherwise it stays per person.
+- (Requirement 3) The chip runs from the middle of the first person's column to the middle of the last one's: half of each edge column and all of the columns in between. Its cell and the last cell of the run flow like text (`display: block`, class `has-band`): the chip floats right in the first cell and takes only that half there (a negative right margin lets it reach into the next cells), the last spacer (`isLast`, class `is-end`) floats left over half of its cell, so the edge people's own chips fill the other halves and wrap below when they do not fit. Spacers of the columns in between stay full width. A fixed half (not the chip's text width) keeps the spacer's width known without measuring; a long title is cut with an ellipsis.
+- (Requirements 4 and 5) The floated half-to-half box is now an invisible band (`.event-band`): it holds an `EventSpacer`, which gives it its height, and the chip, placed over the band's full height, centred and only as wide as its text (at most the band). This applies to two people only: a chip of three or more people (`is-wide`) fills the band, because a text-wide chip centred over the middle column did not reach the edge people's columns at all and looked like an event of one person. The band keeps the same width, so the edge people's own chips still sit in the outer halves; a narrower chip just leaves visible space around it. The band and every spacer of the run get a time line when the event has one or when any own chip of the first or last person of the run has one (`hasTimeLine` in `layoutDayEntries`), so an all-day chip next to timed chips is as tall as they are and its title is centred vertically.
+- (Requirement 5, follow-up) The own chips of the last person sit right after a two-person chip, not after half of the column: `DayRow` measures each two-person chip with `useElementWidths` (a `ResizeObserver`, so it follows font-size settings and resizes) and gives the last spacer `--chip-width`; its width is then half the chip less half of the 0.5625rem between cells (the chip is centred on the boundary). Before the first measurement, and for chips of three or more people (which fill their band), the spacer keeps half of the cell. Pure CSS cannot size a box in one cell from the width of content in another.
+- (Requirement 6) Other chips have a border of their colour mixed 50% with white over a fill mixed 28%. A shared chip has the same: two background layers, the 28% stripes for the padding box and the 50% stripes for the border box, under a transparent border.
+- (Requirement 9) Every `.day-cell` lines its chips up at the top left (`align-content` and `align-items: flex-start`), so the row class `has-shared`, which did that only for rows with a shared chip, is gone. The text of a chip, shared ones included, starts at the top; a shared chip keeps its text centred horizontally.
+- (Requirement 11) A two-person band with no other band in either of its columns (`canWiden` from `layoutDayEntries`, class `can-widen`) lets its chip grow to `200% - 0.5625rem` of the band, i.e. both columns' contents. The chip is centred in an area twice the band's width (`inset: 0 -50%`), so it stays centred on the boundary when wider than the band. The measured width (`--chip-width`) now goes to the band as well: `--shift` moves its left margin so the band reserves exactly the chip's part of its first cell (less than half for a short chip, more for a long one), as the end spacer does in the last cell; own chips that no longer fit beside it wrap below. Where two bands meet in one column, the chips keep the old limit (the band), so they cannot overlap.
+- (Requirement 10, reverted) The only chip of a cell was stretched with `min-height: 100%`, and a shared chip with its spacers only when alone in all of its cells (`isAlone`). The user asked to undo it; the code and CSS were removed.
+- In the day row the shared chip's title is one line (ellipsis), so the spacer's height (one line per line of the chip) matches exactly.
+- A shared chip is one `EventItem` with `sharedColors`: stripes of each person's pastel colour, one equal stripe per column.
+- Hour view: timed events of an expanded day are still drawn per person in the hour grid. Merging there needs lane sharing across columns and is left out.
+
+## Testing
+
+- Unit tests for `layoutDayEntries` (bands, half claims, spacer order, `hasTimeLine`, `canWiden`), `hasTimeLine`, `groupEventsByDay` (`endsThisDay`), `EventItem` (labels, shared border layers, spacer props, ref), `DayRow` (band markup, measured widths through a fake `ResizeObserver`) and `useElementWidths`.
+- Looked at in a 1600 x 2400 viewport against local events after every round (see `.ai/runs/2026-10-27-narrower-shared-chips.md`).

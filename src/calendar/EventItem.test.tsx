@@ -21,9 +21,13 @@ describe('EventItem', () => {
     expect(text(container)).toEqual([undefined, 'Dentysta'])
   })
 
-  it('labels continuation days', () => {
-    const { container } = render(<EventItem onEdit={noop} entry={{ event: { ...base, allDay: true }, isContinuation: true }} color={null} />)
-    expect(text(container)[0]).toBe('ciąg dalszy')
+  it('labels a continuation day only when the event ends during it', () => {
+    const lastDay = render(<EventItem onEdit={noop} entry={{ event: base, isContinuation: true, endsThisDay: true }} color={null} />)
+    expect(text(lastDay.container)[0]).toBe('ciąg dalszy')
+    const fullDay = render(<EventItem onEdit={noop} entry={{ event: base, isContinuation: true, endsThisDay: false }} color={null} />)
+    expect(text(fullDay.container)).toEqual([undefined, 'Dentysta'])
+    const allDay = render(<EventItem onEdit={noop} entry={{ event: { ...base, allDay: true }, isContinuation: true }} color={null} />)
+    expect(text(allDay.container)).toEqual([undefined, 'Dentysta'])
   })
 
   it('uses the column color for the accent when there is one', () => {
@@ -49,18 +53,41 @@ describe('EventItem', () => {
   it('is marked as shared when it is drawn across the columns of several people', () => {
     const shared = render(<EventItem onEdit={noop} entry={{ event: base, isContinuation: false }} color={null} sharedColors={['#ff0000', '#00ff00']} />)
     expect(shared.container.querySelector('.event')?.classList.contains('is-shared')).toBe(true)
-    expect(shared.container.querySelector<HTMLElement>('.event')?.style.getPropertyValue('--span')).toBe('2')
+    // The fill and the border are two background layers of each person's colour, like the border of other chips.
+    const background = shared.container.querySelector<HTMLElement>('.event')!.style.background
+    expect(background).toContain('padding-box')
+    expect(background).toContain('border-box')
     const plain = render(<EventItem onEdit={noop} entry={{ event: base, isContinuation: false }} color={null} />)
     expect(plain.container.querySelector('.event')?.classList.contains('is-shared')).toBe(false)
   })
 
   it('has an invisible spacer that matches the lines of the chip and is hidden from assistive technology', () => {
-    const timed = render(<EventSpacer entry={{ event: base, isContinuation: false }} />)
+    const timed = render(<EventSpacer hasTimeLine isLast={false} />)
     expect(timed.container.querySelector('.event-spacer')?.getAttribute('aria-hidden')).toBe('true')
     expect(timed.container.querySelectorAll('.spacer-time, .spacer-title')).toHaveLength(2)
-    const allDay = render(<EventSpacer entry={{ event: { ...base, allDay: true }, isContinuation: false }} />)
+    const allDay = render(<EventSpacer hasTimeLine={false} isLast={false} />)
     expect(allDay.container.querySelectorAll('.spacer-time')).toHaveLength(0)
     expect(allDay.container.querySelectorAll('.spacer-title')).toHaveLength(1)
+  })
+
+  it('marks the spacer of the last column, where the shared chip ends', () => {
+    const last = render(<EventSpacer hasTimeLine={false} isLast />)
+    expect(last.container.querySelector('.event-spacer')?.classList.contains('is-end')).toBe(true)
+    const between = render(<EventSpacer hasTimeLine={false} isLast={false} />)
+    expect(between.container.querySelector('.event-spacer')?.classList.contains('is-end')).toBe(false)
+  })
+
+  it('passes the measured chip width to the spacer, and nothing before it is measured', () => {
+    const measured = render(<EventSpacer hasTimeLine={false} isLast chipWidth={120} />)
+    expect(measured.container.querySelector<HTMLElement>('.event-spacer')!.style.getPropertyValue('--chip-width')).toBe('120px')
+    const unmeasured = render(<EventSpacer hasTimeLine={false} isLast />)
+    expect(unmeasured.container.querySelector('.event-spacer')?.getAttribute('style')).toBeNull()
+  })
+
+  it('hands its button to a ref, so the chip can be measured', () => {
+    const ref = vi.fn()
+    render(<EventItem ref={ref} onEdit={noop} entry={{ event: base, isContinuation: false }} color={null} />)
+    expect(ref).toHaveBeenCalledWith(screen.getByRole('button'))
   })
 
   it('puts a gold star before the title of a special event only', () => {
