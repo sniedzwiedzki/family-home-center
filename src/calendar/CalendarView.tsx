@@ -1,7 +1,7 @@
-import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { FamilyMember } from '../family/familyMember'
 import type { DayForecast, HourForecast } from '../weather/types'
-import { buildColumns, OTHER_COLUMN_ID } from './columns'
+import { buildColumns, columnForEvent, frequentSeries, type ColumnLayout } from './columns'
 import { ColumnHeaders } from './ColumnHeaders'
 import { dayKey, groupDaysByMonth, groupEventsByDay, startOfDay } from './days'
 import { DayRow } from './DayRow'
@@ -23,6 +23,7 @@ const PIN_TOLERANCE_PX = 4
 interface CalendarViewProps {
   port: CalendarPort
   members: readonly FamilyMember[]
+  columnLayout: ColumnLayout
   forecasts: ReadonlyMap<string, DayForecast>
   hourForecasts: ReadonlyMap<number, HourForecast>
   /** A counter; every change reloads the events. */
@@ -37,7 +38,7 @@ interface DayChoice {
 
 type Editor = { kind: 'new'; day: Date; columnId: string; hour?: number } | { kind: 'edit'; event: CalendarEvent }
 
-export function CalendarView({ port, members, forecasts, hourForecasts, refreshSignal }: CalendarViewProps) {
+export function CalendarView({ port, members, columnLayout, forecasts, hourForecasts, refreshSignal }: CalendarViewProps) {
   const [anchor] = useState(() => startOfDay(new Date()))
   const today = useToday()
   const specialTag = useContext(SpecialTagContext)
@@ -45,7 +46,12 @@ export function CalendarView({ port, members, forecasts, hourForecasts, refreshS
   const { range, days, before, extendBefore, extendAfter } = useDayWindow(anchor)
   const { events, hasError, reload } = useCalendarEvents(port, range, refreshSignal)
   const [editor, setEditor] = useState<Editor | null>(null)
-  const columns = useMemo(() => buildColumns(members), [members])
+  const columns = useMemo(() => buildColumns(columnLayout), [columnLayout])
+  const frequent = useMemo(() => frequentSeries(events), [events])
+  const columnOf = useCallback(
+    (event: CalendarEvent) => columnForEvent(event, members, columnLayout.workTag, frequent),
+    [members, columnLayout.workTag, frequent],
+  )
   const entriesByDay = useMemo(() => groupEventsByDay(events), [events])
   const months = useMemo(() => groupDaysByMonth(days), [days])
 
@@ -154,6 +160,7 @@ export function CalendarView({ port, members, forecasts, hourForecasts, refreshS
       pinned={pinned}
       columns={columns}
       members={members}
+      columnOf={columnOf}
       entries={entriesByDay.get(dayKey(day)) ?? []}
       forecast={forecasts.get(dayKey(day))}
       expansion={pinned ? undefined : { expanded: dayKey(day) === expandedKey, now, hourForecasts, onToggle: () => toggleDay(dayKey(day)) }}
@@ -175,10 +182,11 @@ export function CalendarView({ port, members, forecasts, hourForecasts, refreshS
       heading={editor.kind === 'new' ? 'Nowe wydarzenie' : 'Edytuj wydarzenie'}
       initial={
         editor.kind === 'new'
-          ? newDraft(editor.day, editor.columnId === OTHER_COLUMN_ID ? [] : [editor.columnId], editor.hour)
-          : draftFromEvent(editor.event, members, specialTag)
+          ? newDraft(editor.day, [], editor.hour, editor.columnId === 'work' ? columnLayout.workTag : null)
+          : draftFromEvent(editor.event, members, specialTag, columnLayout.workTag)
       }
       members={members}
+      workTag={columnLayout.workTag}
       existing={editor.kind === 'edit' ? editor.event : undefined}
       series={port.series}
       onSave={(input, target) => saveEvent(editor, input, target)}
@@ -189,8 +197,8 @@ export function CalendarView({ port, members, forecasts, hourForecasts, refreshS
 
   return (
     <>
-      <main className="calendar" ref={containerRef} style={{ '--column-count': columns.length } as React.CSSProperties}>
-        <ColumnHeaders columns={columns} onHome={goHome} />
+      <main className="calendar" ref={containerRef} style={{ '--column-template': columns.map((column) => `minmax(0, ${column.width}fr)`).join(' ') } as React.CSSProperties}>
+        <ColumnHeaders members={members} onHome={goHome} />
         {hasError && (
           <p className="calendar-error" role="alert">
             Nie udało się pobrać wydarzeń.

@@ -10,6 +10,7 @@ const valid: Settings = {
   pin: '1234',
   fontSizes: { eventTitle: 24, eventTime: 12, dayNumber: 48 },
   specialTag: 'gwiazda',
+  columns: { widths: { all: 4, recurring: 2, work: 1, other: 1 }, workTag: 'biuro' },
 }
 
 const storageWith = (value: string | null) => ({ getItem: () => value })
@@ -39,6 +40,11 @@ describe('loadSettings', () => {
   it('still loads settings saved before the font size fields existed', () => {
     const { fontSizes: _fontSizes, ...older } = valid
     expect(loadSettings(storageWith(JSON.stringify(older)))).toEqual({ ...older, fontSizes: DEFAULT_SETTINGS.fontSizes })
+  })
+
+  it('still loads settings saved before the column settings existed', () => {
+    const { columns: _columns, ...older } = valid
+    expect(loadSettings(storageWith(JSON.stringify(older)))).toEqual({ ...older, columns: DEFAULT_SETTINGS.columns })
   })
 
   it('still loads settings saved before the special tag existed', () => {

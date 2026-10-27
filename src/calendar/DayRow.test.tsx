@@ -1,9 +1,8 @@
-import { act, fireEvent, render } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 import type { FamilyMember } from '../family/familyMember'
-import { buildColumns } from './columns'
+import { buildColumns, columnForEvent, DEFAULT_COLUMN_LAYOUT } from './columns'
 import { DayRow } from './DayRow'
-import { FakeResizeObserver } from './fakeResizeObserver'
 import type { DayForecast, HourForecast } from '../weather/types'
 import type { CalendarEvent } from './types'
 
@@ -11,7 +10,8 @@ const members: FamilyMember[] = [
   { id: 'a', name: 'Anna', tag: 'anna', color: '#ff0000' },
   { id: 'j', name: 'Jan', tag: 'jan', color: '#00ff00' },
 ]
-const columns = buildColumns(members)
+const columns = buildColumns(DEFAULT_COLUMN_LAYOUT)
+const columnOf = (item: CalendarEvent) => columnForEvent(item, members, 'praca', new Set())
 const noop = () => undefined
 const day = new Date(2026, 9, 17)
 const event = (id: string, title: string): CalendarEvent => ({ id, title, allDay: true, start: day, end: new Date(2026, 9, 18) })
@@ -20,16 +20,9 @@ const entry = (id: string, title: string) => ({ event: event(id, title), isConti
 const cellTitles = (container: HTMLElement, columnId: string) =>
   [...container.querySelectorAll(`.day-cell[data-column="${columnId}"] .event-title`)].map((node) => node.textContent)
 
-
-// jsdom has no ResizeObserver.
-beforeEach(() => {
-  FakeResizeObserver.instances = []
-  vi.stubGlobal('ResizeObserver', FakeResizeObserver)
-})
-
 describe('DayRow', () => {
   it('shows the date number and the two-letter weekday, and the day key', () => {
-    const { container } = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={new Date(2026, 9, 25)} isToday={false} columns={columns} members={members} entries={[]} />)
+    const { container } = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={new Date(2026, 9, 25)} isToday={false} columns={columns} members={members} columnOf={columnOf} entries={[]} />)
     expect(container.querySelector('.day-number')?.textContent).toBe('25')
     expect(container.querySelector('.day-weekday')?.textContent).toBe('nd')
     expect(container.querySelector('.day-row')?.getAttribute('data-day')).toBe('2026-10-25')
@@ -37,7 +30,7 @@ describe('DayRow', () => {
 
   it('styles every Saturday and every Sunday differently and Monday to Friday alike', () => {
     const classesOf = (date: Date) => {
-      const { container } = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={date} isToday={false} columns={columns} members={members} entries={[]} />)
+      const { container } = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={date} isToday={false} columns={columns} members={members} columnOf={columnOf} entries={[]} />)
       return container.querySelector('.day-row')?.className
     }
     const week = Array.from({ length: 7 }, (_, i) => classesOf(new Date(2026, 9, 12 + i)))
@@ -50,98 +43,54 @@ describe('DayRow', () => {
   })
 
   it('marks today', () => {
-    const today = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday columns={columns} members={members} entries={[]} />)
+    const today = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday columns={columns} members={members} columnOf={columnOf} entries={[]} />)
     expect(today.container.querySelector('.day-row')?.classList.contains('is-today')).toBe(true)
     expect(today.container.querySelector('.day-row')?.classList.contains('is-saturday')).toBe(true)
-    const other = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday={false} columns={columns} members={members} entries={[]} />)
+    const other = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday={false} columns={columns} members={members} columnOf={columnOf} entries={[]} />)
     expect(other.container.querySelector('.day-row')?.classList.contains('is-today')).toBe(false)
   })
 
   it('renders one cell per column', () => {
-    const { container } = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday={false} columns={columns} members={members} entries={[]} />)
-    expect([...container.querySelectorAll('.day-cell')].map((cell) => cell.getAttribute('data-column'))).toEqual(['a', 'j', 'other'])
+    const { container } = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday={false} columns={columns} members={members} columnOf={columnOf} entries={[]} />)
+    expect([...container.querySelectorAll('.day-cell')].map((cell) => cell.getAttribute('data-column'))).toEqual(['all', 'recurring', 'work', 'other'])
   })
 
-  it('places events in the column of their tag and the rest in "Inne"', () => {
-    const entries = [entry('1', 'Trening #anna'), entry('3', 'Śmieci')]
-    const { container } = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday={false} columns={columns} members={members} entries={entries} />)
-    expect(cellTitles(container, 'a')).toEqual(['Trening'])
-    expect(cellTitles(container, 'j')).toEqual([])
+  it('puts each event in the one column it belongs to', () => {
+    const entries = [entry('1', 'Trening #anna'), entry('2', 'Spotkanie #jan #praca'), entry('3', 'Śmieci')]
+    const { container } = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday={false} columns={columns} members={members} columnOf={columnOf} entries={entries} />)
+    expect(cellTitles(container, 'all')).toEqual(['Trening'])
+    expect(cellTitles(container, 'work')).toEqual(['Spotkanie'])
     expect(cellTitles(container, 'other')).toEqual(['Śmieci'])
-    expect(container.querySelector('.is-shared, .event-spacer')).toBeNull()
+    expect(cellTitles(container, 'recurring')).toEqual([])
   })
 
-  it('draws an event of neighbouring people once, as a chip over their columns in the same row as the cells', () => {
-    const entries = [entry('1', 'Trening #anna'), entry('2', 'Kino #anna #jan')]
-    const { container } = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday={false} columns={columns} members={members} entries={entries} />)
-    expect(cellTitles(container, 'a')).toEqual(['Kino', 'Trening'])
-    expect(cellTitles(container, 'j')).toEqual([])
-    const band = container.querySelector<HTMLElement>('.day-cell[data-column="a"] .event-band')!
-    expect(band.style.getPropertyValue('--span')).toBe('2')
-    expect(band.querySelector('.event.is-shared')).toBeTruthy()
-    expect(container.querySelectorAll('.event.is-shared')).toHaveLength(1)
-    expect(container.querySelectorAll('.day-cell[data-column="j"] .event-spacer')).toHaveLength(1)
-    expect([...container.querySelectorAll('.day-row > *')].map((child) => child.className)).toEqual(['day-label', 'day-cell has-band', 'day-cell has-band', 'day-cell'])
-    expect(container.querySelector('.day-cell[data-column="j"] .event-spacer')?.classList.contains('is-end')).toBe(true)
-  })
-
-  it('sizes the band and the last spacer from the measured width of a two-person chip', () => {
-    const { container } = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday={false} columns={columns} members={members} entries={[entry('2', 'Kino #anna #jan')]} />)
-    const band = container.querySelector<HTMLElement>('.event-band')!
-    const spacer = container.querySelector<HTMLElement>('.day-cell[data-column="j"] .event-spacer')!
-    expect(band.className).toBe('event-band can-widen')
-    expect(band.style.getPropertyValue('--chip-width')).toBe('')
-    expect(spacer.style.getPropertyValue('--chip-width')).toBe('')
-    act(() => FakeResizeObserver.instances[0].resize(new Map([[band.querySelector('.event.is-shared')!, 150]])))
-    expect(band.style.getPropertyValue('--chip-width')).toBe('150px')
-    expect(spacer.style.getPropertyValue('--chip-width')).toBe('150px')
-  })
-
-  it('lets a chip of three or more people fill its band without measuring it', () => {
-    const three: FamilyMember[] = [...members, { id: 't', name: 'Tomek', tag: 'tomek', color: '#0000ff' }]
-    const { container } = render(
-      <DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday={false} columns={buildColumns(three)} members={three} entries={[entry('2', 'Kino #anna #jan #tomek')]} />,
-    )
-    expect(container.querySelector('.event-band')?.className).toBe('event-band is-wide')
-    expect(FakeResizeObserver.instances).toHaveLength(0)
-  })
-
-  it('keeps the spacer as tall as the chip: a time line only when the chip has one', () => {
-    const timedEntry = { event: { id: '3', title: 'Kino #anna #jan', allDay: false, start: new Date(2026, 9, 17, 9), end: new Date(2026, 9, 17, 10) }, isContinuation: false }
-    const withTime = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday={false} columns={columns} members={members} entries={[timedEntry]} />)
-    const jan = '.day-cell[data-column="j"] .event-spacer'
-    expect(withTime.container.querySelectorAll(`${jan} .spacer-time`)).toHaveLength(1)
-    const allDay = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday={false} columns={columns} members={members} entries={[entry('2', 'Kino #anna #jan')]} />)
-    expect(allDay.container.querySelectorAll(`${jan} .spacer-time`)).toHaveLength(0)
-    expect(allDay.container.querySelectorAll(`${jan} .spacer-title`)).toHaveLength(1)
-  })
-
-  it('opens the shared event for editing when its chip is clicked', () => {
-    const onEditEvent = vi.fn()
-    const { container } = render(
-      <DayRow day={day} isToday={false} columns={columns} members={members} entries={[entry('2', 'Kino #anna #jan')]} onAddEvent={noop} onEditEvent={onEditEvent} />,
-    )
-    fireEvent.click(container.querySelector('.event.is-shared')!)
-    expect(onEditEvent.mock.calls[0][0].id).toBe('2')
+  it('colours a chip with its person, with stripes for several people, and leaves an event of nobody grey', () => {
+    const entries = [entry('1', 'Trening #anna'), entry('2', 'Kino #anna #jan'), entry('3', 'Śmieci')]
+    const { container } = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday={false} columns={columns} members={members} columnOf={columnOf} entries={entries} />)
+    const [single, shared] = container.querySelectorAll<HTMLElement>('.day-cell[data-column="all"] .event')
+    expect(single.style.getPropertyValue('--event-color')).toBe('#ff0000')
+    expect(single.classList.contains('is-shared')).toBe(false)
+    expect(shared.classList.contains('is-shared')).toBe(true)
+    expect(container.querySelector<HTMLElement>('.day-cell[data-column="other"] .event')!.style.getPropertyValue('--event-color')).toBe('')
   })
 
   it('shows the forecast under the day label when there is one', () => {
     const forecast: DayForecast = { day: '2026-10-17', code: 0, tempMax: 20, tempMin: 10 }
-    const withForecast = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday={false} columns={columns} members={members} entries={[]} forecast={forecast} />)
+    const withForecast = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday={false} columns={columns} members={members} columnOf={columnOf} entries={[]} forecast={forecast} />)
     expect(withForecast.container.querySelector('.day-label .day-weather')).toBeTruthy()
-    const without = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday={false} columns={columns} members={members} entries={[]} />)
+    const without = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday={false} columns={columns} members={members} columnOf={columnOf} entries={[]} />)
     expect(without.container.querySelector('.day-weather')).toBeNull()
   })
 
   it('marks a pinned copy and leaves out the day key so it cannot be mistaken for the real row', () => {
-    const { container } = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday pinned columns={columns} members={members} entries={[]} />)
+    const { container } = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday pinned columns={columns} members={members} columnOf={columnOf} entries={[]} />)
     const row = container.querySelector('.day-row')!
     expect(row.classList.contains('is-pinned')).toBe(true)
     expect(row.hasAttribute('data-day')).toBe(false)
   })
 
   it('is not pinned by default', () => {
-    const { container } = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday columns={columns} members={members} entries={[]} />)
+    const { container } = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday columns={columns} members={members} columnOf={columnOf} entries={[]} />)
     expect(container.querySelector('.day-row')?.classList.contains('is-pinned')).toBe(false)
   })
 
@@ -150,11 +99,11 @@ describe('DayRow', () => {
     const rowClick = vi.fn()
     const { container } = render(
       <div onClick={rowClick}>
-        <DayRow day={day} isToday={false} columns={columns} members={members} entries={[]} onAddEvent={onAddEvent} onEditEvent={noop} />
+        <DayRow day={day} isToday={false} columns={columns} members={members} columnOf={columnOf} entries={[]} onAddEvent={onAddEvent} onEditEvent={noop} />
       </div>,
     )
-    fireEvent.click(container.querySelector('.day-cell[data-column="j"]')!)
-    expect(onAddEvent).toHaveBeenCalledWith(day, 'j')
+    fireEvent.click(container.querySelector('.day-cell[data-column="work"]')!)
+    expect(onAddEvent).toHaveBeenCalledWith(day, 'work')
     fireEvent.click(container.querySelector('.day-cell[data-column="other"]')!)
     expect(onAddEvent).toHaveBeenLastCalledWith(day, 'other')
     expect(rowClick).not.toHaveBeenCalled()
@@ -164,7 +113,7 @@ describe('DayRow', () => {
     const onAddEvent = vi.fn()
     const onEditEvent = vi.fn()
     const { container } = render(
-      <DayRow day={day} isToday={false} columns={columns} members={members} entries={[entry('1', 'Trening #anna')]} onAddEvent={onAddEvent} onEditEvent={onEditEvent} />,
+      <DayRow day={day} isToday={false} columns={columns} members={members} columnOf={columnOf} entries={[entry('1', 'Trening #anna')]} onAddEvent={onAddEvent} onEditEvent={onEditEvent} />,
     )
     fireEvent.click(container.querySelector('.event')!)
     expect(onEditEvent).toHaveBeenCalledTimes(1)
@@ -186,6 +135,7 @@ describe('DayRow', () => {
           isToday={props.isToday ?? false}
           columns={columns}
           members={members}
+          columnOf={columnOf}
           entries={props.entries ?? []}
           expansion={expansion(props.expanded, props.onToggle)}
           onAddEvent={noop}
@@ -208,7 +158,7 @@ describe('DayRow', () => {
     })
 
     it('keeps the date a plain element without expansion', () => {
-      const { container } = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday={false} columns={columns} members={members} entries={[]} />)
+      const { container } = render(<DayRow onAddEvent={noop} onEditEvent={noop} day={day} isToday={false} columns={columns} members={members} columnOf={columnOf} entries={[]} />)
       expect(container.querySelector('button')).toBeNull()
       expect(container.querySelector('.day-date')?.textContent).toBe('17so')
     })

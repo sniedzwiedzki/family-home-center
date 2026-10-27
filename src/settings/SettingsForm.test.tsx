@@ -95,6 +95,21 @@ describe('SettingsForm', () => {
     expect(save().disabled).toBe(true)
   })
 
+  it('saves the column widths and the work tag', () => {
+    const onChange = vi.fn()
+    render(<SettingsForm settings={settings} geocoder={geocoder} checkGoogle={checkGoogle} onChange={onChange} onClose={vi.fn()} />)
+    fireEvent.change(screen.getByLabelText('Wszystkie'), { target: { value: '4' } })
+    fireEvent.change(screen.getByLabelText('Tag pracy'), { target: { value: 'biuro' } })
+    fireEvent.click(save())
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ columns: { widths: { ...settings.columns.widths, all: 4 }, workTag: 'biuro' } }))
+  })
+
+  it('cannot be saved while a column width is not valid', () => {
+    render(<SettingsForm settings={settings} geocoder={geocoder} checkGoogle={checkGoogle} onChange={vi.fn()} onClose={vi.fn()} />)
+    fireEvent.change(screen.getByLabelText('Inne'), { target: { value: '0' } })
+    expect(save().disabled).toBe(true)
+  })
+
   it('saves the special tag, normalized', () => {
     const onChange = vi.fn()
     render(<SettingsForm settings={settings} geocoder={geocoder} checkGoogle={checkGoogle} onChange={onChange} onClose={vi.fn()} />)

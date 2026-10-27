@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { FamilyMember } from '../family/familyMember'
 import { CalendarView } from './CalendarView'
+import { DEFAULT_COLUMN_LAYOUT } from './columns'
 import { formatMonthLabel } from '../shared/format'
 import { addDays, dayKey } from './days'
 import type { DayForecast, HourForecast } from '../weather/types'
@@ -93,22 +94,39 @@ afterEach(() => {
 
 describe('CalendarView', () => {
   it('renders sticky column headers and 121 day rows (30 before today, 90 after)', async () => {
-    const { container } = render(<CalendarView port={port()} members={members} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
-    expect([...container.querySelectorAll('.column-name')].map((h) => h.textContent)).toEqual(['Anna', 'Inne'])
+    const { container } = render(<CalendarView port={port()} members={members} columnLayout={DEFAULT_COLUMN_LAYOUT} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
+    expect([...container.querySelectorAll('.column-name')].map((h) => h.textContent)).toEqual(['Anna'])
+    expect(container.querySelector<HTMLElement>('.calendar')!.style.getPropertyValue('--column-template')).toBe('minmax(0, 3fr) minmax(0, 2fr) minmax(0, 1.5fr) minmax(0, 1.5fr)')
     expect(rows(container)).toHaveLength(121)
     expect(await screen.findByText('Dzisiejsze')).toBeTruthy()
   })
 
-  it('shows the event in the column of its tag', async () => {
-    const { container } = render(<CalendarView port={port()} members={members} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
+  it('shows a family event in "Wszystkie"', async () => {
+    const { container } = render(<CalendarView port={port()} members={members} columnLayout={DEFAULT_COLUMN_LAYOUT} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
     await screen.findByText('Dzisiejsze')
     const row = container.querySelector(`[data-day="${dayKey(today)}"]`)!
-    expect(row.querySelector('.day-cell[data-column="a"] .event-title')?.textContent).toBe('Dzisiejsze')
+    expect(row.querySelector('.day-cell[data-column="all"] .event-title')?.textContent).toBe('Dzisiejsze')
     expect(row.querySelector('.day-cell[data-column="other"] .event')).toBeNull()
   })
 
+  it('puts the occurrences of a weekly series in "Powtarzalne" and a work event in "Praca"', async () => {
+    const at = (dayOffset: number, hour: number) => new Date(today.getFullYear(), today.getMonth(), today.getDate() + dayOffset, hour)
+    const weekly = (dayOffset: number): CalendarEvent => ({ id: `basen-${dayOffset}`, recurringEventId: 'basen', title: 'Basen #anna', allDay: false, start: at(dayOffset, 17), end: at(dayOffset, 18) })
+    const work: CalendarEvent = { ...todayEvent, id: 'work', title: 'Spotkanie #anna #praca' }
+    const { container } = render(
+      <CalendarView port={portOf(vi.fn(async () => [weekly(0), weekly(7), work]))} members={members} columnLayout={DEFAULT_COLUMN_LAYOUT} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />,
+    )
+    await screen.findByText('Spotkanie')
+    const titlesIn = (dayOffset: number, columnId: string) =>
+      [...container.querySelectorAll(`.day-row[data-day="${dayKey(at(dayOffset, 0))}"] .day-cell[data-column="${columnId}"] .event-title`)].map((title) => title.textContent)
+    expect(titlesIn(0, 'recurring')).toEqual(['Basen'])
+    expect(titlesIn(7, 'recurring')).toEqual(['Basen'])
+    expect(titlesIn(0, 'work')).toEqual(['Spotkanie'])
+    expect(titlesIn(0, 'all')).toEqual([])
+  })
+
   it('marks today and scrolls it into view on mount', async () => {
-    const { container } = render(<CalendarView port={port()} members={members} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
+    const { container } = render(<CalendarView port={port()} members={members} columnLayout={DEFAULT_COLUMN_LAYOUT} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
     await screen.findByText('Dzisiejsze')
     expect(container.querySelector(`[data-day="${dayKey(today)}"]`)?.classList.contains('is-today')).toBe(true)
     expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' })
@@ -118,7 +136,7 @@ describe('CalendarView', () => {
   it('keeps today at the top when events load later, until the calendar is scrolled', async () => {
     let resolveEvents: (events: CalendarEvent[]) => void = () => undefined
     const slow = portOf(vi.fn(() => new Promise<CalendarEvent[]>((resolve) => (resolveEvents = resolve))))
-    const view = (refreshSignal: number) => <CalendarView port={slow} members={members} refreshSignal={refreshSignal} forecasts={noForecasts} hourForecasts={noHours} />
+    const view = (refreshSignal: number) => <CalendarView port={slow} members={members} columnLayout={DEFAULT_COLUMN_LAYOUT} refreshSignal={refreshSignal} forecasts={noForecasts} hourForecasts={noHours} />
     const { container, rerender } = render(view(0))
     expect(scrollIntoView).toHaveBeenCalledTimes(1)
     resolveEvents([todayEvent])
@@ -138,19 +156,19 @@ describe('CalendarView', () => {
   it('shows an alert when events cannot be loaded', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined)
     const failing = portOf(vi.fn(async () => Promise.reject(new Error('offline'))))
-    render(<CalendarView port={failing} members={members} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
+    render(<CalendarView port={failing} members={members} columnLayout={DEFAULT_COLUMN_LAYOUT} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
     expect((await screen.findByRole('alert')).textContent).toBe('Nie udało się pobrać wydarzeń.')
   })
 
   it('extends into the future when the bottom sentinel becomes visible', async () => {
-    const { container } = render(<CalendarView port={port()} members={members} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
+    const { container } = render(<CalendarView port={port()} members={members} columnLayout={DEFAULT_COLUMN_LAYOUT} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
     await screen.findByText('Dzisiejsze')
     intersect(observers[0].targets[1])
     expect(rows(container)).toHaveLength(151)
   })
 
   it('extends into the past and keeps the same row where it was when the top sentinel becomes visible', async () => {
-    const { container } = render(<CalendarView port={port()} members={members} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
+    const { container } = render(<CalendarView port={port()} members={members} columnLayout={DEFAULT_COLUMN_LAYOUT} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
     await screen.findByText('Dzisiejsze')
     const main = container.querySelector('main')!
     main.scrollTop = 500
@@ -161,7 +179,7 @@ describe('CalendarView', () => {
   })
 
   it('anchors on the first row when none is visible below the headers', async () => {
-    const { container } = render(<CalendarView port={port()} members={members} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
+    const { container } = render(<CalendarView port={port()} members={members} columnLayout={DEFAULT_COLUMN_LAYOUT} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
     await screen.findByText('Dzisiejsze')
     const main = container.querySelector('main')!
     main.scrollTop = 500
@@ -172,7 +190,7 @@ describe('CalendarView', () => {
   })
 
   it('keeps the place when both ends are extended in the same update', async () => {
-    const { container } = render(<CalendarView port={port()} members={members} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
+    const { container } = render(<CalendarView port={port()} members={members} columnLayout={DEFAULT_COLUMN_LAYOUT} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
     await screen.findByText('Dzisiejsze')
     const main = container.querySelector('main')!
     main.scrollTop = 500
@@ -192,14 +210,14 @@ describe('CalendarView', () => {
   })
 
   it('ignores sentinels that are not intersecting', async () => {
-    const { container } = render(<CalendarView port={port()} members={members} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
+    const { container } = render(<CalendarView port={port()} members={members} columnLayout={DEFAULT_COLUMN_LAYOUT} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
     await screen.findByText('Dzisiejsze')
     intersect(observers[0].targets[1], false)
     expect(rows(container)).toHaveLength(121)
   })
 
   it('observes both sentinels inside the calendar and disconnects on unmount', async () => {
-    const { container, unmount } = render(<CalendarView port={port()} members={members} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
+    const { container, unmount } = render(<CalendarView port={port()} members={members} columnLayout={DEFAULT_COLUMN_LAYOUT} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
     await screen.findByText('Dzisiejsze')
     expect(observers).toHaveLength(1)
     expect(observers[0].targets).toHaveLength(2)
@@ -210,14 +228,14 @@ describe('CalendarView', () => {
 
   it('shows the forecast in the row of its day only', async () => {
     const forecast: DayForecast = { day: dayKey(today), code: 0, tempMax: 20, tempMin: 10 }
-    const { container } = render(<CalendarView port={port()} members={members} refreshSignal={0} forecasts={new Map([[forecast.day, forecast]])} hourForecasts={noHours} />)
+    const { container } = render(<CalendarView port={port()} members={members} columnLayout={DEFAULT_COLUMN_LAYOUT} refreshSignal={0} forecasts={new Map([[forecast.day, forecast]])} hourForecasts={noHours} />)
     await screen.findByText('Dzisiejsze')
     expect(container.querySelectorAll('.day-weather')).toHaveLength(1)
     expect(container.querySelector(`[data-day="${dayKey(today)}"] .day-weather`)?.textContent).toContain('20°/10°')
   })
 
   it('groups the days into month blocks with the month name as a label', async () => {
-    const { container } = render(<CalendarView port={port()} members={members} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
+    const { container } = render(<CalendarView port={port()} members={members} columnLayout={DEFAULT_COLUMN_LAYOUT} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
     await screen.findByText('Dzisiejsze')
     const blocks = [...container.querySelectorAll('.month-block')]
     expect(blocks.length).toBeGreaterThanOrEqual(2)
@@ -230,7 +248,7 @@ describe('CalendarView', () => {
 
   describe('today pinned to the edge of the scroll area', () => {
     const renderCalendar = async () => {
-      const view = render(<CalendarView port={port()} members={members} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
+      const view = render(<CalendarView port={port()} members={members} columnLayout={DEFAULT_COLUMN_LAYOUT} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
       await screen.findByText('Dzisiejsze')
       return { ...view, main: view.container.querySelector('main')! }
     }
@@ -309,28 +327,30 @@ describe('CalendarView', () => {
     const field = (label: string) => screen.getByLabelText(label) as HTMLInputElement
     const renderEditable = async () => {
       const calendar = port()
-      const view = render(<CalendarView port={calendar} members={members} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
+      const view = render(<CalendarView port={calendar} members={members} columnLayout={DEFAULT_COLUMN_LAYOUT} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
       await screen.findByText('Dzisiejsze')
       return { calendar, ...view }
     }
 
-    it('opens a new-event dialog for the clicked day with the column person preselected', async () => {
+    it('opens a new-event dialog for the clicked day with nobody preselected', async () => {
       const { container } = await renderEditable()
-      fireEvent.click(cell(container, tomorrow, 'a'))
+      fireEvent.click(cell(container, tomorrow, 'all'))
       expect(screen.getByRole('dialog', { name: 'Nowe wydarzenie' })).toBeTruthy()
       expect(field('Data').value).toBe(dayKey(tomorrow))
-      expect(pressed('Anna')).toBe('true')
+      expect(pressed('Anna')).toBe('false')
+      expect(field('Praca').checked).toBe(false)
     })
 
-    it('preselects nobody for the "Inne" column', async () => {
+    it('ticks "Praca" for a new event from the "Praca" column', async () => {
       const { container } = await renderEditable()
-      fireEvent.click(cell(container, tomorrow, 'other'))
-      expect(pressed('Anna')).toBe('false')
+      fireEvent.click(cell(container, tomorrow, 'work'))
+      expect(field('Praca').checked).toBe(true)
     })
 
     it('creates the event, closes the dialog and reloads the events', async () => {
       const { calendar, container } = await renderEditable()
-      fireEvent.click(cell(container, tomorrow, 'a'))
+      fireEvent.click(cell(container, tomorrow, 'all'))
+      fireEvent.click(screen.getByRole('button', { name: 'Anna' }))
       fireEvent.change(field('Tytuł'), { target: { value: 'Dentysta' } })
       fireEvent.click(screen.getByRole('button', { name: 'Zapisz' }))
       await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
@@ -346,7 +366,7 @@ describe('CalendarView', () => {
       vi.spyOn(console, 'error').mockImplementation(() => undefined)
       const { calendar, container } = await renderEditable()
       vi.mocked(calendar.createEvent).mockRejectedValueOnce(new Error('quota'))
-      fireEvent.click(cell(container, tomorrow, 'a'))
+      fireEvent.click(cell(container, tomorrow, 'all'))
       fireEvent.change(field('Tytuł'), { target: { value: 'Dentysta' } })
       fireEvent.click(screen.getByRole('button', { name: 'Zapisz' }))
       expect((await screen.findByRole('alert')).textContent).toBe('Nie udało się zapisać wydarzenia')
@@ -379,15 +399,15 @@ describe('CalendarView', () => {
 
       it('offers no repeat controls without Google', async () => {
         const { container } = await renderEditable()
-        fireEvent.click(cell(container, tomorrow, 'a'))
+        fireEvent.click(cell(container, tomorrow, 'all'))
         expect(screen.queryByLabelText('Powtarzaj')).toBeNull()
       })
 
       it('creates a repeating event with its rule', async () => {
         const calendar = withSeries()
-        const { container } = render(<CalendarView port={calendar} members={members} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
+        const { container } = render(<CalendarView port={calendar} members={members} columnLayout={DEFAULT_COLUMN_LAYOUT} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
         await screen.findByText('Dzisiejsze')
-        fireEvent.click(cell(container, tomorrow, 'a'))
+        fireEvent.click(cell(container, tomorrow, 'all'))
         fireEvent.change(field('Tytuł'), { target: { value: 'Basen' } })
         fireEvent.change(screen.getByLabelText('Powtarzaj'), { target: { value: 'weekly' } })
         fireEvent.click(screen.getByRole('button', { name: 'Zapisz' }))
@@ -397,7 +417,7 @@ describe('CalendarView', () => {
 
       it('makes an existing single event repeat', async () => {
         const calendar = withSeries()
-        const { container } = render(<CalendarView port={calendar} members={members} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
+        const { container } = render(<CalendarView port={calendar} members={members} columnLayout={DEFAULT_COLUMN_LAYOUT} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
         await screen.findByText('Dzisiejsze')
         fireEvent.click(container.querySelector(`.day-row[data-day="${dayKey(today)}"] .event`)!)
         fireEvent.change(screen.getByLabelText('Powtarzaj'), { target: { value: 'yearly' } })
@@ -425,7 +445,7 @@ describe('CalendarView', () => {
       const recurring: CalendarEvent = { ...todayEvent, id: 'cal|series_20261018', recurringEventId: 'cal|series' }
       const open = async () => {
         const calendar = portOf(vi.fn(async () => [recurring]))
-        const view = render(<CalendarView port={calendar} members={members} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
+        const view = render(<CalendarView port={calendar} members={members} columnLayout={DEFAULT_COLUMN_LAYOUT} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
         await screen.findByText('Dzisiejsze')
         fireEvent.click(view.container.querySelector(`.day-row[data-day="${dayKey(today)}"] .event`)!)
         return calendar
@@ -443,7 +463,7 @@ describe('CalendarView', () => {
             ...portOf(vi.fn(async () => [recurring])),
             series: { loadRule: vi.fn(async () => rule), update: vi.fn(async () => undefined) },
           }
-          const view = render(<CalendarView port={calendar} members={members} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
+          const view = render(<CalendarView port={calendar} members={members} columnLayout={DEFAULT_COLUMN_LAYOUT} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
           await screen.findByText('Dzisiejsze')
           fireEvent.click(view.container.querySelector(`.day-row[data-day="${dayKey(today)}"] .event`)!)
           return calendar
@@ -496,7 +516,7 @@ describe('CalendarView', () => {
 
     it('closes without saving on cancel', async () => {
       const { calendar, container } = await renderEditable()
-      fireEvent.click(cell(container, tomorrow, 'a'))
+      fireEvent.click(cell(container, tomorrow, 'all'))
       fireEvent.click(screen.getByRole('button', { name: 'Anuluj' }))
       expect(screen.queryByRole('dialog')).toBeNull()
       expect(calendar.createEvent).not.toHaveBeenCalled()
@@ -504,7 +524,7 @@ describe('CalendarView', () => {
 
     it('gives each opened dialog fresh form state', async () => {
       const { container } = await renderEditable()
-      fireEvent.click(cell(container, tomorrow, 'a'))
+      fireEvent.click(cell(container, tomorrow, 'all'))
       fireEvent.change(field('Tytuł'), { target: { value: 'Pierwsze' } })
       fireEvent.click(screen.getByRole('button', { name: 'Anuluj' }))
       fireEvent.click(cell(container, tomorrow, 'other'))
@@ -518,9 +538,9 @@ describe('CalendarView', () => {
       .mockResolvedValueOnce([todayEvent])
       .mockResolvedValueOnce([{ ...todayEvent, title: 'Nowe #anna' }])
     const calendar = portOf(listEvents)
-    const { rerender } = render(<CalendarView port={calendar} members={members} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
+    const { rerender } = render(<CalendarView port={calendar} members={members} columnLayout={DEFAULT_COLUMN_LAYOUT} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
     await screen.findByText('Dzisiejsze')
-    rerender(<CalendarView port={calendar} members={members} refreshSignal={1} forecasts={noForecasts} hourForecasts={noHours} />)
+    rerender(<CalendarView port={calendar} members={members} columnLayout={DEFAULT_COLUMN_LAYOUT} refreshSignal={1} forecasts={noForecasts} hourForecasts={noHours} />)
     expect(await screen.findByText('Nowe')).toBeTruthy()
     expect(screen.queryByText('Dzisiejsze')).toBeNull()
     expect(listEvents).toHaveBeenCalledTimes(2)
@@ -535,7 +555,7 @@ describe('CalendarView', () => {
     const toggle = (container: HTMLElement, day: Date) => fireEvent.click(rowOf(container, day).querySelector('button.day-date')!)
     const renderAt = async (time: Date, listEvents: CalendarEvent[] = [todayEvent]) => {
       vi.setSystemTime(time)
-      const view = render(<CalendarView port={portOf(vi.fn(async () => listEvents))} members={members} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
+      const view = render(<CalendarView port={portOf(vi.fn(async () => listEvents))} members={members} columnLayout={DEFAULT_COLUMN_LAYOUT} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
       await screen.findByText(listEvents[0].title.replace(' #anna', ''))
       return view
     }
@@ -543,14 +563,14 @@ describe('CalendarView', () => {
     it('expands no day by default', async () => {
       const { container } = await renderAt(atTime(12))
       expect(expandedDays(container)).toEqual([])
-      expect(rowOf(container, today).querySelector('.day-cell[data-column="a"] .event-title')?.textContent).toBe('Dzisiejsze')
+      expect(rowOf(container, today).querySelector('.day-cell[data-column="all"] .event-title')?.textContent).toBe('Dzisiejsze')
     })
 
     it('expands a day on demand and draws its event on the hour grid with the now-line', async () => {
       const { container } = await renderAt(atTime(12))
       toggle(container, today)
       expect(expandedDays(container)).toEqual([dayKey(today)])
-      expect(rowOf(container, today).querySelector('.hour-track[data-column="a"] .event.is-timed .event-title')?.textContent).toBe('Dzisiejsze')
+      expect(rowOf(container, today).querySelector('.hour-track[data-column="all"] .event.is-timed .event-title')?.textContent).toBe('Dzisiejsze')
       expect(rowOf(container, today).querySelector('.now-line')).toBeTruthy()
       expect(rowOf(container, tomorrow).querySelector('.hour-body')).toBeNull()
     })
@@ -563,7 +583,7 @@ describe('CalendarView', () => {
     it('opens the new-event dialog at the hour that was clicked in the hour view', async () => {
       const { container } = await renderAt(atTime(12))
       toggle(container, today)
-      const track = rowOf(container, today).querySelector<HTMLElement>('.hour-track[data-column="a"]')!
+      const track = rowOf(container, today).querySelector<HTMLElement>('.hour-track[data-column="all"]')!
       vi.spyOn(track, 'getBoundingClientRect').mockReturnValue({ top: 0, height: 1300 } as DOMRect)
       fireEvent.click(track, { clientY: 750 })
       expect((screen.getByLabelText('Od') as HTMLInputElement).value).toBe('14:00')
@@ -574,7 +594,7 @@ describe('CalendarView', () => {
       const at = (hour: number) => new Date(today.getFullYear(), today.getMonth(), today.getDate(), hour)
       const hours = new Map([8, 9, 10].map((hour) => [at(hour).getTime(), { time: at(hour), code: 0, temp: hour + 0.4 }]))
       vi.setSystemTime(atTime(12))
-      const { container } = render(<CalendarView port={port()} members={members} refreshSignal={0} forecasts={noForecasts} hourForecasts={hours} />)
+      const { container } = render(<CalendarView port={port()} members={members} columnLayout={DEFAULT_COLUMN_LAYOUT} refreshSignal={0} forecasts={noForecasts} hourForecasts={hours} />)
       await screen.findByText('Dzisiejsze')
       toggle(container, today)
       expect([...container.querySelectorAll('.hour-weather')].map((node) => node.textContent)).toEqual(['☀️8°', '☀️9°', '☀️10°'])
@@ -596,14 +616,14 @@ describe('CalendarView', () => {
       toggle(container, today)
       expect(expandedDays(container)).toEqual([])
       expect(rowOf(container, today).querySelector('.day-date')?.getAttribute('aria-expanded')).toBe('false')
-      expect(rowOf(container, today).querySelector('.day-cell[data-column="a"] .event-title')?.textContent).toBe('Dzisiejsze')
+      expect(rowOf(container, today).querySelector('.day-cell[data-column="all"] .event-title')?.textContent).toBe('Dzisiejsze')
     })
 
     it('forgets the choice when the next day begins', async () => {
       vi.useRealTimers()
       vi.useFakeTimers()
       vi.setSystemTime(atTime(23, 30))
-      const { container } = render(<CalendarView port={port()} members={members} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
+      const { container } = render(<CalendarView port={port()} members={members} columnLayout={DEFAULT_COLUMN_LAYOUT} refreshSignal={0} forecasts={noForecasts} hourForecasts={noHours} />)
       await act(() => vi.advanceTimersByTimeAsync(0))
       toggle(container, addDays(today, 2))
       expect(expandedDays(container)).toEqual([dayKey(addDays(today, 2))])

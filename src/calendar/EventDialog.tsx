@@ -20,6 +20,8 @@ interface EventDialogProps {
   heading: string
   initial: EventDraft
   members: readonly FamilyMember[]
+  /** The tag the "Praca" checkbox sets. */
+  workTag: string
   /** Present when editing; its other hidden properties survive the save. */
   existing?: CalendarEvent
   /** Present when events can repeat (Google Calendar); without it the dialog has no repeat controls. */
@@ -30,7 +32,7 @@ interface EventDialogProps {
   onClose: () => void
 }
 
-export function EventDialog({ heading, initial, members, existing, series, onSave, onDelete, onClose }: EventDialogProps) {
+export function EventDialog({ heading, initial, members, workTag, existing, series, onSave, onDelete, onClose }: EventDialogProps) {
   const specialTag = useContext(SpecialTagContext)
   const [draft, setDraft] = useState(initial)
   const [errors, setErrors] = useState<DraftErrors>({})
@@ -169,6 +171,11 @@ export function EventDialog({ heading, initial, members, existing, series, onSav
         <label className="check">
           <input type="checkbox" checked={draft.special !== null} onChange={(event) => change({ special: event.target.checked ? specialTag : null })} />
           Wydarzenie specjalne ★
+        </label>
+
+        <label className="check">
+          <input type="checkbox" checked={draft.work !== null} onChange={(event) => change({ work: event.target.checked ? workTag : null })} />
+          Praca
         </label>
 
         <label className="check">

@@ -3,6 +3,8 @@ import { familyMembersSchema, normalizeTag } from '../family/familyMember'
 import { hasErrors, memberErrors, type DraftMember } from '../family/memberErrors'
 import type { DiscoveredCalendar } from '../google/calendarList'
 import type { GeocodingPort, GeoLocation } from '../weather/types'
+import { ColumnLayoutEditor } from './ColumnLayoutEditor'
+import { columnLayoutFromDraft, draftFromColumnLayout } from './columnLayoutDraft'
 import { FamilyMembersEditor } from './FamilyMembersEditor'
 import { FontSizeSettingsEditor } from './FontSizeSettingsEditor'
 import { draftFromFontSizes, fontSizesDraftError, fontSizesFromDraft } from './fontSizes'
@@ -31,6 +33,7 @@ export function SettingsForm({ settings, geocoder, checkGoogle, onChange, onClos
   const [gemini, setGemini] = useState(() => draftFromGemini(settings.gemini))
   const [fontSizes, setFontSizes] = useState(() => draftFromFontSizes(settings.fontSizes))
   const [specialTag, setSpecialTag] = useState(settings.specialTag)
+  const [columnLayout, setColumnLayout] = useState(() => draftFromColumnLayout(settings.columns))
   const [isChangingPin, setIsChangingPin] = useState(false)
   const errors = memberErrors(members)
   const specialTagProblem = specialTagError(
@@ -39,7 +42,7 @@ export function SettingsForm({ settings, geocoder, checkGoogle, onChange, onClos
   )
 
   const save = () => {
-    onChange({ ...settings, familyMembers: familyMembersSchema.parse(members), weather: { location }, gemini: geminiFromDraft(gemini), fontSizes: fontSizesFromDraft(fontSizes), specialTag: normalizeTag(specialTag), ...googleSettingsFromDraft(google) })
+    onChange({ ...settings, familyMembers: familyMembersSchema.parse(members), weather: { location }, gemini: geminiFromDraft(gemini), fontSizes: fontSizesFromDraft(fontSizes), specialTag: normalizeTag(specialTag), columns: columnLayoutFromDraft(columnLayout)!, ...googleSettingsFromDraft(google) })
     onClose()
   }
 
@@ -62,6 +65,7 @@ export function SettingsForm({ settings, geocoder, checkGoogle, onChange, onClos
       <GeminiSettingsEditor draft={gemini} onChange={setGemini} />
       <FontSizeSettingsEditor draft={fontSizes} onChange={setFontSizes} />
       <SpecialTagEditor value={specialTag} error={specialTagProblem} onChange={setSpecialTag} />
+      <ColumnLayoutEditor draft={columnLayout} onChange={setColumnLayout} />
       <section className="settings-section">
         <h3>Zabezpieczenie</h3>
         <button type="button" onClick={() => setIsChangingPin(true)}>
@@ -69,7 +73,7 @@ export function SettingsForm({ settings, geocoder, checkGoogle, onChange, onClos
         </button>
       </section>
       <div className="settings-actions">
-        <button type="button" disabled={hasErrors(errors) || googleDraftError(google) !== null || fontSizesDraftError(fontSizes) !== null || specialTagProblem !== null} onClick={save}>
+        <button type="button" disabled={hasErrors(errors) || googleDraftError(google) !== null || fontSizesDraftError(fontSizes) !== null || specialTagProblem !== null || columnLayoutFromDraft(columnLayout) === null} onClick={save}>
           Zapisz
         </button>
         <button type="button" onClick={onClose}>

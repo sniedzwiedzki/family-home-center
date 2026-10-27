@@ -111,6 +111,7 @@ export function createToolExecutor({ port, members, specialTag }: ToolExecutorOp
       description: parsed.description ?? '',
       memberIds,
       special: null,
+      work: null,
       allDay: parsed.allDay ?? parsed.startTime === undefined,
       startDate: parsed.date,
       endDate: parsed.endDate ?? parsed.date,
@@ -144,6 +145,7 @@ export function createToolExecutor({ port, members, specialTag }: ToolExecutorOp
       description: parsed.description ?? current.description,
       memberIds: memberIds ?? current.memberIds,
       special: current.special,
+      work: current.work,
       allDay: parsed.allDay ?? (parsed.startTime === undefined ? current.allDay : false),
       startDate,
       // A one-day event follows its date; a longer one needs an explicit end date.

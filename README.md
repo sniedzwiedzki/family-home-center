@@ -10,13 +10,13 @@ A big calendar with events, actions, tasks and more. The first iteration covers 
 
 - Content is fetched from the Google calendars chosen in settings; new events go to the default calendar chosen in settings.
 - Never-ending scroll page in both directions, starting at today; each date is a single row.
-- One day at a time can be expanded into an hour view (7:00 to 20:00, more only when an event starts earlier or ends later), with events at their hours and a now-line that moves every minute; the hour grid starts half an hour before the first hour (6:30 for the usual 7:00) so the first hour is not cramped against the top. No day expands by itself: tapping a date expands or collapses that day, and that choice is forgotten once the next day begins. The home button above the dates collapses the expanded day (if any) and scrolls back to today. Clicking the hour grid starts a new event at the clicked hour (one hour long). In the compact day rows a long event title is cut after two lines with an ellipsis.
+- One day at a time can be expanded into an hour view (7:00 to 20:00, more only when an event starts earlier or ends later), with events at their hours and a now-line that moves every minute; the hour grid starts half an hour before the first hour (6:30 for the usual 7:00) so the first hour is not cramped against the top. No day expands by itself: tapping a date (there is no arrow; the date itself is the button) expands or collapses that day, and that choice is forgotten once the next day begins. The home button above the dates collapses the expanded day (if any) and scrolls back to today. Clicking the hour grid starts a new event at the clicked hour (one hour long). In the compact day rows a long event title is cut after two lines with an ellipsis.
 - All-day and multi-day events appear in the row of every day they cover.
 - A special event (the event dialog has **Wydarzenie specjalne ★**, or the special tag typed in the title, `#star` by default) is shown with a gold star before its title. The special tag is set in the settings and must differ from the people's tags; a special event without a person's tag sits in "Inne" like any untagged event.
 - An all-day event shows only its title (no "cały dzień" line); a following day of a multi-day event says "ciąg dalszy" only when the event ends during that day; a day it covers fully shows only the title.
-- An event with the tags of several people is drawn once when those people are neighbours in the column order: one chip in the first of their cells, as wide as their columns, in the same row as the other chips, so the grid lines stay and the columns of other people are untouched (their cells keep the same height free). People separated by someone who does not take part keep their own chips, and so does a second shared event that would overlap the first in a column. In the hour view of an expanded day, timed events are still drawn per person.
+- Each chip has the colour of its person; an event of several people is one chip split into each person's colour by slanted ("/") lines. An event of nobody in the family is grey. Chips in a cell start at the top left.
 - Application language: Polish (all UI text, dates and weather labels). The repository itself (code, docs, specs) stays in English.
-- Clicking an empty spot of a day in a person's column opens a dialog to add an event; that person is preselected, and more people can be added or changed. Clicking an existing event opens the same dialog to edit its date, time and content, or to remove it (with a second tap to confirm). With Google connected the dialog also has **Powtarzaj** (see Repeating events below). For a recurring Google event a switch at the top chooses what an edit changes (**To wystąpienie** or **Cała seria**), and deleting asks whether to delete the occurrence or the whole series.
+- Clicking an empty spot of a day opens a dialog to add an event; nobody is preselected (in "Praca" the **Praca** box is ticked). The dialog has the people, **Wydarzenie specjalne ★** and **Praca**. Clicking an existing event opens the same dialog to edit its date, time and content, or to remove it (with a second tap to confirm). With Google connected the dialog also has **Powtarzaj** (see Repeating events below). For a recurring Google event a switch at the top chooses what an edit changes (**To wystąpienie** or **Cała seria**), and deleting asks whether to delete the occurrence or the whole series.
 - Events live in Google Calendar when Google is connected in the settings; otherwise they are kept only in the browser's local storage (key `fhc.events.v1`).
 - The settings button (in the top bar) opens the settings.
 
@@ -43,10 +43,13 @@ A big calendar with events, actions, tasks and more. The first iteration covers 
 
 ### Columns and family members
 
-- The calendar has X columns, one per family member; family members are defined in settings.
-- Each family member has a different color, definable in settings.
-- Each family member has a unique tag; events are shown in the matching column based on that tag. The tag is stored in the event's hidden properties, and `#tag` in the event title is recognised too. An event with several tags is shown in every matching column.
-- The last column is fixed and shows "Other" events (those that match no family member tag).
+- Four columns without names, left to right: **Wszystkie**, **Powtarzalne**, **Praca**, **Inne**. Every event is shown in exactly one of them, checked in this order:
+  1. **Praca**: events with the work tag (`#praca` by default, the **Praca** box in the dialog), with or without a person.
+  2. **Inne**: events that match no family member's tag.
+  3. **Powtarzalne**: family events of a series that repeats daily or weekly (two of its occurrences at most 7 days apart; monthly and yearly series such as birthdays are not counted).
+  4. **Wszystkie**: all other family events.
+- The header row is a legend of the family members (initial, name and colour) on the right; the home button stays on the left.
+- Family members are defined in settings; each has a different colour and a unique tag. The tag is stored in the event's hidden properties, and `#tag` in the event title is recognised too.
 
 ### Settings
 
@@ -57,6 +60,7 @@ A big calendar with events, actions, tasks and more. The first iteration covers 
 - Define family members (name, unique tag, color).
 - Gemini API key and model for the voice assistant.
 - The special tag that marks an event with a gold star (default `star`; letters, digits, `_` or `-`, not the tag of a person).
+- Columns: the relative width of each column (0.5 to 10; defaults 3, 2, 1.5 and 1.5) and the work tag (default `praca`).
 - Font size for the event title, the event time and the day-of-month number, each typed separately as a number of pixels of the 1600 px kiosk display (8 to 120; defaults 20, 16 and 41).
 
 ## Google Calendar integration
@@ -107,7 +111,7 @@ Menu names come from Google's documentation and pages checked on 2026-10-18; the
    3. Choose the Google account, click through the "Google hasn't verified this app" screen if it appears (Advanced, then continue; wording may differ), tick both permissions and continue.
    4. **Step 2, Exchange authorization code for tokens**: click the button. The right-hand panel shows the response: copy the value of **`refresh_token`**.
 9. **Enter it in the app** (on the tablet, or in any browser at the same address): Ustawienia (PIN), section **Google Calendar**, paste *Identyfikator klienta*, *Sekret klienta* and *Token odświeżania*, click **Sprawdź połączenie**. When it says "Połączono. Liczba kalendarzy: N." the calendars are listed: tick **Pokaż** for the ones to display and pick **Zapisuj tutaj** for the one that receives new events (only calendars you can edit can be picked). Click **Zapisz**.
-10. **Check it**: today's Google events appear in the columns of the people whose tag they carry (or in "Inne"); add an event from the app and look for it in Google Calendar.
+10. **Check it**: today's Google events appear in the column for their kind, in the colour of the people whose tag they carry (or in "Inne"); add an event from the app and look for it in Google Calendar.
 
 ### How it behaves
 
@@ -226,7 +230,7 @@ The automated tests never use a real key, microphone or Gemini: unit tests use f
 
 ## Target display
 
-- 1600 px wide x 2400 px tall (portrait) tablet, no frames, Kiosk mode. Five family member columns plus the fixed "Other" column must fit comfortably.
+- 1600 px wide x 2400 px tall (portrait) tablet, no frames, Kiosk mode. The four columns must fit comfortably, with the legend of up to five family members in the header.
 
 ## Deployment (GitHub Pages)
 

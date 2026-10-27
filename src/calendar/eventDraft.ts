@@ -1,4 +1,5 @@
 import type { FamilyMember } from '../family/familyMember'
+import { DEFAULT_COLUMN_LAYOUT } from './columns'
 import { addDays, dayKey, startOfDay } from './days'
 import { NO_REPEAT, recurrenceFromFields, type RepeatFields } from './recurrence'
 import { EVENT_TAGS_PROPERTY, extractTags, stripTitleTags } from './tags'
@@ -10,6 +11,8 @@ export interface EventDraft extends RepeatFields {
   memberIds: string[]
   /** The special tag when the event is special (shown with a gold star), otherwise null. */
   special: string | null
+  /** The work tag when the event belongs in "Praca", otherwise null. */
+  work: string | null
   allDay: boolean
   /** `YYYY-MM-DD`, as used by `<input type="date">`. */
   startDate: string
@@ -38,12 +41,13 @@ const LAST_HOUR = 23
 const LAST_END_TIME = '23:59'
 
 /** A new event on the day, by default 09:00-10:00; `startHour` (a click on the hour grid) makes it that hour. */
-export function newDraft(day: Date, memberIds: string[], startHour?: number): EventDraft {
+export function newDraft(day: Date, memberIds: string[], startHour?: number, work: string | null = null): EventDraft {
   return {
     title: '',
     description: '',
     memberIds,
     special: null,
+    work,
     ...NO_REPEAT,
     allDay: false,
     startDate: dayKey(day),
@@ -53,7 +57,7 @@ export function newDraft(day: Date, memberIds: string[], startHour?: number): Ev
   }
 }
 
-export function draftFromEvent(event: CalendarEvent, members: readonly FamilyMember[], specialTag: string): EventDraft {
+export function draftFromEvent(event: CalendarEvent, members: readonly FamilyMember[], specialTag: string, workTag = DEFAULT_COLUMN_LAYOUT.workTag): EventDraft {
   const tags = new Set(extractTags(event))
   const lastDay = event.allDay ? addDays(startOfDay(event.end), -1) : event.end
   return {
@@ -61,6 +65,7 @@ export function draftFromEvent(event: CalendarEvent, members: readonly FamilyMem
     description: event.description ?? '',
     memberIds: members.filter((member) => tags.has(member.tag)).map((member) => member.id),
     special: tags.has(specialTag) ? specialTag : null,
+    work: tags.has(workTag) ? workTag : null,
     ...NO_REPEAT,
     allDay: event.allDay,
     startDate: dayKey(event.start),
@@ -129,7 +134,7 @@ export function draftToInput(draft: EventDraft, members: readonly FamilyMember[]
   if (Object.keys(errors).length > 0 || start === null || end === null) return { ok: false, errors }
 
   const selected = members.filter((member) => draft.memberIds.includes(member.id)).map((member) => member.tag)
-  const tags = [...new Set([...selected, ...typedTags, ...(draft.special === null ? [] : [draft.special])])]
+  const tags = [...new Set([...selected, ...typedTags, ...(draft.special === null ? [] : [draft.special]), ...(draft.work === null ? [] : [draft.work])])]
   const { [EVENT_TAGS_PROPERTY]: _previous, ...otherProperties } = existing?.extendedProperties?.private ?? {}
   const privateProperties = tags.length > 0 ? { ...otherProperties, [EVENT_TAGS_PROPERTY]: tags.join(',') } : otherProperties
   const description = draft.description.trim()

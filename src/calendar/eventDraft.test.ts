@@ -12,6 +12,7 @@ const draft = (overrides: Partial<EventDraft> = {}): EventDraft => ({
   description: '',
   memberIds: [],
   special: null,
+  work: null,
   allDay: false,
   startDate: '2026-10-20',
   endDate: '2026-10-20',
@@ -38,6 +39,7 @@ describe('newDraft', () => {
       description: '',
       memberIds: ['a'],
       special: null,
+      work: null,
       allDay: false,
       startDate: '2026-10-05',
       endDate: '2026-10-05',
@@ -58,6 +60,7 @@ describe('newDraft from a clicked hour', () => {
 
   it('ends at 23:59 when the clicked hour is the last of the day', () => {
     expect(newDraft(new Date(2026, 9, 5), [], 23)).toMatchObject({ startTime: '23:00', endTime: '23:59' })
+    expect(newDraft(new Date(2026, 9, 5), [], undefined, 'praca')).toMatchObject({ work: 'praca', startTime: '09:00' })
   })
 })
 
@@ -79,12 +82,20 @@ describe('draftFromEvent', () => {
     expect(draftFromEvent(timed, members, 'star').special).toBeNull()
   })
 
+  it('marks an event as work when it carries the work tag, by default "praca"', () => {
+    const work: CalendarEvent = { ...timed, title: 'Spotkanie #praca' }
+    expect(draftFromEvent(work, members, 'star').work).toBe('praca')
+    expect(draftFromEvent(work, members, 'star', 'biuro').work).toBeNull()
+    expect(draftFromEvent({ ...timed, title: 'Spotkanie #biuro' }, members, 'star', 'biuro').work).toBe('biuro')
+  })
+
   it('turns a timed event into form values, with people from tags and a title without #tags', () => {
     expect(draftFromEvent(timed, members, 'star')).toEqual({
       title: 'Trening',
       description: 'Hala',
       memberIds: ['a', 'j'],
       special: null,
+      work: null,
       allDay: false,
       startDate: '2026-10-20',
       endDate: '2026-10-20',
@@ -143,6 +154,11 @@ describe('draftToInput', () => {
     expect(success(draftToInput(draft({ memberIds: ['a'], special: 'star' }), members)).extendedProperties).toEqual({ private: { fhcTags: 'anna,star' } })
     expect(success(draftToInput(draft({ title: 'Urodziny #star', special: 'star' }), members)).extendedProperties).toEqual({ private: { fhcTags: 'star' } })
     expect(success(draftToInput(draft({ memberIds: ['a'] }), members)).extendedProperties).toEqual({ private: { fhcTags: 'anna' } })
+  })
+
+  it('adds the work tag to the event tags when the event is work', () => {
+    expect(success(draftToInput(draft({ memberIds: ['a'], work: 'praca' }), members)).extendedProperties).toEqual({ private: { fhcTags: 'anna,praca' } })
+    expect(success(draftToInput(draft({ work: 'praca' }), members)).extendedProperties).toEqual({ private: { fhcTags: 'praca' } })
   })
 
   it('keeps other hidden properties of an existing event and replaces its tags', () => {

@@ -8,7 +8,7 @@ Make the chip of an event shared by neighbouring people narrower than all their 
 
 ## Spec
 
-`.ai/specs/implemented/2026-10-26-all-day-title-and-shared-events.md`, requirement 3 and its decision.
+`.ai/specs/archive/2026-10-26-all-day-title-and-shared-events.md`, requirement 3 and its decision.
 
 ## Steps and decisions
 
