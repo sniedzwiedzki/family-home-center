@@ -99,7 +99,7 @@ describe('app on the kiosk display', () => {
   })
 
   it('renders the shell in Polish', async () => {
-    expect(await agentBrowser('get', 'text', '.column-header[data-column="other"]')).toContain('Inne')
+    expect(await evaluate<string[]>("[...document.querySelector('.day-row:not(.is-pinned)').querySelectorAll('.day-cell')].map((cell) => cell.dataset.column)")).toEqual(['all', 'recurring', 'work', 'other'])
     expect(await agentBrowser('snapshot', '-i')).toContain('Ustawienia')
     expect((await agentBrowser('get', 'text', '.is-today .day-weekday')).trim()).toMatch(/^(po|wt|śr|cz|pt|so|nd)$/)
     expect(await evaluate<number>("document.querySelectorAll('.month-label').length")).toBeGreaterThanOrEqual(2)
@@ -225,7 +225,7 @@ describe('app on the kiosk display', () => {
       await clickButton('Zapisz')
       await agentBrowser('wait', SETTLE_MS)
 
-      expect(await evaluate<string[]>("[...document.querySelectorAll('.column-name')].map((h) => h.textContent)")).toEqual(['Anna', 'Inne'])
+      expect(await evaluate<string[]>("[...document.querySelectorAll('.column-name')].map((h) => h.textContent)")).toEqual(['Anna'])
       expect(await evaluate<number>("document.querySelectorAll('.forecast-slot').length")).toBe(12)
       await screenshot('calendar-with-family-and-weather')
 
@@ -239,7 +239,7 @@ describe('app on the kiosk display', () => {
     }
   })
 
-  it('adds an event from a person column, edits it, keeps it after a reload and deletes it', async () => {
+  it('adds an event from an empty cell, edits it, keeps it after a reload and deletes it', async () => {
     const eventTitles = `[...document.querySelectorAll('.day-row[data-day="${TODAY_KEY}"] .event-title')].map((e) => e.textContent)`
     const pressedPeople = "[...document.querySelectorAll('.person-toggle')].filter((b) => b.getAttribute('aria-pressed') === 'true').map((b) => b.textContent)"
     const dialogOpen = (name: string) => evaluate<boolean>(`document.querySelector('[role="dialog"][aria-label="${name}"]') !== null`)
@@ -248,17 +248,18 @@ describe('app on the kiosk display', () => {
     await agentBrowser('open', inject('appUrl'))
     await agentBrowser('wait', SETTLE_MS)
     try {
-      await agentBrowser('eval', `document.querySelector('.day-row[data-day="${TODAY_KEY}"] .day-cell[data-column="m2"]').click()`)
+      await agentBrowser('eval', `document.querySelector('.day-row[data-day="${TODAY_KEY}"] .day-cell[data-column="all"]').click()`)
       expect(await dialogOpen('Nowe wydarzenie')).toBe(true)
-      expect(await evaluate<string[]>(pressedPeople)).toEqual(['Jan'])
+      expect(await evaluate<string[]>(pressedPeople)).toEqual([])
 
+      await clickButton('Jan')
       await clickButton('Ola')
       await fillField('Tytuł', 'Dentysta')
       await screenshot('event-dialog')
       await clickButton('Zapisz')
       await agentBrowser('wait', SETTLE_MS)
       expect(await dialogOpen('Nowe wydarzenie')).toBe(false)
-      // Jan and Ola are neighbours, so their shared event is one bar across both columns.
+      // An event of two people is one chip in "Wszystkie", striped with both people's colours.
       expect(await evaluate<string[]>(eventTitles)).toEqual(['Dentysta'])
       await screenshot('calendar-with-event')
 
@@ -292,31 +293,32 @@ describe('app on the kiosk display', () => {
     await agentBrowser('open', inject('appUrl'))
     await agentBrowser('wait', SETTLE_MS)
     try {
-      expect(await titlesIn('m2')).toEqual(['Z Google'])
+      expect(await titlesIn('all')).toEqual(['Z Google'])
 
-      await agentBrowser('eval', `document.querySelector('.day-row[data-day="${TODAY_KEY}"] .day-cell[data-column="m3"]').click()`)
+      // Added from "Praca", the event is ticked as work and lands there.
+      await agentBrowser('eval', `document.querySelector('.day-row[data-day="${TODAY_KEY}"] .day-cell[data-column="work"]').click()`)
       await fillField('Tytuł', 'Z tabletu')
       await clickButton('Zapisz')
       await agentBrowser('wait', SETTLE_MS)
-      expect(await titlesIn('m3')).toEqual(['Z tabletu'])
+      expect(await titlesIn('work')).toEqual(['Z tabletu'])
       await screenshot('google-events')
 
       await agentBrowser('open', inject('appUrl'))
       await agentBrowser('wait', SETTLE_MS)
-      expect(await titlesIn('m3')).toEqual(['Z tabletu'])
+      expect(await titlesIn('work')).toEqual(['Z tabletu'])
       expect(await evaluate<boolean>("localStorage.getItem('fhc.events.v1') === null")).toBe(true)
 
-      await agentBrowser('eval', `document.querySelector('.day-row[data-day="${TODAY_KEY}"] .day-cell[data-column="m3"] .event').click()`)
+      await agentBrowser('eval', `document.querySelector('.day-row[data-day="${TODAY_KEY}"] .day-cell[data-column="work"] .event').click()`)
       await fillField('Tytuł', 'Z tabletu (zmiana)')
       await clickButton('Zapisz')
       await agentBrowser('wait', SETTLE_MS)
-      expect(await titlesIn('m3')).toEqual(['Z tabletu (zmiana)'])
+      expect(await titlesIn('work')).toEqual(['Z tabletu (zmiana)'])
 
-      await agentBrowser('eval', `document.querySelector('.day-row[data-day="${TODAY_KEY}"] .day-cell[data-column="m2"] .event').click()`)
+      await agentBrowser('eval', `document.querySelector('.day-row[data-day="${TODAY_KEY}"] .day-cell[data-column="all"] .event').click()`)
       await clickButton('Usuń')
       await clickButton('Na pewno usunąć?')
       await agentBrowser('wait', SETTLE_MS)
-      expect(await titlesIn('m2')).toEqual([])
+      expect(await titlesIn('all')).toEqual([])
     } finally {
       await agentBrowser('eval', 'localStorage.clear()')
     }
@@ -387,7 +389,7 @@ describe('app on the kiosk display', () => {
     await agentBrowser('open', inject('appUrl'))
     await agentBrowser('wait', SETTLE_MS)
     try {
-      expect(await titlesIn('m3')).toEqual([])
+      expect(await titlesIn('work')).toEqual([])
       await fetch(`${inject('googleUrl')}/calendar/v3/calendars/family%40example.com/events`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${FAKE_GOOGLE.accessToken}`, 'Content-Type': 'application/json' },
@@ -395,24 +397,24 @@ describe('app on the kiosk display', () => {
           summary: 'Dodane gdzie indziej',
           start: { dateTime: at(12) },
           end: { dateTime: at(13) },
-          extendedProperties: { private: { fhcTags: 'ola' } },
+          extendedProperties: { private: { fhcTags: 'ola,praca' } },
         }),
       })
-      expect(await titlesIn('m3')).toEqual([])
+      expect(await titlesIn('work')).toEqual([])
       await clickButton('Odśwież')
       await agentBrowser('wait', SETTLE_MS)
-      expect(await titlesIn('m3')).toEqual(['Dodane gdzie indziej'])
+      expect(await titlesIn('work')).toEqual(['Dodane gdzie indziej'])
       await screenshot('after-refresh')
     } finally {
       await agentBrowser('eval', 'localStorage.clear()')
     }
   })
 
-  it('repeats an event every week and changes the whole series', async () => {
+  it('repeats an event every week, shows it in "Powtarzalne" and changes the whole series', async () => {
     const nextWeek = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 7)
     const NEXT_WEEK_KEY = `${nextWeek.getFullYear()}-${pad(nextWeek.getMonth() + 1)}-${pad(nextWeek.getDate())}`
     const titlesOn = (day: string) =>
-      evaluate<string[]>(`[...document.querySelectorAll('.day-row[data-day="${day}"] .day-cell[data-column="m3"] .event-title')].map((e) => e.textContent)`)
+      evaluate<string[]>(`[...document.querySelectorAll('.day-row[data-day="${day}"] .day-cell[data-column="recurring"] .event-title')].map((e) => e.textContent)`)
     const choose = (label: string, value: string) =>
       agentBrowser(
         'eval',
@@ -427,7 +429,8 @@ describe('app on the kiosk display', () => {
     await agentBrowser('open', inject('appUrl'))
     await agentBrowser('wait', SETTLE_MS)
     try {
-      await agentBrowser('eval', `document.querySelector('.day-row[data-day="${TODAY_KEY}"] .day-cell[data-column="m3"]').click()`)
+      await agentBrowser('eval', `document.querySelector('.day-row[data-day="${TODAY_KEY}"] .day-cell[data-column="all"]').click()`)
+      await clickButton('Ola')
       await fillField('Tytuł', 'Basen co tydzień')
       await choose('Powtarzaj', 'weekly')
       await screenshot('repeat-dialog')
@@ -436,7 +439,7 @@ describe('app on the kiosk display', () => {
       expect(await titlesOn(TODAY_KEY)).toEqual(['Basen co tydzień'])
       expect(await titlesOn(NEXT_WEEK_KEY)).toEqual(['Basen co tydzień'])
 
-      await agentBrowser('eval', `document.querySelector('.day-row[data-day="${TODAY_KEY}"] .day-cell[data-column="m3"] .event').click()`)
+      await agentBrowser('eval', `document.querySelector('.day-row[data-day="${TODAY_KEY}"] .day-cell[data-column="recurring"] .event').click()`)
       await clickButton('Cała seria')
       await agentBrowser('wait', SETTLE_MS)
       await screenshot('repeat-series-dialog')
@@ -524,7 +527,7 @@ describe('app on the kiosk display', () => {
 
         await clickButton('Zamknij')
         await agentBrowser('wait', SETTLE_MS)
-        expect(await titlesIn('m3')).toEqual([FAKE_GEMINI.eventTitle])
+        expect(await titlesIn('all')).toContain(FAKE_GEMINI.eventTitle)
       } finally {
         await agentBrowser('eval', 'localStorage.clear()')
       }

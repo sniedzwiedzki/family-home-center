@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import type { FamilyMember } from '../family/familyMember'
 import { formatClock } from '../shared/format'
-import { columnIdsForEvent, type CalendarColumn } from './columns'
+import { chipColors, type CalendarColumn } from './columns'
 import { hourRange, LEADING_HOURS, MINUTES_PER_HOUR, placeSpans, timedSpans } from './dayHours'
 import type { DayEntry } from './days'
 import { EventItem } from './EventItem'
@@ -15,6 +15,8 @@ interface HourBodyProps {
   now?: Date
   columns: readonly CalendarColumn[]
   members: readonly FamilyMember[]
+  /** The column each event goes to. */
+  columnOf: (event: CalendarEvent) => string
   entries: readonly DayEntry[]
   /** Forecast by hour start (ms); shown left of each hour. */
   hourForecasts: ReadonlyMap<number, HourForecast>
@@ -28,10 +30,10 @@ const hoursFrom = (startHour: number, minute: number): number => minute / MINUTE
 const offset = (hours: number): string => `calc(var(--hour-height) * ${hours})`
 
 /** The hour grid of an expanded day: an hour axis and, per column, the events at the hours they take place. */
-export function HourBody({ day, now, columns, members, entries, hourForecasts, onAddEvent, onEditEvent }: HourBodyProps) {
+export function HourBody({ day, now, columns, members, columnOf, entries, hourForecasts, onAddEvent, onEditEvent }: HourBodyProps) {
   const spans = timedSpans(day, entries)
   const { startHour, endHour } = hourRange(spans)
-  const placed = spans.map((span) => ({ span, columnIds: columnIdsForEvent(span.entry.event, members) }))
+  const placed = spans.map((span) => ({ span, columnIds: [columnOf(span.entry.event)] }))
   const nowHours = now === undefined ? null : hoursFrom(startHour, now.getHours() * MINUTES_PER_HOUR + now.getMinutes())
   const showNow = nowHours !== null && nowHours >= LEADING_HOURS && nowHours <= endHour - startHour + LEADING_HOURS
 
@@ -70,7 +72,7 @@ export function HourBody({ day, now, columns, members, entries, hourForecasts, o
             <EventItem
               key={span.entry.event.id}
               entry={span.entry}
-              color={column.color}
+              {...chipColors(span.entry.event, members)}
               onEdit={onEditEvent}
               placement={{
                 top: offset(hoursFrom(startHour, span.startMinute)),

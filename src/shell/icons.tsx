@@ -39,14 +39,6 @@ export function HomeIcon() {
   )
 }
 
-export function ChevronIcon() {
-  return (
-    <svg {...props}>
-      <polyline points="6 9 12 15 18 9" />
-    </svg>
-  )
-}
-
 export function MicIcon() {
   return (
     <svg {...props}>

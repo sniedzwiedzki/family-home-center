@@ -26,6 +26,7 @@ const show = (draft: EventDraft = initial(), options: { canDelete?: boolean; mem
       heading="Nowe wydarzenie"
       initial={draft}
       members={options.members ?? members}
+      workTag="praca"
       existing={options.existing}
       series={options.series}
       onSave={handlers.onSave}
@@ -88,13 +89,25 @@ describe('EventDialog', () => {
     const onSave = vi.fn<(input: CalendarEventInput, target: SaveTarget) => Promise<void>>(async () => undefined)
     render(
       <SpecialTagContext.Provider value="gwiazda">
-        <EventDialog heading="Nowe wydarzenie" initial={initial({ title: 'Urodziny' })} members={members} onSave={onSave} onClose={vi.fn()} />
+        <EventDialog heading="Nowe wydarzenie" initial={initial({ title: 'Urodziny' })} members={members} workTag="praca" onSave={onSave} onClose={vi.fn()} />
       </SpecialTagContext.Provider>,
     )
     fireEvent.click(screen.getByLabelText('Wydarzenie specjalne ★'))
     submit()
     await flush()
     expect(onSave.mock.calls[0][0].extendedProperties).toEqual({ private: { fhcTags: 'anna,gwiazda' } })
+  })
+
+  it('marks the event as work with the work tag, and unmarks it again', async () => {
+    const { onSave } = show(initial({ title: 'Spotkanie' }))
+    const work = screen.getByLabelText('Praca') as HTMLInputElement
+    expect(work.checked).toBe(false)
+    fireEvent.click(work)
+    submit()
+    await flush()
+    expect(onSave.mock.calls[0][0].extendedProperties).toEqual({ private: { fhcTags: 'anna,praca' } })
+    fireEvent.click(work)
+    expect(work.checked).toBe(false)
   })
 
   it('points to the settings when there are no people', () => {

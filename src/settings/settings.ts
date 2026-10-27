@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { columnLayoutSchema, DEFAULT_COLUMN_LAYOUT } from '../calendar/columns'
 import { DEFAULT_SPECIAL_TAG } from '../calendar/specialTag'
 import { familyMembersSchema, tagSchema } from '../family/familyMember'
 import { DEFAULT_FONT_SIZES, fontSizesSchema } from './fontSizes'
@@ -45,6 +46,8 @@ export const settingsSchema = z.object({
   fontSizes: fontSizesSchema.default(DEFAULT_FONT_SIZES),
   // Added later: settings saved before it existed must still load.
   specialTag: tagSchema.default(DEFAULT_SPECIAL_TAG),
+  // Added later: settings saved before it existed must still load.
+  columns: columnLayoutSchema.default(DEFAULT_COLUMN_LAYOUT),
 })
 
 export type Settings = z.infer<typeof settingsSchema>
@@ -58,6 +61,7 @@ export const DEFAULT_SETTINGS: Settings = {
   pin: null,
   fontSizes: DEFAULT_FONT_SIZES,
   specialTag: DEFAULT_SPECIAL_TAG,
+  columns: DEFAULT_COLUMN_LAYOUT,
 }
 
 export function loadSettings(storage: Pick<Storage, 'getItem'>): Settings {

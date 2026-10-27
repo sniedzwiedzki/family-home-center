@@ -1,7 +1,7 @@
 # All-day events show only the title; shared events become one wide bar
 
 Date: 2026-10-26
-Status: implemented (2026-10-27; lint, unit tests with 100% coverage and build green; integration tests run in CI)
+Status: superseded on 2026-10-27 by `.ai/specs/implemented/2026-10-27-columns-by-kind.md` (columns by kind of event, no chips across columns); requirements 1 and 7 (all-day title, "ciąg dalszy" only on a partial last day) still hold. Was implemented (2026-10-27; lint, unit tests with 100% coverage and build green; integration tests run in CI)
 
 ## Requirement (from the user, translated from Polish)
 

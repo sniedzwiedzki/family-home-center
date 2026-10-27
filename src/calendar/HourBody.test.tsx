@@ -1,16 +1,18 @@
 import { fireEvent, render } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { FamilyMember } from '../family/familyMember'
-import { buildColumns } from './columns'
+import { buildColumns, columnForEvent, DEFAULT_COLUMN_LAYOUT } from './columns'
 import type { HourForecast } from '../weather/types'
 import type { DayEntry } from './days'
 import { HourBody } from './HourBody'
+import type { CalendarEvent } from './types'
 
 const members: FamilyMember[] = [
   { id: 'a', name: 'Anna', tag: 'anna', color: '#ff0000' },
   { id: 'j', name: 'Jan', tag: 'jan', color: '#00ff00' },
 ]
-const columns = buildColumns(members)
+const columns = buildColumns(DEFAULT_COLUMN_LAYOUT)
+const columnOf = (item: CalendarEvent) => columnForEvent(item, members, 'praca', new Set())
 const noop = () => undefined
 const day = new Date(2026, 9, 18)
 const at = (hour: number, minute = 0) => new Date(2026, 9, 18, hour, minute)
@@ -21,7 +23,7 @@ const entry = (id: string, title: string, start: Date, end: Date): DayEntry => (
 
 let hourForecasts = new Map<number, HourForecast>()
 const renderBody = (entries: DayEntry[], now?: Date, handlers: { onAddEvent?: () => void; onEditEvent?: () => void } = {}) =>
-  render(<HourBody day={day} now={now} columns={columns} members={members} entries={entries} hourForecasts={hourForecasts} onAddEvent={handlers.onAddEvent ?? noop} onEditEvent={handlers.onEditEvent ?? noop} />)
+  render(<HourBody day={day} now={now} columns={columns} members={members} columnOf={columnOf} entries={entries} hourForecasts={hourForecasts} onAddEvent={handlers.onAddEvent ?? noop} onEditEvent={handlers.onEditEvent ?? noop} />)
 
 const labels = (container: HTMLElement) => [...container.querySelectorAll('.hour-label')].map((label) => label.textContent)
 const eventIn = (container: HTMLElement, columnId: string) => container.querySelector<HTMLElement>(`.hour-track[data-column="${columnId}"] .event`)!
@@ -41,29 +43,30 @@ describe('HourBody', () => {
 
   it('has one track per column', () => {
     const { container } = renderBody([])
-    expect([...container.querySelectorAll('.hour-track')].map((track) => track.getAttribute('data-column'))).toEqual(['a', 'j', 'other'])
+    expect([...container.querySelectorAll('.hour-track')].map((track) => track.getAttribute('data-column'))).toEqual(['all', 'recurring', 'work', 'other'])
   })
 
-  it('places an event at its hours in the column of its tag', () => {
+  it("places an event at its hours in its column, in its person's colour", () => {
     const { container } = renderBody([entry('1', 'Trening #anna', at(9, 30), at(11))])
-    const item = eventIn(container, 'a')
+    const item = eventIn(container, 'all')
+    expect(item.style.getPropertyValue('--event-color')).toBe('#ff0000')
     // 9:30 is 2.5 hours after 7:00, and the grid starts half an hour before 7:00.
     expect(item.style.top).toBe('calc(var(--hour-height) * 3)')
     expect(item.style.height).toBe('calc(var(--hour-height) * 1.5)')
     expect([item.style.left, item.style.width]).toEqual(['0%', '100%'])
-    expect(container.querySelector('.hour-track[data-column="j"] .event')).toBeNull()
+    expect(container.querySelector('.hour-track[data-column="work"] .event')).toBeNull()
   })
 
-  it('shows an untagged event in "Inne" and a multi-tag event in each column', () => {
+  it('shows an untagged event in "Inne" and an event of several people once, with their stripes', () => {
     const { container } = renderBody([entry('1', 'Śmieci', at(8), at(9)), entry('2', 'Kino #anna #jan', at(8), at(9))])
     expect(container.querySelectorAll('.hour-track[data-column="other"] .event')).toHaveLength(1)
-    expect(container.querySelectorAll('.hour-track[data-column="a"] .event')).toHaveLength(1)
-    expect(container.querySelectorAll('.hour-track[data-column="j"] .event')).toHaveLength(1)
+    expect(container.querySelectorAll('.hour-track[data-column="all"] .event')).toHaveLength(1)
+    expect(eventIn(container, 'all').classList.contains('is-shared')).toBe(true)
   })
 
   it('puts overlapping events of a column side by side', () => {
     const { container } = renderBody([entry('1', 'Jedno #anna', at(9), at(11)), entry('2', 'Drugie #anna', at(10), at(12))])
-    const items = [...container.querySelectorAll<HTMLElement>('.hour-track[data-column="a"] .event')]
+    const items = [...container.querySelectorAll<HTMLElement>('.hour-track[data-column="all"] .event')]
     expect(items.map((item) => [item.style.left, item.style.width])).toEqual([['0%', '50%'], ['50%', '50%']])
   })
 
@@ -89,11 +92,11 @@ describe('HourBody', () => {
     const onAddEvent = vi.fn()
     const onEditEvent = vi.fn()
     const { container } = renderBody([entry('1', 'Trening #anna', at(9), at(10))], undefined, { onAddEvent, onEditEvent })
-    const track = container.querySelector<HTMLElement>('.hour-track[data-column="j"]')!
+    const track = container.querySelector<HTMLElement>('.hour-track[data-column="work"]')!
     vi.spyOn(track, 'getBoundingClientRect').mockReturnValue({ top: 0, height: 1300 } as DOMRect)
     fireEvent.click(track, { clientY: 250 })
-    expect(onAddEvent).toHaveBeenCalledWith(day, 'j', 9)
-    fireEvent.click(eventIn(container, 'a'))
+    expect(onAddEvent).toHaveBeenCalledWith(day, 'work', 9)
+    fireEvent.click(eventIn(container, 'all'))
     expect(onEditEvent).toHaveBeenCalledTimes(1)
     expect(onAddEvent).toHaveBeenCalledTimes(1)
   })
@@ -103,21 +106,21 @@ describe('HourBody', () => {
     const clickAt = (clientY: number) => {
       const onAddEvent = vi.fn()
       const { container } = renderBody([], undefined, { onAddEvent })
-      const track = container.querySelector<HTMLElement>('.hour-track[data-column="a"]')!
+      const track = container.querySelector<HTMLElement>('.hour-track[data-column="all"]')!
       vi.spyOn(track, 'getBoundingClientRect').mockReturnValue({ top: 100, height: 1350 } as DOMRect)
       fireEvent.click(track, { clientY })
       return onAddEvent
     }
 
     it('reports the hour under the click', () => {
-      expect(clickAt(130)).toHaveBeenCalledWith(day, 'a', 7)
-      expect(clickAt(100 + 3 * 100 + 50)).toHaveBeenCalledWith(day, 'a', 10)
-      expect(clickAt(1449)).toHaveBeenCalledWith(day, 'a', 19)
+      expect(clickAt(130)).toHaveBeenCalledWith(day, 'all', 7)
+      expect(clickAt(100 + 3 * 100 + 50)).toHaveBeenCalledWith(day, 'all', 10)
+      expect(clickAt(1449)).toHaveBeenCalledWith(day, 'all', 19)
     })
 
     it('stays inside the shown hours', () => {
-      expect(clickAt(50)).toHaveBeenCalledWith(day, 'a', 7)
-      expect(clickAt(1500)).toHaveBeenCalledWith(day, 'a', 19)
+      expect(clickAt(50)).toHaveBeenCalledWith(day, 'all', 7)
+      expect(clickAt(1500)).toHaveBeenCalledWith(day, 'all', 19)
     })
   })
 

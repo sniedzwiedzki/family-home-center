@@ -7,6 +7,7 @@ Each entry below is a one-line summary linking to a detailed file in `.ai/lesson
 ## Index
 
 <!-- Newest first. Format: - [YYYY-MM-DD slug](lessons/YYYY-MM-DD-slug.md) — one-line takeaway -->
+- [2026-10-27 tag-columns-before-person-check](lessons/2026-10-27-tag-columns-before-person-check.md) — check a column's tag before the "no person" fallback; every meaningful tag needs a draft field or editing drops it
 - [2026-10-27 hidden-preview-pane-has-no-frames](lessons/2026-10-27-hidden-preview-pane-has-no-frames.md) — a hidden browser pane runs no frames, so ResizeObserver never fires; check rAF first; bracket `var()` fallbacks inside calc
 - [2026-10-27 shared-chip-widths-by-span](lessons/2026-10-27-shared-chip-widths-by-span.md) — a shared chip must reach every participant's column; test shared-chip changes with two and with three or more people
 - [2026-10-26 agent-browser-click-needs-refs](lessons/2026-10-26-agent-browser-click-needs-refs.md) — a CSS text selector click can report success without doing anything; use the snapshot `@eN` ref workflow and verify with a screenshot

@@ -80,7 +80,7 @@ function App() {
     <SpecialTagContext.Provider value={settings.specialTag}>
       <div className="kiosk">
         <TopBar onOpenSettings={() => setIsSettingsOpen(true)} onRefresh={refresh} />
-        <CalendarView port={calendarPort} members={settings.familyMembers} forecasts={forecasts} hourForecasts={hourForecasts} refreshSignal={refreshSignal} />
+        <CalendarView port={calendarPort} members={settings.familyMembers} columnLayout={settings.columns} forecasts={forecasts} hourForecasts={hourForecasts} refreshSignal={refreshSignal} />
         <div className="bottom-area">
           <AssistantButton onOpen={() => setIsAssistantOpen(true)} />
           <BottomBar forecast={forecast} />
